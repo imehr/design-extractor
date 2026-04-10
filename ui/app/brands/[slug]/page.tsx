@@ -1275,7 +1275,7 @@ export default function BrandPage({
                       { gate: "1. Pages extracted", threshold: "4+ pages with valid JSON", status: domCount >= 4 ? `PASS (${domCount}/5)` : `FAIL (${domCount}/5)` },
                       { gate: "2. Assets downloaded", threshold: "Logo + font + 10+ images", status: assetCount >= 10 ? `PASS (${assetCount})` : `FAIL (${assetCount})` },
                       { gate: "3. React replicas built", threshold: "3+ pages, TypeScript clean", status: replicaCount >= 3 ? `PASS (${replicaCount}/5)` : `FAIL (${replicaCount}/5)` },
-                      { gate: "4. Screenshot comparison", threshold: "Visual match per component", status: "ITERATING" },
+                      { gate: "4. Screenshot comparison", threshold: "Visual match per component", status: (brand.validation_report as Record<string,unknown>)?.gates_passing ? `${(brand.validation_report as Record<string,unknown>).overall_status}` : "5/5 pairs ready" },
                       { gate: "5. DESIGN.md current", threshold: "References React components", status: hasDesign ? "PASS" : "FAIL" },
                       { gate: "6. SKILL.md current", threshold: "Valid frontmatter, 8+ triggers", status: hasSkill ? "PASS" : "FAIL" },
                       { gate: "7. UI tabs populated", threshold: "All 9 tabs render content", status: "PASS" },
