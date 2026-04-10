@@ -1,0 +1,113 @@
+/*
+ * Nimbus design tokens — CSS custom properties
+ * Hand-curated seed brand for the design-extractor library.
+ * Mirrors design-tokens.json 1:1. Do not edit one without the other.
+ * Version: 0.1.0 | Extracted: 2026-04-10 | Synthetic: true
+ */
+
+:root {
+  /* === colour.surface === */
+  --nbs-colour-surface-default: #FAFBFC;
+  --nbs-colour-surface-elevated: #FFFFFF;
+  --nbs-colour-surface-muted: #F5F7FA;
+
+  /* === colour.text === */
+  --nbs-colour-text-primary: #0F1419;
+  --nbs-colour-text-secondary: #5C6473;
+  --nbs-colour-text-tertiary: #8E96A5;
+  --nbs-colour-text-inverse: #FFFFFF;
+
+  /* === colour.border === */
+  --nbs-colour-border-default: #E5E8EE;
+  --nbs-colour-border-strong: #D5DAE3;
+
+  /* === colour.accent === */
+  --nbs-colour-accent-primary: #4A6FF5;
+  --nbs-colour-accent-primary-hover: #3B5CD6;
+  --nbs-colour-accent-secondary: #9B8CFF;
+
+  /* === colour.state === */
+  --nbs-colour-state-success: #22C55E;
+  --nbs-colour-state-warning: #F59E0B;
+  --nbs-colour-state-danger: #EF4444;
+
+  /* === typography.fontFamily === */
+  --nbs-font-family-primary: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --nbs-font-family-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* === typography.fontWeight === */
+  --nbs-font-weight-regular: 400;
+  --nbs-font-weight-medium: 500;
+  --nbs-font-weight-semibold: 600;
+
+  /* === typography.fontSize === */
+  --nbs-font-size-caption: 12px;
+  --nbs-font-size-body-sm: 14px;
+  --nbs-font-size-body: 16px;
+  --nbs-font-size-body-lg: 18px;
+  --nbs-font-size-heading-sm: 20px;
+  --nbs-font-size-h3: 24px;
+  --nbs-font-size-h2: 32px;
+  --nbs-font-size-h1: 44px;
+  --nbs-font-size-display: 56px;
+
+  /* === typography.lineHeight === */
+  --nbs-line-height-tight: 1.1;
+  --nbs-line-height-snug: 1.25;
+  --nbs-line-height-normal: 1.5;
+  --nbs-line-height-relaxed: 1.6;
+
+  /* === typography.letterSpacing === */
+  --nbs-letter-spacing-tight: -0.01em;
+  --nbs-letter-spacing-normal: 0;
+  --nbs-letter-spacing-wide: 0.01em;
+
+  /* === spacing (4px base unit) === */
+  --nbs-spacing-base: 4px;
+  --nbs-spacing-1: 4px;
+  --nbs-spacing-2: 8px;
+  --nbs-spacing-3: 12px;
+  --nbs-spacing-4: 16px;
+  --nbs-spacing-5: 20px;
+  --nbs-spacing-6: 24px;
+  --nbs-spacing-8: 32px;
+  --nbs-spacing-10: 40px;
+  --nbs-spacing-12: 48px;
+  --nbs-spacing-16: 64px;
+  --nbs-spacing-20: 80px;
+  --nbs-spacing-24: 96px;
+  --nbs-spacing-32: 128px;
+
+  /* === radius === */
+  --nbs-radius-sm: 4px;
+  --nbs-radius-md: 8px;
+  --nbs-radius-lg: 12px;
+  --nbs-radius-full: 9999px;
+
+  /* === border === */
+  --nbs-border-width-default: 1px;
+
+  /* === shadow === */
+  --nbs-shadow-xs: 0 1px 2px rgba(15, 20, 25, 0.04);
+  --nbs-shadow-sm: 0 1px 2px rgba(15, 20, 25, 0.04), 0 1px 1px rgba(15, 20, 25, 0.06);
+  --nbs-shadow-md: 0 4px 12px rgba(15, 20, 25, 0.06), 0 2px 4px rgba(15, 20, 25, 0.04);
+  --nbs-shadow-focus: 0 0 0 3px rgba(74, 111, 245, 0.25);
+
+  /* === motion === */
+  --nbs-motion-duration-fast: 120ms;
+  --nbs-motion-duration-default: 200ms;
+  --nbs-motion-duration-slow: 320ms;
+  --nbs-motion-easing-default: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --nbs-motion-easing-dramatic: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* === breakpoint === */
+  --nbs-breakpoint-sm: 640px;
+  --nbs-breakpoint-md: 768px;
+  --nbs-breakpoint-lg: 1024px;
+  --nbs-breakpoint-xl: 1280px;
+  --nbs-breakpoint-2xl: 1536px;
+
+  /* === layout === */
+  --nbs-container-max-width: 1200px;
+  --nbs-nav-height: 72px;
+}

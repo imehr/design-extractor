@@ -1,0 +1,27 @@
+{
+  "name": "design-extractor",
+  "version": "0.1.0",
+  "description": "Extract a complete, validated, reusable design system from any URL — patterns, relationships, motion, voice, and a self-validating shadcn/Tailwind HTML replica. Iteratively refines until the replica matches reference screenshots at >=0.85 similarity. Produces a per-brand DESIGN.md and an installable per-brand SKILL.md, indexed in a local design library at ~/.claude/design-library/.",
+  "author": {
+    "name": "Mehran Yazdi",
+    "url": "https://github.com/imehr"
+  },
+  "homepage": "https://github.com/imehr/design-extractor",
+  "repository": "https://github.com/imehr/design-extractor",
+  "license": "MIT",
+  "keywords": [
+    "design-system",
+    "design-extraction",
+    "design-tokens",
+    "dtcg",
+    "shadcn",
+    "tailwind",
+    "visual-validation",
+    "brand-voice",
+    "patterns",
+    "design-library",
+    "replica",
+    "playwright",
+    "agent-browser"
+  ]
+}

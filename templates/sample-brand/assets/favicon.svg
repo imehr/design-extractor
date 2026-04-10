@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" role="img" aria-label="Nimbus favicon">
+  <title>Nimbus</title>
+  <rect x="0" y="0" width="16" height="16" rx="3.5" ry="3.5" fill="#4A6FF5"/>
+  <path d="M 4.5 4 L 4.5 12 M 11.5 4 L 11.5 12 M 4.5 4 L 11.5 12" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

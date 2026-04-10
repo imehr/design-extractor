@@ -1,0 +1,9 @@
+# Tracks the brand-extractor commit/version these scripts were forked from.
+# Used for quarterly sync checks to detect upstream drift.
+upstream_plugin: brand-extractor
+upstream_version: 1.0.0
+fork_date: 2026-04-10
+forked_files:
+  - extract_tokens.py <- scripts/extract_tokens.py
+  - screenshot_components.py <- scripts/screenshot_components.py
+  - pixel_compare.py <- scripts/compare_visual.py (renamed)

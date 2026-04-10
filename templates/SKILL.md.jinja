@@ -1,0 +1,161 @@
+---
+name: brand-{{ brand.slug | default('unknown') }}
+description: >-
+  Apply {{ brand.name | default('Brand') }}'s design system.
+  Use when the user says "design like {{ brand.name | default('Brand') }}",
+  "{{ brand.name | default('Brand') }} style",
+  "{{ brand.name | default('Brand') }}-style landing page",
+  "apply {{ brand.name | default('Brand') }} brand",
+  "{{ brand.name | default('Brand') }} theme",
+  "{{ brand.name | default('Brand') }} marketing page",
+  "build me a page that looks like {{ brand.name | default('Brand') }}",
+  "use the {{ brand.name | default('Brand') }} tokens",
+  or any similar request to replicate the {{ brand.name | default('Brand') }} visual identity.
+  {% if negative_triggers is defined and negative_triggers %}{% for nt in negative_triggers %}{{ nt }} {% endfor %}{% endif %}
+version: {{ brand.extractor_version | default('0.1.0') }}
+source_brand: {{ brand.slug | default('unknown') }}
+source_url: {{ brand.source_url | default('N/A') }}
+extracted_at: {{ brand.extracted_at | default('N/A') }}
+---
+
+# {{ brand.name | default('Brand') }} -- per-brand design skill
+
+> Auto-installed by `/design-extractor:apply-design {{ brand.slug | default('brand') }}`. When this skill loads, you are about to produce UI that must look and feel like **{{ brand.name | default('Brand') }}**.
+
+## When to use this skill
+
+Trigger positively on phrases like:
+
+- "design X like {{ brand.name | default('Brand') }}"
+- "{{ brand.name | default('Brand') }}-style landing page / marketing page / pricing page"
+- "apply the {{ brand.name | default('Brand') }} brand to this component"
+- "use {{ brand.name | default('Brand') }} tokens"
+- "build me a page that looks like {{ brand.name | default('Brand') }}"
+- "{{ brand.name | default('Brand') }} hero section"
+- "{{ brand.name | default('Brand') }} card"
+- "{{ brand.name | default('Brand') }} button"
+- "{{ brand.name | default('Brand') }} theme"
+- "make this feel like {{ brand.name | default('Brand') }}"
+
+## When NOT to use this skill
+
+Do **not** trigger on:
+
+{% if negative_triggers is defined and negative_triggers %}{% for nt in negative_triggers %}- {{ nt }}
+{% endfor %}{% else %}- Requests about the {{ brand.name | default('Brand') }} product's API, SDK, or integrations
+- Requests about {{ brand.name | default('Brand') }}'s business logic or workflows
+- Generic mentions of {{ brand.name | default('Brand') }} that are not about visual design
+{% endif %}
+
+**The rule:** if the user is asking about *how {{ brand.name | default('Brand') }}'s product works*, this skill is wrong. This skill is only for *visual design that imitates the {{ brand.name | default('Brand') }} brand's aesthetic*.
+
+## {{ brand.name | default('Brand') }} in one sentence
+
+{{ at_a_glance | default('No summary available.') }}
+
+## Core tokens (inline -- use these exact values)
+
+### Colours
+
+```
+{% if tokens is defined and tokens.colours is defined and tokens.colours.computed is defined %}{% for c in tokens.colours.computed %}{{ "%-30s" | format(c.token | default('colour.unknown')) }} {{ c.hex | default('N/A') }}{% if c.note is defined %}   ({{ c.note }}){% endif %}
+
+{% endfor %}{% else %}(no colour tokens extracted)
+{% endif %}```
+
+### Typography
+
+{% if tokens is defined and tokens.typography is defined %}- Primary: `{{ tokens.typography.primary_family | default('system-ui, sans-serif') }}`
+- Mono: `{{ tokens.typography.mono_family | default('ui-monospace, monospace') }}`
+- Weights: {{ tokens.typography.weight_summary | default('400 / 500 / 600') }}
+{% if tokens.typography.scale_summary is defined %}- {{ tokens.typography.scale_summary }}{% endif %}
+{% if tokens.typography.line_height_summary is defined %}- {{ tokens.typography.line_height_summary }}{% endif %}
+{% if tokens.typography.letter_spacing_summary is defined %}- {{ tokens.typography.letter_spacing_summary }}{% endif %}
+{% else %}- (no typography tokens extracted)
+{% endif %}
+
+### Spacing ({{ tokens.spacing.base | default('N/A') if tokens is defined and tokens.spacing is defined else 'N/A' }} base)
+
+{% if tokens is defined and tokens.spacing is defined %}`{{ tokens.spacing.scale | default([]) | join(', ') }}`
+{% if tokens.spacing.key_values is defined %}{% for kv in tokens.spacing.key_values %}{{ kv }}
+{% endfor %}{% endif %}{% else %}(no spacing tokens extracted)
+{% endif %}
+
+### Radii
+
+{% if tokens is defined and tokens.borders is defined and tokens.borders.radius is defined %}{% for r in tokens.borders.radius %}- `{{ r.token | default('unknown') }} = {{ r.value | default('N/A') }}` ({{ r.use | default('N/A') }})
+{% endfor %}{% else %}- (no radius tokens extracted)
+{% endif %}
+
+### Shadows
+
+{% if tokens is defined and tokens.shadows is defined %}{% for s in tokens.shadows %}- `{{ s.token | default('unknown') }}: {{ s.value | default('N/A') }}`
+{% endfor %}{% else %}- (no shadow tokens extracted)
+{% endif %}
+
+### Motion
+
+{% if tokens is defined and tokens.transitions is defined %}- Default duration: **{{ motion_median_duration | default('N/A') }}**
+- Default easing: `{{ motion_default_easing | default('N/A') }}`
+{% for t in tokens.transitions %}- {{ t.token | default('unknown') }}: `{{ t.value | default('N/A') }}`
+{% endfor %}{% else %}- (no motion tokens extracted)
+{% endif %}
+
+## Component rules
+{% if components is defined %}
+{% if components.button is defined %}
+### Button
+
+{{ components.button.description | default('No button description available.') }}
+{% endif %}
+
+{% if components.card is defined %}
+### Card
+
+{{ components.card.description | default('No card description available.') }}
+{% endif %}
+
+{% if components.hero is defined %}
+### Hero
+
+{{ components.hero.description | default('No hero description available.') }}
+{% endif %}
+
+{% if components.nav is defined %}
+### Nav
+
+{{ components.nav.description | default('No nav description available.') }}
+{% endif %}
+{% else %}
+(No component data available.)
+{% endif %}
+
+## Voice guardrails
+
+{% if voice is defined %}{{ brand.name | default('Brand') }} copy is **{{ voice.tone_label | default('confident') }}**.
+
+{% if voice.cta_patterns is defined and voice.cta_patterns %}- Do: {% for cta in voice.cta_patterns %}"{{ cta }}"{% if not loop.last %} / {% endif %}{% endfor %}
+
+{% endif %}{% if voice.forbidden_words is defined and voice.forbidden_words %}- No {{ voice.forbidden_words | join(', ') }}.
+{% endif %}{% if voice.cta_avoid is defined and voice.cta_avoid %}- CTAs are plain verbs + plain nouns: {% for cta in voice.cta_patterns %}"{{ cta }}"{% if not loop.last %}, {% endif %}{% endfor %}. Never {% for avoid in voice.cta_avoid %}"{{ avoid }}"{% if not loop.last %} or {% endif %}{% endfor %}.
+{% endif %}{% if voice.tagline is defined %}- Tagline: **"{{ voice.tagline }}"** -- use it verbatim when a tagline slot is present.
+{% endif %}{% else %}(No voice data available.)
+{% endif %}
+
+## Install command
+
+```bash
+{{ install_command | default('/design-extractor:apply-design ' + (brand.slug | default('brand-slug'))) }}
+```
+
+This copies this skill into the target project's `.claude/skills/brand-{{ brand.slug | default('unknown') }}/SKILL.md` so the rules auto-load on matching prompts.
+
+## Source
+
+- `DESIGN.md` -- full 15-section design spec
+- `design-tokens.json` -- W3C DTCG 2025.10 format tokens
+- `design-tokens.css` -- `:root` custom properties
+- `replica/index.html` -- self-contained Tailwind-CDN landing page reference
+- `metadata.json` -- library index entry
+
+Extracted from **{{ brand.source_url | default('N/A') }}** on {{ brand.extracted_at | default('N/A') }}.

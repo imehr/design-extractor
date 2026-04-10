@@ -1,0 +1,341 @@
+---
+name: brand-{{ brand.slug | default('unknown') }}
+description: >-
+  Apply {{ brand.name | default('Brand') }}'s design system.
+  Use when "design like {{ brand.name | default('Brand') }}", "{{ brand.name | default('Brand') }}-style component",
+  "apply {{ brand.name | default('Brand') }} style", "{{ brand.name | default('Brand') }} theme".
+  {% if negative_triggers is defined and negative_triggers %}{% for nt in negative_triggers %}{{ nt }} {% endfor %}{% endif %}
+version: 1.0.0
+source_url: {{ brand.source_url | default('N/A') }}
+extracted_at: {{ brand.extracted_at | default('N/A') }}
+extractor_version: design-extractor@{{ brand.extractor_version | default('0.1.0') }}
+extraction_method: {{ extraction_method | default('automated') }}
+scores:
+  overall: {{ scores.overall | default(0.0) }}
+  tokens: {{ scores.tokens | default(0.0) }}
+  replica: {{ scores.replica | default(0.0) }}
+  voice: {{ scores.voice | default(0.0) }}
+  patterns: {{ scores.patterns | default(0.0) }}
+confidence: {{ confidence | default('UNKNOWN') }}
+language_variant: {{ brand.language_variant | default('en-US') }}
+{% if brand.category is defined and brand.category %}category_tags:
+{% for tag in brand.category %}  - {{ tag }}
+{% endfor %}{% endif %}---
+
+# {{ brand.name | default('Brand') }}
+
+> Auto-generated DESIGN.md for {{ brand.name | default('Brand') }} ({{ brand.source_url | default('N/A') }}). Extracted {{ brand.extracted_at | default('N/A') }} by design-extractor@{{ brand.extractor_version | default('0.1.0') }}.
+
+## At a Glance
+
+{{ at_a_glance | default('No summary available. Re-run the documentarian agent to generate an at-a-glance paragraph.') }}
+
+## Metadata
+
+| Field | Value |
+|---|---|
+| Industry | {{ metadata.industry | default('N/A') }} |
+| Category tags | {{ brand.category | default([]) | join(', ') }} |
+| Source URL | {{ brand.source_url | default('N/A') }} |
+| Extracted at | {{ brand.extracted_at | default('N/A') }} |
+| Source title | {{ metadata.source_title | default('N/A') }} |
+| Theme colour (meta) | {{ metadata.theme_colour | default('N/A') }} |
+| Has dark mode | {{ metadata.has_dark_mode | default('Unknown') }} |
+| Language variant | {{ brand.language_variant | default('en-US') }} |
+{% if metadata is defined and metadata.extra is defined %}{% for key, value in metadata.extra.items() %}| {{ key }} | {{ value }} |
+{% endfor %}{% endif %}
+## Tokens
+
+### Colours
+
+| Token | Value | Hex | Confidence | Source |
+|---|---|---|---|---|
+{% if tokens is defined and tokens.colours is defined %}{% if tokens.colours.computed is defined %}{% for c in tokens.colours.computed %}| `{{ c.token | default('colour.unknown') }}` | {{ c.value | default('N/A') }} | `{{ c.hex | default('N/A') }}` | {{ c.confidence | default('MEDIUM') }} | {{ c.source | default('N/A') }} |
+{% endfor %}{% endif %}{% else %}| (no colour tokens extracted) | | | | |
+{% endif %}
+{% if tokens is defined and tokens.colours is defined and tokens.colours.brand_impression is defined %}**Brand impression:** {{ tokens.colours.brand_impression }}
+{% endif %}
+{% if tokens is defined and tokens.colours is defined and tokens.colours.custom_properties is defined %}
+#### Custom Properties
+
+{% for prop, value in tokens.colours.custom_properties.items() %}- `{{ prop }}`: `{{ value }}`
+{% endfor %}{% endif %}
+
+### Typography
+
+| Token | Value | Confidence |
+|---|---|---|
+{% if tokens is defined and tokens.typography is defined %}{% if tokens.typography.families is defined %}{% for f in tokens.typography.families %}| `{{ f.token | default('typography.unknown') }}` | {{ f.value | default('N/A') }} | {{ f.confidence | default('MEDIUM') }} |
+{% endfor %}{% endif %}{% if tokens.typography.weights is defined %}{% for w in tokens.typography.weights %}| `{{ w.token | default('typography.weight.unknown') }}` | {{ w.value | default('N/A') }} | {{ w.confidence | default('MEDIUM') }} |
+{% endfor %}{% endif %}{% if tokens.typography.variations is defined %}{% for v in tokens.typography.variations %}| `{{ v.token | default('typography.variation') }}` | {{ v.value | default('N/A') }} | {{ v.confidence | default('MEDIUM') }} |
+{% endfor %}{% endif %}{% else %}| (no typography tokens extracted) | | |
+{% endif %}
+
+**Type scale (px):**
+
+| Role | Size | rem | Source |
+|---|---|---|---|
+{% if tokens is defined and tokens.typography is defined and tokens.typography.scale is defined %}{% for s in tokens.typography.scale %}| {{ s.role | default('unknown') }} | {{ s.size | default('N/A') }} | {{ s.rem | default('N/A') }} | {{ s.source | default('N/A') }} |
+{% endfor %}{% endif %}
+{% if tokens is defined and tokens.typography is defined and tokens.typography.letter_spacing is defined %}
+**Notable letter-spacing tokens:**
+{% for ls in tokens.typography.letter_spacing %}
+- `{{ ls.token | default('N/A') }}` = `{{ ls.value | default('N/A') }}`
+{% endfor %}{% endif %}
+{% if tokens is defined and tokens.typography is defined and tokens.typography.narrative is defined %}
+{{ tokens.typography.narrative }}
+{% endif %}
+
+### Spacing
+
+| Token | Value |
+|---|---|
+{% if tokens is defined and tokens.spacing is defined %}| `spacing.base` | {{ tokens.spacing.base | default('N/A') }} |
+| `spacing.scale` | {{ tokens.spacing.scale | default([]) | join(', ') }} |
+{% else %}| (no spacing tokens extracted) | |
+{% endif %}
+{% if tokens is defined and tokens.spacing is defined and tokens.spacing.narrative is defined %}
+{{ tokens.spacing.narrative }}
+{% endif %}
+
+### Border radius
+
+| Token | Value | Use |
+|---|---|---|
+{% if tokens is defined and tokens.borders is defined and tokens.borders.radius is defined %}{% for r in tokens.borders.radius %}| `{{ r.token | default('radius.unknown') }}` | {{ r.value | default('N/A') }} | {{ r.use | default('N/A') }} |
+{% endfor %}{% endif %}
+{% if tokens is defined and tokens.borders is defined and tokens.borders.radius_narrative is defined %}
+{{ tokens.borders.radius_narrative }}
+{% endif %}
+
+### Border width
+
+| Token | Value |
+|---|---|
+{% if tokens is defined and tokens.borders is defined and tokens.borders.width is defined %}{% for w in tokens.borders.width %}| `{{ w.token | default('border.width.unknown') }}` | {{ w.value | default('N/A') }} |
+{% endfor %}{% endif %}
+{% if tokens is defined and tokens.borders is defined and tokens.borders.width_narrative is defined %}
+{{ tokens.borders.width_narrative }}
+{% endif %}
+
+### Shadow
+
+| Token | Value | Use |
+|---|---|---|
+{% if tokens is defined and tokens.shadows is defined %}{% for s in tokens.shadows %}| `{{ s.token | default('shadow.unknown') }}` | `{{ s.value | default('N/A') }}` | {{ s.use | default('N/A') }} |
+{% endfor %}{% endif %}
+{% if tokens is defined and tokens.shadow_narrative is defined %}
+{{ tokens.shadow_narrative }}
+{% endif %}
+
+### Motion
+
+| Token | Value | Label |
+|---|---|---|
+{% if tokens is defined and tokens.transitions is defined %}{% for t in tokens.transitions %}| `{{ t.token | default('motion.unknown') }}` | {{ t.value | default('N/A') }} | {{ t.label | default('N/A') }} |
+{% endfor %}{% endif %}
+{% if tokens is defined and tokens.motion_narrative is defined %}
+{{ tokens.motion_narrative }}
+{% endif %}
+
+### Breakpoints
+
+{% if tokens is defined and tokens.breakpoints is defined and tokens.breakpoints %}{{ tokens.breakpoints | join(', ') }}{% else %}(no breakpoints extracted){% endif %}
+
+## Typography
+
+{% if typography_narrative is defined %}{{ typography_narrative }}{% else %}See the Tokens > Typography section above for extracted type data.{% endif %}
+
+{% if typography_hierarchy is defined and typography_hierarchy %}
+**Hierarchy:**
+
+| Role | Size | Weight | Letter-spacing | Line-height |
+|---|---|---|---|---|
+{% for row in typography_hierarchy %}| {{ row.role | default('N/A') }} | {{ row.size | default('N/A') }} | {{ row.weight | default('N/A') }} | {{ row.letter_spacing | default('N/A') }} | {{ row.line_height | default('N/A') }} |
+{% endfor %}{% endif %}
+
+## Spacing
+
+{% if spacing_narrative is defined %}{{ spacing_narrative }}{% else %}- **Base unit:** {{ tokens.spacing.base | default('N/A') if tokens is defined and tokens.spacing is defined else 'N/A' }}
+- **Scale:** {{ tokens.spacing.scale | default([]) | join(', ') if tokens is defined and tokens.spacing is defined else 'N/A' }}{% endif %}
+{% if tokens is defined and tokens.spacing is defined %}- **Container max-width:** {{ tokens.spacing.container_max | default('N/A') }}
+- **Section padding:** {{ tokens.spacing.section_padding | default('N/A') }}{% endif %}
+
+## Components
+{% if components is defined %}
+{% for comp_key in ['nav', 'hero', 'button', 'card', 'footer', 'form'] %}
+{% if components[comp_key] is defined %}
+### {{ comp_key }}
+
+{{ components[comp_key].description | default('No description available.') }}
+
+{% if components[comp_key].html_snippet is defined and components[comp_key].html_snippet %}
+```html
+{{ components[comp_key].html_snippet }}
+```
+{% endif %}
+{% endif %}
+{% endfor %}
+{% else %}
+(No component data available. Re-run the documentarian agent to generate component descriptions.)
+{% endif %}
+
+## Patterns
+
+The 15-signal pattern report:
+
+| # | Signal | Value | Confidence |
+|---|---|---|---|
+{% if patterns is defined %}{% set signal_names = [
+  'spacing_rhythm',
+  'type_scale_ratio',
+  'component_density',
+  'alignment_grid',
+  'primary_cta_placement',
+  'border_radius_language',
+  'shadow_elevation_system',
+  'motion_language',
+  'colour_temperature',
+  'typography_pairing',
+  'icon_style',
+  'photography_style',
+  'hero_structure',
+  'interaction_affordance',
+  'voice_design_alignment'
+] %}{% set signal_labels = [
+  'Spacing rhythm / base unit',
+  'Type scale ratio',
+  'Component density',
+  'Alignment grid',
+  'Primary CTA placement',
+  'Border-radius language',
+  'Shadow elevation system',
+  'Motion language',
+  'Colour temperature + saturation',
+  'Typography pairing',
+  'Icon style consistency',
+  'Photography / illustration style',
+  'Hero structure template',
+  'Interaction affordance set',
+  'Voice-design alignment'
+] %}{% for i in range(15) %}{% set key = signal_names[i] %}{% if patterns[key] is defined %}| {{ i + 1 }} | {{ signal_labels[i] }} | {{ patterns[key].value | default('N/A') }} | {{ patterns[key].confidence | default('MEDIUM') }} |
+{% else %}| {{ i + 1 }} | {{ signal_labels[i] }} | (not extracted) | LOW |
+{% endif %}{% endfor %}{% else %}| 1–15 | (no pattern data extracted) | N/A | LOW |
+{% endif %}
+
+## Relationships
+
+{% if relationships_narrative is defined %}{{ relationships_narrative }}{% else %}(No relationship analysis available. Re-run the documentarian agent to generate a relationships narrative.){% endif %}
+
+## Voice
+
+{% if voice is defined %}
+**Tone spectrum:**
+
+| Dimension | Position |
+|---|---|
+{% if voice.tone_spectrum is defined %}{% for dim, pos in voice.tone_spectrum.items() %}| {{ dim }} | {{ pos }} |
+{% endfor %}{% endif %}
+
+{% if voice.traits is defined and voice.traits %}**{{ voice.traits | length }} defining traits:**
+
+{% for trait in voice.traits %}{{ loop.index }}. **{{ trait.name | default('Trait') }}** -- {{ trait.description | default('N/A') }}
+{% endfor %}{% endif %}
+
+{% if voice.cta_patterns is defined and voice.cta_patterns %}**CTA patterns:**
+
+{% for cta in voice.cta_patterns %}- {{ cta }}
+{% endfor %}{% endif %}
+
+**Language variant:** {{ voice.language_variant | default(brand.language_variant | default('en-US')) }}
+
+{% if voice.do_dont is defined and voice.do_dont %}**Microcopy do/don't:**
+
+| Do | Don't |
+|---|---|
+{% for pair in voice.do_dont %}| {{ pair.do | default('N/A') }} | {{ pair.dont | default('N/A') }} |
+{% endfor %}{% endif %}
+
+{% if voice.forbidden_words is defined and voice.forbidden_words %}**Forbidden words:** {{ voice.forbidden_words | join(', ') }}
+{% endif %}
+{% else %}(No voice data available. Re-run the voice analysis agent.)
+{% endif %}
+
+## Motion
+
+{% if tokens is defined and tokens.transitions is defined %}- **Label:** {{ motion_label | default('N/A') }}
+- **Median duration:** {{ motion_median_duration | default('N/A') }}
+{% for t in tokens.transitions %}- `{{ t.token | default('motion.unknown') }}`: {{ t.value | default('N/A') }}{% if t.label is defined %} ({{ t.label }}){% endif %}
+
+{% endfor %}{% else %}- (No motion data available.)
+{% endif %}
+{% if motion_examples is defined and motion_examples %}
+**Example transitions:**
+{% for ex in motion_examples %}
+- {{ ex }}
+{% endfor %}{% endif %}
+
+## Assets
+
+| Asset | Status |
+|---|---|
+{% if assets is defined %}| Logo (light) | {% if assets.logo is defined and assets.logo %}{{ assets.logo }}{% else %}Not extracted{% endif %} |
+| Logo (dark) | {% if assets.logo_dark is defined and assets.logo_dark %}{{ assets.logo_dark }}{% else %}Not extracted{% endif %} |
+| Favicon | {% if assets.favicon is defined and assets.favicon %}{{ assets.favicon }}{% else %}Not extracted{% endif %} |
+| Icon system | {% if assets.icons is defined and assets.icons %}{{ assets.icons | length }} icons extracted{% else %}Not extracted{% endif %} |
+{% if assets.extra is defined %}{% for label, status in assets.extra.items() %}| {{ label }} | {{ status }} |
+{% endfor %}{% endif %}{% else %}| (no asset data available) | |
+{% endif %}
+
+## Brand Alignment
+
+{% if brand_alignment_narrative is defined %}{{ brand_alignment_narrative }}{% else %}(No brand alignment analysis available. Re-run the documentarian agent to generate a brand alignment narrative.){% endif %}
+
+## How To Use
+
+### Tailwind config snippet
+
+{% if tailwind_config is defined and tailwind_config %}```ts
+{{ tailwind_config }}
+```{% else %}```ts
+// No Tailwind config generated yet. Re-run the documentarian agent.
+```{% endif %}
+
+{% if shadcn_theme is defined and shadcn_theme %}### shadcn theme snippet
+
+```ts
+{{ shadcn_theme }}
+```
+{% endif %}
+
+### Apply this brand to a project
+
+```bash
+/design-extractor:apply-design {{ brand.slug | default('brand-slug') }}
+```
+
+This copies the per-brand SKILL.md into your project's `.claude/skills/` so Claude auto-loads {{ brand.name | default('Brand') }}'s design rules whenever you ask for "{{ brand.name | default('Brand') }}-style" anything.
+
+## Validation
+
+{% if validation is defined %}| Gate | Score |
+|---|---|
+{% if validation.gates is defined %}{% for gate in validation.gates %}| {{ gate.name | default('Gate') }} | {{ gate.score | default('N/A') }} |
+{% endfor %}{% endif %}
+
+**Iteration count:** {{ validation.iteration_count | default('N/A') }}
+**Final score:** {{ validation.final_score | default(scores.overall | default('N/A')) }}
+{% else %}(No validation data available. Run the validation pipeline to generate gate scores.)
+{% endif %}
+
+## Provenance
+
+| File | Origin |
+|---|---|
+{% if provenance is defined and provenance %}{% for file in provenance %}| `{{ file.name | default('unknown') }}` | {{ file.origin | default('N/A') }} |
+{% endfor %}{% else %}| `recon-output.json` | `extract_tokens.py --stage recon --url {{ brand.source_url | default('N/A') }}` |
+| `tokens-output.json` | `extract_tokens.py --stage tokens --url {{ brand.source_url | default('N/A') }}` |
+| `patterns.json` | `extract_tokens.py --stage patterns --url {{ brand.source_url | default('N/A') }}` |
+| `voice-analysis.json` | `extract_tokens.py --stage voice --url {{ brand.source_url | default('N/A') }}` |
+| `report.json` | Validation pipeline output |
+{% endif %}

@@ -1,0 +1,18 @@
+{
+  "name": "design-extractor-dev",
+  "description": "Development marketplace for design-extractor plugin",
+  "owner": {
+    "name": "Mehran Yazdi"
+  },
+  "plugins": [
+    {
+      "name": "design-extractor",
+      "description": "Extract complete, validated design systems from any URL — patterns, relationships, motion, voice, and a self-validating shadcn/Tailwind HTML replica.",
+      "version": "0.1.0",
+      "source": "./",
+      "author": {
+        "name": "Mehran Yazdi"
+      }
+    }
+  ]
+}

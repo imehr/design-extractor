@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="{{ language_variant | default('en') }}" class="{{ theme_class | default('') }}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ brand_name | default('Brand') }} -- Replica</title>
+  <meta name="theme-color" content="{{ theme_colour | default('#ffffff') }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family={{ typography.primary_family | default('Inter') | replace(' ', '+') }}:wght@300;400;500;600;700&family={{ typography.mono_family | default('JetBrains+Mono') | replace(' ', '+') }}:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            surface: {
+              DEFAULT: "{{ colours.surface_default | default('#ffffff') }}",
+              inverse: "{{ colours.surface_inverse | default('#08090a') }}",
+            },
+            text: {
+              DEFAULT: "{{ colours.text_primary | default('#0f1419') }}",
+              secondary: "{{ colours.text_secondary | default('#5c6473') }}",
+              tertiary: "{{ colours.text_tertiary | default('#8e96a5') }}",
+            },
+            border: {
+              DEFAULT: "{{ colours.border_default | default('#e5e8ee') }}",
+              strong: "{{ colours.border_strong | default('#d5dae3') }}",
+            },
+            accent: {
+              DEFAULT: "{{ colours.accent_primary | default('#4A6FF5') }}",
+              hover: "{{ colours.accent_hover | default('#3B5CD6') }}",
+            },
+          },
+          fontFamily: {
+            sans: ['"{{ typography.primary_family | default('Inter') }}"', 'system-ui', 'sans-serif'],
+            mono: ['"{{ typography.mono_family | default('JetBrains Mono') }}"', 'ui-monospace', 'monospace'],
+          },
+          borderRadius: {
+            sm: "{{ radius.sm | default('4px') }}",
+            DEFAULT: "{{ radius.default | default('8px') }}",
+            lg: "{{ radius.lg | default('12px') }}",
+          },
+          spacing: {
+            base: "{{ spacing.base | default('4px') }}",
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="bg-surface text-text font-sans antialiased">
+
+  <nav data-component="nav" class="sticky top-0 z-50 bg-surface/80 backdrop-blur border-b border-border">
+    <!-- replica-builder fills this -->
+  </nav>
+
+  <section data-component="hero" class="mx-auto max-w-5xl px-6 py-24 text-center">
+    <!-- replica-builder fills this -->
+  </section>
+
+  <section data-component="button-set" class="mx-auto max-w-5xl px-6 py-12 flex gap-4 justify-center">
+    <!-- replica-builder fills this -->
+  </section>
+
+  <section data-component="card" class="mx-auto max-w-5xl px-6 py-12 grid gap-6 md:grid-cols-3">
+    <!-- replica-builder fills this -->
+  </section>
+
+  <section data-component="form" class="mx-auto max-w-xl px-6 py-12">
+    <!-- replica-builder fills this -->
+  </section>
+
+  <footer data-component="footer" class="bg-surface-inverse text-white px-6 py-16">
+    <!-- replica-builder fills this -->
+  </footer>
+</body>
+</html>

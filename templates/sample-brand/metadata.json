@@ -1,0 +1,63 @@
+{
+  "name": "nimbus",
+  "display_name": "Nimbus",
+  "slug": "nimbus",
+  "tagline": "Infrastructure that gets out of your way",
+  "description": "Hand-curated synthetic cloud infrastructure SaaS brand. Calm, near-white surface system with a single cobalt accent and soft violet highlights. Seed data for the design-extractor library browser — not a real company.",
+  "source_url": "https://nimbus.example.com",
+  "extracted_at": "2026-04-10",
+  "version": "0.1.0",
+  "extractor_version": "design-extractor@0.1.0",
+  "extraction_method": "hand-curated-seed",
+  "synthetic": true,
+  "confidence": "HIGH",
+  "language_variant": "en-US",
+  "has_dark_mode": false,
+  "scores": {
+    "overall": 0.95,
+    "tokens": 1.0,
+    "replica": 0.92,
+    "voice": 0.94,
+    "patterns": 0.96,
+    "components": 0.93
+  },
+  "category": [
+    "dev-tools",
+    "infrastructure"
+  ],
+  "category_tags": [
+    "dev-tools",
+    "infrastructure",
+    "b2b-saas",
+    "calm-tech",
+    "marketing-site"
+  ],
+  "palette_preview": {
+    "surface": "#FAFBFC",
+    "text": "#0F1419",
+    "accent": "#4A6FF5",
+    "accent_secondary": "#9B8CFF",
+    "border": "#E5E8EE"
+  },
+  "typography_preview": {
+    "primary": "Inter",
+    "mono": "JetBrains Mono"
+  },
+  "pattern_labels": {
+    "density": "airy",
+    "radius": "mixed (12px default, pill for primary CTAs)",
+    "motion": "natural",
+    "shadow": "minimal",
+    "temperature": "cool-neutral"
+  },
+  "files": {
+    "design_md": "DESIGN.md",
+    "tokens_json": "design-tokens.json",
+    "tokens_css": "design-tokens.css",
+    "logo": "assets/logo.svg",
+    "favicon": "assets/favicon.svg",
+    "skill": "skill/SKILL.md",
+    "replica": "replica/index.html"
+  },
+  "install_command": "/design-extractor:apply-design nimbus"
+}

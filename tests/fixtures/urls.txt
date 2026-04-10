@@ -1,0 +1,13 @@
+# 10 fixture URLs for design-extractor integration tests
+# Format: <category> <url>
+# Used by Phase 0 baseline + Phase 6 integration tests
+fintech       https://stripe.com
+dev-tools     https://linear.app
+dev-tools     https://vercel.com
+dev-tools     https://tailwindcss.com
+infra         https://railway.app
+ai            https://anthropic.com
+hard          https://airbnb.com
+hard          https://apple.com
+hard          https://nytimes.com
+hard          https://linkedin.com

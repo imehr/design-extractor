@@ -1,0 +1,249 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "$description": "Nimbus design tokens in W3C DTCG 2025.10 format. Hand-curated seed brand for the design-extractor library browser.",
+  "$metadata": {
+    "name": "nimbus",
+    "version": "0.1.0",
+    "synthetic": true,
+    "source_url": "https://nimbus.example.com",
+    "extracted_at": "2026-04-10"
+  },
+  "colour": {
+    "surface": {
+      "default": {
+        "$value": "#FAFBFC",
+        "$type": "color",
+        "$description": "Page background — near-white with cool tint"
+      },
+      "elevated": {
+        "$value": "#FFFFFF",
+        "$type": "color",
+        "$description": "Cards, nav, dialogs"
+      },
+      "muted": {
+        "$value": "#F5F7FA",
+        "$type": "color",
+        "$description": "Secondary fills, input backgrounds, icon frames"
+      }
+    },
+    "text": {
+      "primary": {
+        "$value": "#0F1419",
+        "$type": "color",
+        "$description": "Body and heading default"
+      },
+      "secondary": {
+        "$value": "#5C6473",
+        "$type": "color",
+        "$description": "Subheadings, supporting copy"
+      },
+      "tertiary": {
+        "$value": "#8E96A5",
+        "$type": "color",
+        "$description": "Meta, timestamps, hints"
+      },
+      "inverse": {
+        "$value": "#FFFFFF",
+        "$type": "color",
+        "$description": "Text on primary fills"
+      }
+    },
+    "border": {
+      "default": {
+        "$value": "#E5E8EE",
+        "$type": "color",
+        "$description": "Card borders, dividers"
+      },
+      "strong": {
+        "$value": "#D5DAE3",
+        "$type": "color",
+        "$description": "Input borders, heavier dividers"
+      }
+    },
+    "accent": {
+      "primary": {
+        "$value": "#4A6FF5",
+        "$type": "color",
+        "$description": "Cobalt — primary CTA, links, focus ring"
+      },
+      "primary-hover": {
+        "$value": "#3B5CD6",
+        "$type": "color",
+        "$description": "Primary hover state"
+      },
+      "secondary": {
+        "$value": "#9B8CFF",
+        "$type": "color",
+        "$description": "Soft violet — gradient stops, secondary highlights"
+      }
+    },
+    "state": {
+      "success": {
+        "$value": "#22C55E",
+        "$type": "color"
+      },
+      "warning": {
+        "$value": "#F59E0B",
+        "$type": "color"
+      },
+      "danger": {
+        "$value": "#EF4444",
+        "$type": "color"
+      }
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "primary": {
+        "$value": ["Inter", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        "$type": "fontFamily"
+      },
+      "mono": {
+        "$value": ["JetBrains Mono", "ui-monospace", "SF Mono", "Menlo", "monospace"],
+        "$type": "fontFamily"
+      }
+    },
+    "fontWeight": {
+      "regular": { "$value": 400, "$type": "fontWeight" },
+      "medium": { "$value": 500, "$type": "fontWeight" },
+      "semibold": { "$value": 600, "$type": "fontWeight" }
+    },
+    "fontSize": {
+      "caption": { "$value": "12px", "$type": "dimension" },
+      "body-sm": { "$value": "14px", "$type": "dimension" },
+      "body": { "$value": "16px", "$type": "dimension" },
+      "body-lg": { "$value": "18px", "$type": "dimension" },
+      "heading-sm": { "$value": "20px", "$type": "dimension" },
+      "h3": { "$value": "24px", "$type": "dimension" },
+      "h2": { "$value": "32px", "$type": "dimension" },
+      "h1": { "$value": "44px", "$type": "dimension" },
+      "display": { "$value": "56px", "$type": "dimension" }
+    },
+    "lineHeight": {
+      "tight": { "$value": 1.1, "$type": "number" },
+      "snug": { "$value": 1.25, "$type": "number" },
+      "normal": { "$value": 1.5, "$type": "number" },
+      "relaxed": { "$value": 1.6, "$type": "number" }
+    },
+    "letterSpacing": {
+      "tight": { "$value": "-0.01em", "$type": "dimension" },
+      "normal": { "$value": "0", "$type": "dimension" },
+      "wide": { "$value": "0.01em", "$type": "dimension" }
+    }
+  },
+  "spacing": {
+    "base": { "$value": "4px", "$type": "dimension" },
+    "1": { "$value": "4px", "$type": "dimension" },
+    "2": { "$value": "8px", "$type": "dimension" },
+    "3": { "$value": "12px", "$type": "dimension" },
+    "4": { "$value": "16px", "$type": "dimension" },
+    "5": { "$value": "20px", "$type": "dimension" },
+    "6": { "$value": "24px", "$type": "dimension" },
+    "8": { "$value": "32px", "$type": "dimension" },
+    "10": { "$value": "40px", "$type": "dimension" },
+    "12": { "$value": "48px", "$type": "dimension" },
+    "16": { "$value": "64px", "$type": "dimension" },
+    "20": { "$value": "80px", "$type": "dimension" },
+    "24": { "$value": "96px", "$type": "dimension" },
+    "32": { "$value": "128px", "$type": "dimension" }
+  },
+  "radius": {
+    "sm": { "$value": "4px", "$type": "dimension" },
+    "md": { "$value": "8px", "$type": "dimension" },
+    "lg": { "$value": "12px", "$type": "dimension" },
+    "full": { "$value": "9999px", "$type": "dimension" }
+  },
+  "border": {
+    "width": {
+      "default": { "$value": "1px", "$type": "dimension" }
+    }
+  },
+  "shadow": {
+    "xs": {
+      "$value": {
+        "color": "rgba(15, 20, 25, 0.04)",
+        "offsetX": "0",
+        "offsetY": "1px",
+        "blur": "2px",
+        "spread": "0"
+      },
+      "$type": "shadow",
+      "$description": "Resting cards"
+    },
+    "sm": {
+      "$value": [
+        {
+          "color": "rgba(15, 20, 25, 0.04)",
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "2px",
+          "spread": "0"
+        },
+        {
+          "color": "rgba(15, 20, 25, 0.06)",
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "1px",
+          "spread": "0"
+        }
+      ],
+      "$type": "shadow",
+      "$description": "Elevated cards, nav on scroll"
+    },
+    "md": {
+      "$value": [
+        {
+          "color": "rgba(15, 20, 25, 0.06)",
+          "offsetX": "0",
+          "offsetY": "4px",
+          "blur": "12px",
+          "spread": "0"
+        },
+        {
+          "color": "rgba(15, 20, 25, 0.04)",
+          "offsetX": "0",
+          "offsetY": "2px",
+          "blur": "4px",
+          "spread": "0"
+        }
+      ],
+      "$type": "shadow",
+      "$description": "Dropdowns, popovers"
+    },
+    "focus": {
+      "$value": {
+        "color": "rgba(74, 111, 245, 0.25)",
+        "offsetX": "0",
+        "offsetY": "0",
+        "blur": "0",
+        "spread": "3px"
+      },
+      "$type": "shadow",
+      "$description": "Focus ring on interactive elements"
+    }
+  },
+  "motion": {
+    "duration": {
+      "fast": { "$value": "120ms", "$type": "duration" },
+      "default": { "$value": "200ms", "$type": "duration" },
+      "slow": { "$value": "320ms", "$type": "duration" }
+    },
+    "easing": {
+      "default": {
+        "$value": "cubic-bezier(0.22, 0.61, 0.36, 1)",
+        "$type": "cubicBezier"
+      },
+      "dramatic": {
+        "$value": "cubic-bezier(0.65, 0, 0.35, 1)",
+        "$type": "cubicBezier"
+      }
+    }
+  },
+  "breakpoint": {
+    "sm": { "$value": "640px", "$type": "dimension" },
+    "md": { "$value": "768px", "$type": "dimension" },
+    "lg": { "$value": "1024px", "$type": "dimension" },
+    "xl": { "$value": "1280px", "$type": "dimension" },
+    "2xl": { "$value": "1536px", "$type": "dimension" }
+  }
+}
