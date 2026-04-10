@@ -371,11 +371,19 @@ export default function BrandPage({
 
   const tokens = brand.design_tokens as Record<string, unknown> | null;
   const colors = extractColors(brand.design_tokens);
-  const fontFamilies = brand.design_tokens?.typography?.families ?? [];
-  const fontSizes = brand.design_tokens?.typography?.sizes ?? [];
-  const spacingData = tokens?.spacing as Record<string, unknown> | undefined;
-  const spacingScale = (spacingData?.scale as string[] | undefined) ?? [];
-  const baseUnit = spacingData?.detected_base_unit as string | undefined;
+  const typo = (tokens?.typography ?? {}) as Record<string, unknown>;
+  const fontFamilies = (typo.families ?? []) as { value: string; count: number }[];
+  const fontSizes = (typo.sizes ?? []) as { value: string; count: number }[];
+  const fontWeights = (typo.weights ?? []) as { value: string; count: number }[];
+  const lineHeights = (typo.line_heights ?? []) as { value: string; count: number }[];
+  const spacingData = (tokens?.spacing ?? {}) as Record<string, unknown>;
+  const spacingScale = (spacingData.scale ?? []) as string[];
+  const baseUnit = spacingData.detected_base_unit as string | undefined;
+  const borders = (tokens?.borders ?? {}) as Record<string, unknown>;
+  const borderRadii = (borders.radii ?? []) as { value: string; count: number }[];
+  const shadowList = (tokens?.shadows ?? []) as { value: string; count: number }[];
+  const breakpointList = (tokens?.breakpoints ?? []) as number[];
+  const transitionList = (tokens?.transitions ?? []) as { value: string; count: number }[];
 
   const assetFiles = brand.files.filter((f) => f.startsWith("assets/"));
   const svgAssets = assetFiles.filter((f) => f.endsWith(".svg"));
@@ -667,12 +675,12 @@ export default function BrandPage({
             )}
 
             {/* Font Weights */}
-            {((tokens?.typography as Record<string, unknown>)?.weights as {value: string; count: number}[] | undefined?.length ?? 0) > 0 && (
+            {fontWeights.length > 0 && (
               <Card>
                 <CardHeader><CardTitle className="text-sm">Font Weights</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-4">
-                    {((tokens?.typography as Record<string, unknown>)?.weights as {value: string; count: number}[] | undefined ?? []).map((w: {value: string; count: number}) => (
+                    {fontWeights.map((w) => (
                       <div key={w.value} className="text-center">
                         <span className="text-2xl" style={{ fontWeight: Number(w.value) }}>Aa</span>
                         <p className="font-mono text-xs text-muted-foreground">{w.value}</p>
@@ -685,12 +693,12 @@ export default function BrandPage({
             )}
 
             {/* Line Heights */}
-            {((tokens?.typography as Record<string, unknown>)?.line_heights as {value: string; count: number}[] | undefined?.length ?? 0) > 0 && (
+            {lineHeights.length > 0 && (
               <Card>
                 <CardHeader><CardTitle className="text-sm">Line Heights</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-3">
-                    {((tokens?.typography as Record<string, unknown>)?.line_heights as {value: string; count: number}[] | undefined ?? []).slice(0, 8).map((lh: {value: string; count: number}) => (
+                    {lineHeights.slice(0, 8).map((lh) => (
                       <div key={lh.value} className="rounded border px-3 py-2 text-center">
                         <span className="font-mono text-sm">{lh.value}</span>
                         <p className="text-[10px] text-muted-foreground">{lh.count}x</p>
@@ -702,17 +710,14 @@ export default function BrandPage({
             )}
 
             {/* Border Radii */}
-            {((tokens?.borders as Record<string, unknown>)?.radii as {value: string; count: number}[] | undefined?.length ?? 0) > 0 && (
+            {borderRadii.length > 0 && (
               <Card>
                 <CardHeader><CardTitle className="text-sm">Border Radii</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap items-end gap-4">
-                    {((tokens?.borders as Record<string, unknown>)?.radii as {value: string; count: number}[] | undefined ?? []).map((r: {value: string; count: number}) => (
+                    {borderRadii.map((r) => (
                       <div key={r.value} className="flex flex-col items-center gap-2">
-                        <div
-                          className="size-16 border-2 border-foreground/20 bg-muted"
-                          style={{ borderRadius: r.value }}
-                        />
+                        <div className="size-16 border-2 border-foreground/20 bg-muted" style={{ borderRadius: r.value }} />
                         <span className="font-mono text-[10px] text-muted-foreground">{r.value}</span>
                         <span className="text-[10px] text-muted-foreground/60">{r.count}x</span>
                       </div>
@@ -723,17 +728,14 @@ export default function BrandPage({
             )}
 
             {/* Shadows */}
-            {(tokens?.shadows as {value: string; count: number}[] | undefined?.length ?? 0) > 0 && (
+            {shadowList.length > 0 && (
               <Card>
                 <CardHeader><CardTitle className="text-sm">Box Shadows</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-6">
-                    {(tokens?.shadows as {value: string; count: number}[] | undefined ?? []).map((s: {value: string; count: number}, i: number) => (
+                    {shadowList.map((s, i) => (
                       <div key={i} className="flex flex-col items-center gap-2">
-                        <div
-                          className="size-20 rounded-lg bg-white"
-                          style={{ boxShadow: s.value }}
-                        />
+                        <div className="size-20 rounded-lg bg-white" style={{ boxShadow: s.value }} />
                         <span className="max-w-32 break-all font-mono text-[10px] text-muted-foreground">{s.value}</span>
                         <span className="text-[10px] text-muted-foreground/60">{s.count}x</span>
                       </div>
@@ -744,15 +746,13 @@ export default function BrandPage({
             )}
 
             {/* Breakpoints */}
-            {(tokens?.breakpoints as number[] | undefined?.length ?? 0) > 0 && (
+            {breakpointList.length > 0 && (
               <Card>
                 <CardHeader><CardTitle className="text-sm">Breakpoints</CardTitle></CardHeader>
                 <CardContent>
                   <div className="flex flex-wrap gap-2">
-                    {(tokens?.breakpoints as number[] | undefined ?? []).map((bp: number) => (
-                      <div key={bp} className="rounded border px-3 py-1.5 font-mono text-xs text-muted-foreground">
-                        {bp}px
-                      </div>
+                    {breakpointList.map((bp) => (
+                      <div key={bp} className="rounded border px-3 py-1.5 font-mono text-xs text-muted-foreground">{bp}px</div>
                     ))}
                   </div>
                 </CardContent>
@@ -760,12 +760,12 @@ export default function BrandPage({
             )}
 
             {/* Transitions */}
-            {(tokens?.transitions as {value: string; count: number}[] | undefined?.length ?? 0) > 0 && (
+            {transitionList.length > 0 && (
               <Card>
                 <CardHeader><CardTitle className="text-sm">Transitions</CardTitle></CardHeader>
                 <CardContent>
                   <div className="space-y-1">
-                    {(tokens?.transitions as {value: string; count: number}[] | undefined ?? []).slice(0, 6).map((t: {value: string; count: number}, i: number) => (
+                    {transitionList.slice(0, 6).map((t, i) => (
                       <div key={i} className="flex items-center gap-3 rounded border px-3 py-2">
                         <span className="max-w-lg truncate font-mono text-xs text-muted-foreground">{t.value}</span>
                         <Badge variant="outline" className="ml-auto text-[10px]">{t.count}x</Badge>
