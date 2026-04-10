@@ -79,6 +79,7 @@ interface BrandDetail {
   has_logo: boolean;
   has_screenshots: boolean;
   files: string[];
+  localFiles: string[];
 }
 
 /* ─── color helpers ─── */
@@ -403,6 +404,7 @@ export default function BrandPage({
     : "";
 
   const fileGroups = groupFilesByDir(brand.files);
+  const localFileGroups = groupFilesByDir(brand.localFiles ?? []);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-10">
@@ -1122,6 +1124,36 @@ export default function BrandPage({
                               <ChevronRight className="size-3 shrink-0" />
                               {file}
                             </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
+          )}
+
+          {/* Local React component files */}
+          {(brand.localFiles ?? []).length > 0 && (
+            <div className="mt-6 space-y-4">
+              <h3 className="text-sm font-medium text-muted-foreground">Local React/Next.js Files</h3>
+              {Object.entries(localFileGroups)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([dir, dirFiles]) => (
+                  <Card key={`local-${dir}`}>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-1.5 text-sm">
+                        <Code2 className="size-4 text-green-600" />
+                        {dir}
+                        <Badge variant="outline" className="ml-auto text-[10px]">{dirFiles.length}</Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-0.5">
+                        {dirFiles.map((file) => (
+                          <li key={file} className="flex items-center gap-1.5 px-1.5 py-1 font-mono text-xs text-muted-foreground">
+                            <ChevronRight className="size-3 shrink-0 text-green-600" />
+                            {file}
                           </li>
                         ))}
                       </ul>
