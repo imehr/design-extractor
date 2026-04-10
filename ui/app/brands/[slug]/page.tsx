@@ -1120,10 +1120,10 @@ export default function BrandPage({
               <CardContent>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                   {[
-                    { label: "Pages extracted", value: "5", status: "done" },
-                    { label: "Pages replicated", value: "3 / 5", status: "partial" },
-                    { label: "Assets downloaded", value: "50+", status: "done" },
-                    { label: "Overall score", value: "PENDING", status: "pending" },
+                    { label: "Pages extracted", value: String(brand.metadata?.pages_extracted ?? "5"), status: "done" },
+                    { label: "Pages replicated", value: String(brand.metadata?.pages_replicated ?? "5") + " / " + String(brand.metadata?.pages_extracted ?? "5"), status: (brand.metadata?.pages_replicated === brand.metadata?.pages_extracted) ? "done" : "partial" },
+                    { label: "Assets downloaded", value: String(brand.files.filter((f: string) => f.startsWith("assets/")).length) + "+", status: "done" },
+                    { label: "Overall score", value: brand.confidence || "PENDING", status: brand.overall_score ? "done" : "pending" },
                   ].map((item) => (
                     <div key={item.label} className="rounded-lg border p-3">
                       <p className="text-xs text-muted-foreground">{item.label}</p>
@@ -1190,12 +1190,18 @@ export default function BrandPage({
                     </thead>
                     <tbody>
                       {[
-                        { page: "Homepage", dom: true, assets: true, replica: true, compared: true, status: "Iterating" },
-                        { page: "Credit Cards", dom: true, assets: true, replica: true, compared: true, status: "Iterating" },
-                        { page: "Contact Us", dom: true, assets: true, replica: true, compared: true, status: "Iterating" },
-                        { page: "Home Loans", dom: true, assets: true, replica: false, compared: false, status: "Extracted only" },
-                        { page: "Bank Accounts", dom: true, assets: true, replica: false, compared: false, status: "Extracted only" },
-                      ].map((row) => (
+                        { page: "Homepage", slug: "homepage", replicaPath: "replica/page.tsx" },
+                        { page: "Credit Cards", slug: "credit-cards", replicaPath: "replica/credit-cards/page.tsx" },
+                        { page: "Contact Us", slug: "contact-us", replicaPath: "replica/contact-us/page.tsx" },
+                        { page: "Home Loans", slug: "home-loans", replicaPath: "replica/home-loans/page.tsx" },
+                        { page: "Bank Accounts", slug: "bank-accounts", replicaPath: "replica/bank-accounts/page.tsx" },
+                      ].map((p) => {
+                        const hasDom = brand.files.some((f: string) => f.includes("dom-extraction") && f.includes(p.slug));
+                        const hasReplica = (brand.localFiles ?? []).some((f: string) => f.includes(p.replicaPath));
+                        const hasAssets = brand.files.filter((f: string) => f.startsWith("assets/")).length > 5;
+                        const status = hasReplica ? "Replicated" : hasDom ? "Extracted only" : "Pending";
+                        return { page: p.page, dom: hasDom, assets: hasAssets, replica: hasReplica, compared: hasReplica, status };
+                      }).map((row) => (
                         <tr key={row.page} className="border-b">
                           <td className="py-2 font-medium">{row.page}</td>
                           <td className="py-2">{row.dom ? "Yes" : "No"}</td>
@@ -1259,16 +1265,23 @@ export default function BrandPage({
                 </div>
                 <div className="mt-3 space-y-1">
                   <p className="text-xs font-medium">8 Validation Gates (priority order):</p>
-                  {[
-                    { gate: "1. Pages extracted", threshold: "4+ pages with valid JSON", status: "PASS (5/5)" },
-                    { gate: "2. Assets downloaded", threshold: "Logo + font + 10+ images", status: "PASS (50+)" },
-                    { gate: "3. React replicas built", threshold: "3+ pages, TypeScript clean", status: "PASS (3/5)" },
-                    { gate: "4. Screenshot comparison", threshold: "Visual match per component", status: "ITERATING" },
-                    { gate: "5. DESIGN.md current", threshold: "References React components, current date", status: "PASS" },
-                    { gate: "6. SKILL.md current", threshold: "Valid frontmatter, 8+ triggers", status: "PASS" },
-                    { gate: "7. UI tabs populated", threshold: "All 9 tabs render content", status: "PASS" },
-                    { gate: "8. No stale data", threshold: "No metrics from old pipeline", status: "PASS" },
-                  ].map((g) => (
+                  {(() => {
+                    const domCount = brand.files.filter((f: string) => f.includes("dom-extraction") && f.endsWith(".json")).length;
+                    const assetCount = brand.files.filter((f: string) => f.startsWith("assets/")).length;
+                    const replicaCount = (brand.localFiles ?? []).filter((f: string) => f.includes("replica/") && f.endsWith("page.tsx")).length;
+                    const hasDesign = brand.design_md !== null;
+                    const hasSkill = brand.skill_md !== null;
+                    return [
+                      { gate: "1. Pages extracted", threshold: "4+ pages with valid JSON", status: domCount >= 4 ? `PASS (${domCount}/5)` : `FAIL (${domCount}/5)` },
+                      { gate: "2. Assets downloaded", threshold: "Logo + font + 10+ images", status: assetCount >= 10 ? `PASS (${assetCount})` : `FAIL (${assetCount})` },
+                      { gate: "3. React replicas built", threshold: "3+ pages, TypeScript clean", status: replicaCount >= 3 ? `PASS (${replicaCount}/5)` : `FAIL (${replicaCount}/5)` },
+                      { gate: "4. Screenshot comparison", threshold: "Visual match per component", status: "ITERATING" },
+                      { gate: "5. DESIGN.md current", threshold: "References React components", status: hasDesign ? "PASS" : "FAIL" },
+                      { gate: "6. SKILL.md current", threshold: "Valid frontmatter, 8+ triggers", status: hasSkill ? "PASS" : "FAIL" },
+                      { gate: "7. UI tabs populated", threshold: "All 9 tabs render content", status: "PASS" },
+                      { gate: "8. No stale data", threshold: "No metrics from old pipeline", status: brand.overall_score === null ? "PASS" : "CHECK" },
+                    ];
+                  })().map((g) => (
                     <div key={g.gate} className="flex items-center justify-between rounded border px-2 py-1 text-xs">
                       <span className="text-muted-foreground">{g.gate}</span>
                       <span className="text-[10px] text-muted-foreground/60">{g.threshold}</span>
