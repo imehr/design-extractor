@@ -873,7 +873,7 @@ export default function BrandPage({
 
         {/* ── REPLICA ── */}
         <TabsContent value="replica">
-          {brand.has_replica ? (
+          {true ? (
             <div className="flex flex-col gap-4">
               {/* React replica pages */}
               <div className="space-y-3">
@@ -1051,28 +1051,61 @@ export default function BrandPage({
 
         {/* ── SKILL ── */}
         <TabsContent value="skill">
-          <div className="space-y-2">
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => brand.skill_md && handleCopy(brand.skill_md)}
-                disabled={!brand.skill_md}
-              >
-                {copied ? (
-                  <>
-                    <Check className="size-3" /> Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="size-3" /> Copy
-                  </>
-                )}
-              </Button>
-            </div>
-            <pre className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed">
-              {brand.skill_md || "No skill document available."}
-            </pre>
+          <div className="space-y-4">
+            {/* Skill folder structure */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <FolderOpen className="size-4" /> Skill Files
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-1">
+                  {brand.files
+                    .filter((f) => f.startsWith("skill/"))
+                    .map((file) => (
+                      <a
+                        key={file}
+                        href={`/api/brands/${brand.slug}/file/${file}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 rounded px-2 py-1.5 font-mono text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                      >
+                        <ChevronRight className="size-3 shrink-0" />
+                        {file}
+                      </a>
+                    ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* SKILL.md content */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">SKILL.md</CardTitle>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => brand.skill_md && handleCopy(brand.skill_md)}
+                    disabled={!brand.skill_md}
+                  >
+                    {copied ? (
+                      <><Check className="size-3" /> Copied</>
+                    ) : (
+                      <><Copy className="size-3" /> Copy</>
+                    )}
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[500px]">
+                  <pre className="whitespace-pre-wrap font-mono text-xs leading-relaxed">
+                    {brand.skill_md || "No skill document available."}
+                  </pre>
+                </ScrollArea>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
