@@ -424,7 +424,7 @@ def run_token_extraction(url: str, output_dir: Path) -> dict:
                     try {
                         for (const rule of sheet.cssRules) {
                             if (rule instanceof CSSMediaRule) {
-                                const match = rule.conditionText.match(/(\d+)px/g);
+                                const match = rule.conditionText.match(/(\\d+)px/g);
                                 if (match) match.forEach(m => breakpoints.add(parseInt(m)));
                             }
                         }
@@ -570,16 +570,17 @@ def run_asset_extraction(url: str, output_dir: Path) -> dict:
             ];
             selectors.forEach(sel => {
                 document.querySelectorAll(sel).forEach(el => {
-                    const data = { selector: sel, tag: el.tagName };
-                    if (el.tagName === 'IMG') {
+                    const tag = el.tagName.toUpperCase();
+                    const data = { selector: sel, tag: tag };
+                    if (tag === 'IMG') {
                         data.src = el.src;
                         data.width = el.naturalWidth;
                         data.height = el.naturalHeight;
                         data.alt = el.alt;
-                    } else if (el.tagName === 'SVG') {
+                    } else if (tag === 'SVG') {
                         data.svg = el.outerHTML;
-                        data.width = el.getBoundingClientRect().width;
-                        data.height = el.getBoundingClientRect().height;
+                        data.width = Math.round(el.getBoundingClientRect().width);
+                        data.height = Math.round(el.getBoundingClientRect().height);
                     }
                     logos.push(data);
                 });
@@ -611,7 +612,69 @@ def run_asset_extraction(url: str, output_dir: Path) -> dict:
             return 'None detected';
         }""")
 
+        # Download favicon files
+        import urllib.request
+        assets_dir = output_dir / "assets"
+        assets_dir.mkdir(parents=True, exist_ok=True)
+
+        for fav in output["favicons"]:
+            href = fav.get("href", "")
+            if not href:
+                continue
+            sizes = fav.get("sizes", "")
+            ext = ".png" if href.endswith(".png") else ".ico" if href.endswith(".ico") else ".png"
+            name = f"favicon-{sizes}{ext}" if sizes else f"favicon{ext}"
+            try:
+                urllib.request.urlretrieve(href, str(assets_dir / name))
+                fav["local_path"] = str(assets_dir / name)
+            except Exception as e:
+                fav["download_error"] = str(e)
+
         browser.close()
+
+    # Save inline SVG logos to disk
+    assets_dir = output_dir / "assets"
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    seen_svgs = set()
+    svg_count = 0
+    for logo in output["logos"]:
+        svg_markup = logo.get("svg")
+        if not svg_markup:
+            continue
+        # Deduplicate by content hash
+        svg_hash = hash(svg_markup)
+        if svg_hash in seen_svgs:
+            logo["deduplicated"] = True
+            continue
+        seen_svgs.add(svg_hash)
+        svg_count += 1
+        w = logo.get("width", 0)
+        h = logo.get("height", 0)
+        filename = f"logo-{svg_count}-{w}x{h}.svg"
+        svg_path = assets_dir / filename
+        with open(svg_path, "w") as f:
+            f.write(svg_markup)
+        logo["local_path"] = str(svg_path)
+
+    # Also download IMG-based logos
+    for logo in output["logos"]:
+        src = logo.get("src")
+        if not src or logo.get("local_path"):
+            continue
+        ext = ".png" if ".png" in src else ".svg" if ".svg" in src else ".jpg"
+        name = f"logo-img-{logo.get('width', 0)}x{logo.get('height', 0)}{ext}"
+        try:
+            import urllib.request
+            urllib.request.urlretrieve(src, str(assets_dir / name))
+            logo["local_path"] = str(assets_dir / name)
+        except Exception as e:
+            logo["download_error"] = str(e)
+
+    output["saved_assets"] = {
+        "svg_logos": svg_count,
+        "favicons_downloaded": sum(1 for f in output["favicons"] if "local_path" in f),
+        "img_logos_downloaded": sum(1 for l in output["logos"] if l.get("src") and "local_path" in l),
+    }
 
     return output
 

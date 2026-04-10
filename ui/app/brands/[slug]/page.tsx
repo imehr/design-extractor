@@ -3,30 +3,326 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScoreBadge } from "@/components/score-badge";
-import { ReplicaIframe } from "@/components/replica-iframe";
+import {
+  ExternalLink,
+  Copy,
+  Check,
+  FileText,
+  Layers,
+  Palette,
+  Type,
+  Image,
+  Code2,
+  LayoutTemplate,
+  MonitorPlay,
+  FolderOpen,
+  ChevronRight,
+} from "lucide-react";
+
+/* ─── types ─── */
+
+interface ColorEntry {
+  value: string;
+  count: number;
+  confidence?: string;
+}
+
+interface FontEntry {
+  value: string;
+  count: number;
+}
+
+interface SizeEntry {
+  value: string;
+  count: number;
+}
+
+interface DesignTokens {
+  colours?: {
+    computed?: ColorEntry[];
+    total_raw?: number;
+    total_filtered?: number;
+  };
+  typography?: {
+    families?: FontEntry[];
+    sizes?: SizeEntry[];
+    gaps?: SizeEntry[];
+    detected_base_unit?: string;
+    scale?: string[];
+  };
+  spacing?: {
+    paddings?: SizeEntry[];
+    margins?: SizeEntry[];
+  };
+}
 
 interface BrandDetail {
   slug: string;
+  name: string;
   source_url: string;
   extracted_at: string;
   overall_score: number | null;
   confidence: string;
   categories: string[];
   design_md: string | null;
+  design_tokens: DesignTokens | null;
   design_tokens_css: string | null;
   skill_md: string | null;
+  metadata: Record<string, unknown> | null;
   validation_report: Record<string, unknown> | null;
+  has_replica: boolean;
+  has_logo: boolean;
+  has_screenshots: boolean;
   files: string[];
 }
 
-function titleCase(slug: string): string {
+/* ─── color helpers ─── */
+
+function rgbToHex(rgb: string): string | null {
+  const m = rgb.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
+  if (!m) return null;
+  return (
+    "#" +
+    [m[1], m[2], m[3]]
+      .map((v) => parseInt(v).toString(16).padStart(2, "0"))
+      .join("")
+      .toUpperCase()
+  );
+}
+
+function contrastColor(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.5 ? "#000000" : "#ffffff";
+}
+
+function extractColors(
+  tokens: DesignTokens | null,
+  limit = 20
+): Array<{ hex: string; count: number }> {
+  const computed = tokens?.colours?.computed ?? [];
+  const seen = new Set<string>();
+  const result: Array<{ hex: string; count: number }> = [];
+  for (const entry of computed) {
+    if (result.length >= limit) break;
+    const rgb = entry.value.match(/rgba?\([^)]+\)/)?.[0];
+    if (!rgb) continue;
+    const hex = rgbToHex(rgb);
+    if (!hex || seen.has(hex)) continue;
+    seen.add(hex);
+    result.push({ hex, count: entry.count });
+  }
+  return result;
+}
+
+function primaryFontName(value: string): string {
+  return value.split(",")[0].trim().replace(/['"]/g, "");
+}
+
+/* ─── React markdown renderer (zero innerHTML) ─── */
+
+interface MdHeading { type: "h1" | "h2" | "h3"; text: string }
+interface MdParagraph { type: "p"; text: string }
+interface MdListItem { type: "li"; text: string; ordered: boolean }
+interface MdTable { type: "table"; headers: string[]; rows: string[][] }
+interface MdBlank { type: "blank" }
+
+type MdNode = MdHeading | MdParagraph | MdListItem | MdTable | MdBlank;
+
+function parseMd(md: string): MdNode[] {
+  const lines = md.split("\n");
+  const nodes: MdNode[] = [];
+  let tableHeaders: string[] | null = null;
+  let tableRows: string[][] = [];
+  let headerParsed = false;
+
+  const flushTable = () => {
+    if (tableHeaders) {
+      nodes.push({ type: "table", headers: tableHeaders, rows: tableRows });
+      tableHeaders = null;
+      tableRows = [];
+      headerParsed = false;
+    }
+  };
+
+  for (const line of lines) {
+    if (/^\|/.test(line)) {
+      const cells = line.split("|").slice(1, -1).map((c) => c.trim());
+      if (/^\|[-:| ]+\|$/.test(line)) { headerParsed = true; continue; }
+      if (!tableHeaders && !headerParsed) { tableHeaders = cells; continue; }
+      if (!tableHeaders) { tableHeaders = []; }
+      tableRows.push(cells);
+      continue;
+    } else {
+      flushTable();
+    }
+
+    if (/^### /.test(line)) { nodes.push({ type: "h3", text: line.slice(4) }); continue; }
+    if (/^## /.test(line))  { nodes.push({ type: "h2", text: line.slice(3) }); continue; }
+    if (/^# /.test(line))   { nodes.push({ type: "h1", text: line.slice(2) }); continue; }
+    if (/^[-*] /.test(line))  { nodes.push({ type: "li", text: line.slice(2), ordered: false }); continue; }
+    if (/^\d+\. /.test(line)) { nodes.push({ type: "li", text: line.replace(/^\d+\. /, ""), ordered: true }); continue; }
+    if (line.trim() === "")   { nodes.push({ type: "blank" }); continue; }
+    nodes.push({ type: "p", text: line });
+  }
+  flushTable();
+  return nodes;
+}
+
+/** Render inline markdown (bold, italic, code) as React elements. */
+function Inline({ text }: { text: string }) {
+  const parts: React.ReactNode[] = [];
+  // Pattern: **bold** | *italic* | `code`
+  const re = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`/g;
+  let last = 0;
+  let match: RegExpExecArray | null;
+  let k = 0;
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > last) parts.push(text.slice(last, match.index));
+    if (match[1] !== undefined) parts.push(<strong key={k++}>{match[1]}</strong>);
+    else if (match[2] !== undefined) parts.push(<em key={k++}>{match[2]}</em>);
+    else if (match[3] !== undefined) parts.push(<code key={k++} className="rounded bg-muted/60 px-1 font-mono text-xs">{match[3]}</code>);
+    last = match.index + match[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return <>{parts}</>;
+}
+
+function MarkdownView({ md }: { md: string }) {
+  const nodes = parseMd(md);
+  const elements: React.ReactNode[] = [];
+  let i = 0;
+  let key = 0;
+
+  while (i < nodes.length) {
+    const node = nodes[i];
+
+    if (node.type === "li") {
+      const isOrdered = node.ordered;
+      const items: string[] = [];
+      while (
+        i < nodes.length &&
+        nodes[i].type === "li" &&
+        (nodes[i] as MdListItem).ordered === isOrdered
+      ) {
+        items.push((nodes[i] as MdListItem).text);
+        i++;
+      }
+      const Tag = isOrdered ? "ol" : "ul";
+      elements.push(
+        <Tag
+          key={key++}
+          className={`${isOrdered ? "list-decimal" : "list-disc"} my-2 space-y-0.5 pl-5 text-sm`}
+        >
+          {items.map((t, idx) => (
+            <li key={idx}>
+              <Inline text={t} />
+            </li>
+          ))}
+        </Tag>
+      );
+      continue;
+    }
+
+    if (node.type === "h1") {
+      elements.push(
+        <h1 key={key++} className="mb-3 mt-4 text-xl font-bold">
+          <Inline text={node.text} />
+        </h1>
+      );
+    } else if (node.type === "h2") {
+      elements.push(
+        <h2 key={key++} className="mb-2 mt-6 border-b pb-1 text-lg font-semibold">
+          <Inline text={node.text} />
+        </h2>
+      );
+    } else if (node.type === "h3") {
+      elements.push(
+        <h3 key={key++} className="mb-1 mt-5 text-base font-semibold">
+          <Inline text={node.text} />
+        </h3>
+      );
+    } else if (node.type === "p") {
+      elements.push(
+        <p key={key++} className="my-1 text-sm leading-relaxed">
+          <Inline text={node.text} />
+        </p>
+      );
+    } else if (node.type === "blank") {
+      elements.push(<div key={key++} className="my-1" />);
+    } else if (node.type === "table") {
+      elements.push(
+        <div key={key++} className="my-3 overflow-x-auto">
+          <table className="w-full border-collapse text-xs">
+            <thead>
+              <tr>
+                {node.headers.map((h, ci) => (
+                  <th
+                    key={ci}
+                    className="border border-border bg-muted/50 px-2 py-1 text-left font-medium"
+                  >
+                    <Inline text={h} />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {node.rows.map((row, ri) => (
+                <tr key={ri}>
+                  {row.map((cell, ci) => (
+                    <td key={ci} className="border border-border px-2 py-1">
+                      <Inline text={cell} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      );
+    }
+    i++;
+  }
+
+  return <div className="space-y-0.5">{elements}</div>;
+}
+
+/* ─── file helpers ─── */
+
+function groupFilesByDir(files: string[]): Record<string, string[]> {
+  const groups: Record<string, string[]> = {};
+  for (const f of files) {
+    const parts = f.split("/");
+    const dir = parts.length > 1 ? parts[0] : "(root)";
+    if (!groups[dir]) groups[dir] = [];
+    groups[dir].push(f);
+  }
+  return groups;
+}
+
+function titleCase(slug: string | undefined): string {
+  if (!slug) return "";
   return slug
     .split("-")
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
 }
+
+const REPLICA_PAGES = ["index.html", "credit-cards.html", "contact-us.html"];
+
+const BREAKPOINTS = [
+  { label: "Desktop", width: 1440 },
+  { label: "Tablet", width: 768 },
+  { label: "Mobile", width: 390 },
+] as const;
+
+/* ─── page ─── */
 
 export default function BrandPage({
   params,
@@ -37,6 +333,8 @@ export default function BrandPage({
   const [brand, setBrand] = useState<BrandDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [replicaPage, setReplicaPage] = useState("index.html");
+  const [replicaWidth, setReplicaWidth] = useState(1440);
 
   useEffect(() => {
     fetch(`/api/brands/${slug}`)
@@ -58,9 +356,7 @@ export default function BrandPage({
   if (error) {
     return (
       <div className="flex flex-1 items-center justify-center p-8">
-        <p className="text-sm text-destructive">
-          Failed to load brand: {error}
-        </p>
+        <p className="text-sm text-destructive">Failed to load brand: {error}</p>
       </div>
     );
   }
@@ -73,43 +369,84 @@ export default function BrandPage({
     );
   }
 
-  const overviewText = brand.design_md
-    ? brand.design_md.split("\n\n").slice(0, 3).join("\n\n")
-    : "No design documentation available.";
+  const colors = extractColors(brand.design_tokens);
+  const fontFamilies = brand.design_tokens?.typography?.families ?? [];
+  const fontSizes = brand.design_tokens?.typography?.sizes ?? [];
+  const spacingScale = brand.design_tokens?.typography?.scale ?? [];
+  const baseUnit = brand.design_tokens?.typography?.detected_base_unit;
+
+  const assetFiles = brand.files.filter((f) => f.startsWith("assets/"));
+  const svgAssets = assetFiles.filter((f) => f.endsWith(".svg"));
+  const imgAssets = assetFiles.filter((f) => !f.endsWith(".svg"));
+
+  const logoFile = svgAssets.find((f) => f.includes("logo"));
+
+  const availableReplicaPages = REPLICA_PAGES.filter((p) =>
+    brand.files.some((f) => f === `replica/${p}`)
+  );
+
+  const summaryParagraph = brand.design_md
+    ? brand.design_md
+        .split("\n\n")
+        .map((p) => p.trim())
+        .find((p) => p.length > 40 && !p.startsWith("#")) ?? ""
+    : "";
+
+  const fileGroups = groupFilesByDir(brand.files);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-10">
       <div className="mb-2">
-        <Link
-          href="/"
-          className="text-xs text-muted-foreground hover:text-foreground"
-        >
-          Back to library
+        <Link href="/" className="text-xs text-muted-foreground hover:text-foreground">
+          ← Back to library
         </Link>
       </div>
 
-      <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {titleCase(brand.slug)}
-          </h1>
-          <a
-            href={brand.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-muted-foreground hover:underline"
-          >
-            {brand.source_url}
-          </a>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Extracted {new Date(brand.extracted_at).toLocaleDateString()}
-          </p>
+      {/* Header */}
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex items-start gap-4">
+          {brand.has_logo && logoFile && (
+            <div className="flex h-12 shrink-0 items-center rounded-lg border bg-white px-3 py-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={`/api/brands/${brand.slug}/file/${logoFile}`}
+                alt={`${titleCase(brand.slug)} logo`}
+                className="h-8 w-auto"
+              />
+            </div>
+          )}
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {titleCase(brand.slug)}
+            </h1>
+            <a
+              href={brand.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
+            >
+              {brand.source_url}
+              <ExternalLink className="size-3" />
+            </a>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Extracted {new Date(brand.extracted_at).toLocaleDateString()}
+            </p>
+          </div>
         </div>
-        <ScoreBadge score={brand.overall_score} confidence={brand.confidence} />
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <ScoreBadge score={brand.overall_score} confidence={brand.confidence} />
+          <div className="flex flex-wrap justify-end gap-1">
+            {brand.categories.map((cat) => (
+              <Badge key={cat} variant="outline" className="text-xs">
+                {cat}
+              </Badge>
+            ))}
+          </div>
+        </div>
       </div>
 
       <Tabs defaultValue="overview">
-        <TabsList variant="line" className="mb-4 flex-wrap">
+        <TabsList variant="line" className="mb-6 flex-wrap">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="design-md">DESIGN.md</TabsTrigger>
           <TabsTrigger value="tokens">Tokens</TabsTrigger>
@@ -121,72 +458,425 @@ export default function BrandPage({
           <TabsTrigger value="files">Raw Files</TabsTrigger>
         </TabsList>
 
+        {/* ── OVERVIEW ── */}
         <TabsContent value="overview">
-          <div className="space-y-4">
-            <div className="flex items-center gap-4">
-              <ScoreBadge
-                score={brand.overall_score}
-                confidence={brand.confidence}
-              />
-              <span className="text-sm text-muted-foreground">
-                Confidence: {brand.confidence || "unknown"}
-              </span>
-            </div>
-            <pre className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 text-sm">
-              {overviewText}
-            </pre>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="design-md">
-          <pre className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed">
-            {brand.design_md || "No DESIGN.md available."}
-          </pre>
-        </TabsContent>
-
-        <TabsContent value="tokens">
-          <pre className="overflow-auto whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 font-mono text-xs leading-relaxed">
-            {brand.design_tokens_css || "No design tokens available."}
-          </pre>
-        </TabsContent>
-
-        <TabsContent value="components">
-          <div className="rounded-lg border border-dashed p-10 text-center">
-            <p className="text-sm text-muted-foreground">
-              Component previews will be available after Phase 5 completion
-            </p>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="replica">
-          <ReplicaIframe slug={brand.slug} />
-        </TabsContent>
-
-        <TabsContent value="assets">
           <div className="space-y-6">
-            <div>
-              <h3 className="mb-2 text-sm font-medium">Logo</h3>
-              <div className="inline-block rounded-lg border bg-white p-4">
-                <img
-                  src={`/api/brands/${brand.slug}/file/assets/logo.svg`}
-                  alt={`${titleCase(brand.slug)} logo`}
-                  className="h-16 w-auto"
-                />
+            <Card>
+              <CardContent className="pt-4">
+                <div className="mb-3 flex items-center gap-3">
+                  <ScoreBadge score={brand.overall_score} confidence={brand.confidence} />
+                  <span className="text-sm text-muted-foreground">
+                    Confidence: <strong>{brand.confidence || "unknown"}</strong>
+                  </span>
+                </div>
+                {summaryParagraph && (
+                  <p className="text-sm leading-relaxed text-muted-foreground">
+                    {summaryParagraph}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            {colors.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Palette className="size-4" /> Color Palette
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-3">
+                    {colors.slice(0, 10).map(({ hex, count }) => (
+                      <div key={hex} className="flex flex-col items-center gap-1">
+                        <div
+                          className="size-12 rounded-lg border shadow-sm"
+                          style={{ backgroundColor: hex }}
+                          title={`${hex} (×${count})`}
+                        />
+                        <span className="font-mono text-[10px] text-muted-foreground">
+                          {hex}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {fontFamilies.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Type className="size-4" /> Typography
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {fontFamilies.slice(0, 3).map((f, i) => {
+                    const name = primaryFontName(f.value);
+                    return (
+                      <div key={i} className="flex items-baseline gap-3">
+                        <span className="text-2xl" style={{ fontFamily: f.value }}>
+                          Aa
+                        </span>
+                        <div>
+                          <span className="text-sm font-medium">{name}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ×{f.count} usages
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ── DESIGN.md ── */}
+        <TabsContent value="design-md">
+          {brand.design_md ? (
+            <ScrollArea className="h-[700px]">
+              <div className="rounded-lg border bg-background p-6">
+                <MarkdownView md={brand.design_md} />
               </div>
-            </div>
-            <div>
-              <h3 className="mb-2 text-sm font-medium">Favicon</h3>
-              <div className="inline-block rounded-lg border bg-white p-4">
-                <img
-                  src={`/api/brands/${brand.slug}/file/assets/favicon.ico`}
-                  alt={`${titleCase(brand.slug)} favicon`}
-                  className="h-8 w-auto"
-                />
+            </ScrollArea>
+          ) : (
+            <EmptyState icon={<FileText className="size-8" />} message="No DESIGN.md available." />
+          )}
+        </TabsContent>
+
+        {/* ── TOKENS ── */}
+        <TabsContent value="tokens">
+          <div className="space-y-6">
+            {colors.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Palette className="size-4" /> Colors
+                    {brand.design_tokens?.colours?.total_raw !== undefined && (
+                      <span className="text-xs font-normal text-muted-foreground">
+                        ({brand.design_tokens.colours.total_filtered} unique of{" "}
+                        {brand.design_tokens.colours.total_raw} sampled)
+                      </span>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {colors.map(({ hex, count }) => {
+                      const fg = contrastColor(hex);
+                      return (
+                        <div key={hex} className="overflow-hidden rounded-lg border shadow-sm">
+                          <div
+                            className="flex h-16 items-end p-2"
+                            style={{ backgroundColor: hex, color: fg }}
+                          >
+                            <span className="font-mono text-[10px] font-medium opacity-90">
+                              {hex}
+                            </span>
+                          </div>
+                          <div className="bg-background px-2 py-1">
+                            <span className="text-[10px] text-muted-foreground">
+                              ×{count} usages
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {fontSizes.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Type className="size-4" /> Type Scale
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {fontSizes.slice(0, 12).map((s) => (
+                      <div
+                        key={s.value}
+                        className="flex items-baseline gap-3 border-b pb-2 last:border-0"
+                      >
+                        <span className="leading-none text-foreground" style={{ fontSize: s.value }}>
+                          Ag
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground">{s.value}</span>
+                        <span className="text-xs text-muted-foreground/60">×{s.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {fontFamilies.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Type className="size-4" /> Font Families
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {fontFamilies.map((f, i) => (
+                    <div key={i}>
+                      <div className="mb-1 flex items-baseline gap-2">
+                        <span className="text-sm font-medium">{primaryFontName(f.value)}</span>
+                        <span className="text-xs text-muted-foreground">×{f.count} usages</span>
+                      </div>
+                      <p className="break-all font-mono text-[10px] text-muted-foreground">
+                        {f.value}
+                      </p>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            {spacingScale.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Spacing Scale</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap items-end gap-3">
+                    {spacingScale.map((s) => (
+                      <div key={s} className="flex flex-col items-center gap-1">
+                        <div
+                          className="rounded bg-primary/20"
+                          style={{ width: s, height: "16px", minWidth: "4px" }}
+                        />
+                        <span className="font-mono text-[10px] text-muted-foreground">{s}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {baseUnit && (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Base unit: <strong>{baseUnit}</strong>
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {brand.design_tokens_css && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Code2 className="size-4" /> CSS Variables
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-64">
+                    <pre className="font-mono text-xs leading-relaxed">
+                      {brand.design_tokens_css}
+                    </pre>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            )}
+
+            {!colors.length && !fontFamilies.length && !brand.design_tokens_css && (
+              <EmptyState
+                icon={<Palette className="size-8" />}
+                message="No design tokens available."
+              />
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ── COMPONENTS ── */}
+        <TabsContent value="components">
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Layers className="size-4" /> Detected Components
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
+                  {["Navigation", "Hero", "Cards", "Footer", "Forms"].map((comp) => (
+                    <div
+                      key={comp}
+                      className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-4 text-center"
+                    >
+                      <LayoutTemplate className="size-6 text-muted-foreground" />
+                      <span className="text-sm font-medium">{comp}</span>
+                      <Badge variant="outline" className="text-[10px]">
+                        Detected
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {brand.has_replica && (
+              <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
+                A working replica is available in the{" "}
+                <span className="font-medium text-foreground">Replica</span> tab.
               </div>
+            )}
+
+            <div className="rounded-lg border border-dashed p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                shadcn component replicas are coming in the next phase.
+              </p>
             </div>
           </div>
         </TabsContent>
 
+        {/* ── REPLICA ── */}
+        <TabsContent value="replica">
+          {brand.has_replica ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-wrap items-center gap-2">
+                {availableReplicaPages.length > 1 && (
+                  <>
+                    <span className="text-sm text-muted-foreground">Page:</span>
+                    <div className="flex gap-1.5">
+                      {availableReplicaPages.map((page) => (
+                        <Button
+                          key={page}
+                          size="sm"
+                          variant={replicaPage === page ? "default" : "outline"}
+                          onClick={() => setReplicaPage(page)}
+                        >
+                          {page.replace(".html", "")}
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="mx-2 h-4 w-px bg-border" />
+                  </>
+                )}
+                <span className="text-sm text-muted-foreground">Width:</span>
+                <div className="flex gap-1.5">
+                  {BREAKPOINTS.map((bp) => (
+                    <Button
+                      key={bp.width}
+                      size="sm"
+                      variant={replicaWidth === bp.width ? "default" : "outline"}
+                      onClick={() => setReplicaWidth(bp.width)}
+                    >
+                      {bp.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex justify-center overflow-auto rounded-lg border bg-muted/30 p-4 shadow-inner">
+                <div
+                  className="overflow-hidden rounded-md border bg-white shadow-md transition-all"
+                  style={{ width: `${replicaWidth}px`, maxWidth: "100%" }}
+                >
+                  <iframe
+                    key={`${brand.slug}-${replicaPage}`}
+                    src={`/api/brands/${brand.slug}/file/replica/${replicaPage}`}
+                    title={`${brand.slug} – ${replicaPage}`}
+                    className="h-[700px] w-full border-0"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <EmptyState
+              icon={<MonitorPlay className="size-8" />}
+              message="No replica available for this brand."
+            />
+          )}
+        </TabsContent>
+
+        {/* ── ASSETS ── */}
+        <TabsContent value="assets">
+          {assetFiles.length === 0 ? (
+            <EmptyState icon={<Image className="size-8" />} message="No assets found." />
+          ) : (
+            <div className="space-y-6">
+              {svgAssets.length > 0 && (
+                <div>
+                  <h3 className="mb-3 text-sm font-medium">SVG Assets</h3>
+                  <div className="flex flex-wrap gap-4">
+                    {svgAssets.map((file) => (
+                      <div key={file} className="flex flex-col gap-1.5">
+                        <div className="flex h-20 w-40 items-center justify-center rounded-lg border bg-white p-3">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={`/api/brands/${brand.slug}/file/${file}`}
+                            alt={file}
+                            className="max-h-full max-w-full object-contain"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                            }}
+                          />
+                        </div>
+                        <span className="max-w-40 break-all font-mono text-[10px] text-muted-foreground">
+                          {file.replace("assets/", "")}
+                        </span>
+                        <a
+                          href={`/api/brands/${brand.slug}/file/${file}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] text-primary hover:underline"
+                        >
+                          Open
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {imgAssets.length > 0 && (
+                <div>
+                  <h3 className="mb-3 text-sm font-medium">Other Assets</h3>
+                  <div className="flex flex-wrap gap-4">
+                    {imgAssets.map((file) => {
+                      const ext = file.split(".").pop()?.toLowerCase() ?? "";
+                      const isImg = ["png", "jpg", "jpeg", "gif", "webp", "ico"].includes(ext);
+                      return (
+                        <div key={file} className="flex flex-col gap-1.5">
+                          <div className="flex h-20 w-24 items-center justify-center rounded-lg border bg-white p-3">
+                            {isImg ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={`/api/brands/${brand.slug}/file/${file}`}
+                                alt={file}
+                                className="max-h-full max-w-full object-contain"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <FileText className="size-6 text-muted-foreground" />
+                            )}
+                          </div>
+                          <span className="max-w-24 break-all font-mono text-[10px] text-muted-foreground">
+                            {file.replace("assets/", "")}
+                          </span>
+                          <a
+                            href={`/api/brands/${brand.slug}/file/${file}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[10px] text-primary hover:underline"
+                          >
+                            Open
+                          </a>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── SKILL ── */}
         <TabsContent value="skill">
           <div className="space-y-2">
             <div className="flex justify-end">
@@ -196,7 +886,15 @@ export default function BrandPage({
                 onClick={() => brand.skill_md && handleCopy(brand.skill_md)}
                 disabled={!brand.skill_md}
               >
-                {copied ? "Copied" : "Copy"}
+                {copied ? (
+                  <>
+                    <Check className="size-3" /> Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="size-3" /> Copy
+                  </>
+                )}
               </Button>
             </div>
             <pre className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 text-sm leading-relaxed">
@@ -205,34 +903,81 @@ export default function BrandPage({
           </div>
         </TabsContent>
 
+        {/* ── VALIDATION ── */}
         <TabsContent value="validation">
           {brand.validation_report ? (
-            <pre className="overflow-auto whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 font-mono text-xs leading-relaxed">
-              {JSON.stringify(brand.validation_report, null, 2)}
-            </pre>
+            <ScrollArea className="h-[600px]">
+              <pre className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 font-mono text-xs leading-relaxed">
+                {JSON.stringify(brand.validation_report, null, 2)}
+              </pre>
+            </ScrollArea>
           ) : (
-            <div className="rounded-lg border border-dashed p-10 text-center">
-              <p className="text-sm text-muted-foreground">
-                No validation report
-              </p>
-            </div>
+            <EmptyState
+              icon={<FileText className="size-8" />}
+              message="No validation report available."
+            />
           )}
         </TabsContent>
 
+        {/* ── RAW FILES ── */}
         <TabsContent value="files">
-          {brand.files.length > 0 ? (
-            <ul className="space-y-1">
-              {brand.files.map((file) => (
-                <li key={file} className="font-mono text-sm text-muted-foreground">
-                  {file}
-                </li>
-              ))}
-            </ul>
+          {brand.files.length === 0 ? (
+            <EmptyState icon={<FolderOpen className="size-8" />} message="No files found." />
           ) : (
-            <p className="text-sm text-muted-foreground">No files found.</p>
+            <div className="space-y-4">
+              {Object.entries(fileGroups)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([dir, dirFiles]) => (
+                  <Card key={dir} size="sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-1.5 text-sm">
+                        <FolderOpen className="size-4 text-muted-foreground" />
+                        {dir}
+                        <Badge variant="outline" className="ml-auto text-[10px]">
+                          {dirFiles.length}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="space-y-0.5">
+                        {dirFiles.map((file) => (
+                          <li key={file}>
+                            <a
+                              href={`/api/brands/${brand.slug}/file/${file}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1.5 rounded px-1.5 py-1 font-mono text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                              <ChevronRight className="size-3 shrink-0" />
+                              {file}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                ))}
+            </div>
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+/* ── shared UI ── */
+
+function EmptyState({
+  icon,
+  message,
+}: {
+  icon: React.ReactNode;
+  message: string;
+}) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 rounded-lg border border-dashed p-16 text-center">
+      <div className="text-muted-foreground/40">{icon}</div>
+      <p className="text-sm text-muted-foreground">{message}</p>
     </div>
   );
 }

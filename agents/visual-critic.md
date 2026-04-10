@@ -39,6 +39,13 @@ Read and visually compare these two images:
 
 Assign a `brand_impression` score (0.0-1.0): "Does this page feel like the same brand?"
 
+### Step 2b -- Logo presence check
+
+Check if the replica nav contains an actual brand logo (SVG or IMG), not a text placeholder.
+If the nav uses text like "W" or "Brand" instead of an actual logo element, add a HIGH-severity
+`image` issue to the nav critique: "Nav uses text placeholder instead of actual brand logo SVG/PNG".
+A replica without the real logo cannot pass brand impression regardless of other scores.
+
 ### Step 3 -- Identify failing components
 
 Collect every component where `passed` is `false` in either scoring file.

@@ -47,15 +47,33 @@ The cache_dir is passed to you in the dispatch prompt. It will be something like
    ls {cache_dir}/assets/*.{svg,png} 2>/dev/null && echo "asset files: OK" || echo "asset files: none downloaded"
    ```
 
-6. Read `{cache_dir}/assets-output.json` and report a summary to the orchestrator: number of logos found, favicon variants, icon system detected (if any), and list of downloaded files.
+6. **CRITICAL: Verify at least one logo was saved to disk.** Check:
+   ```bash
+   ls {cache_dir}/assets/logo-*.svg {cache_dir}/assets/logo-*.png 2>/dev/null | head -5
+   ```
+   If NO logo files exist on disk, this is a **blocking failure**. Report it as:
+   ```
+   BLOCKING: No logo SVG or PNG saved to disk. The assets stage detected SVG elements but failed to extract their markup. Check extract_tokens.py SVG tagName handling.
+   ```
+
+7. Read `{cache_dir}/assets-output.json` and report a summary to the orchestrator:
+   - Number of logos found (SVG + IMG)
+   - Number of logos saved to disk (check `saved_assets` field)
+   - Favicon variants downloaded
+   - Icon system detected
+   - List of actual files in `{cache_dir}/assets/`
+   - **BLOCKING if zero logos on disk**
 
 ## Error handling
 
 - If a script exits non-zero, read its stderr, report the error, and exit. Do NOT retry.
 - If an output file contains an `"error"` key, report it and exit. The orchestrator decides whether to retry.
 - If WebFetch fails for a specific asset URL, log the failure but continue with remaining assets. Report all failures in the summary.
+- **Missing logo is a BLOCKING failure** -- report it clearly so the orchestrator can investigate.
 
 ## Output contract
 
-- `{cache_dir}/assets-output.json` -- structured asset inventory
-- `{cache_dir}/assets/*.svg` or `{cache_dir}/assets/*.png` -- downloaded brand assets
+- `{cache_dir}/assets-output.json` -- structured asset inventory with `saved_assets` counts
+- `{cache_dir}/assets/logo-*.svg` -- inline SVG logos extracted from DOM (REQUIRED: at least one)
+- `{cache_dir}/assets/favicon-*.{ico,png}` -- downloaded favicon files
+- `{cache_dir}/assets/logo-img-*.{png,jpg,svg}` -- downloaded IMG-based logos (if any)

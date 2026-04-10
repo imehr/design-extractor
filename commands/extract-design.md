@@ -46,6 +46,22 @@ Dispatch these three agents in parallel using the Agent tool with `run_in_backgr
 
 Wait for all three to complete. Check each output file for errors. Report any failures but continue — partial data is acceptable.
 
+### Step 2b: Logo verification (blocking check)
+
+After the parallel extraction completes, verify at least one logo SVG or PNG was saved to disk:
+
+```bash
+ls {cache_dir}/assets/logo-*.svg {cache_dir}/assets/logo-*.png 2>/dev/null | head -5
+```
+
+If NO logo files exist:
+1. Report the failure to the user: "BLOCKING: No brand logo was extracted. The replica will use a placeholder."
+2. Read `{cache_dir}/assets-output.json` and check the `saved_assets` field.
+3. If `saved_assets.svg_logos` is 0 despite logos being detected, the SVG extraction failed — this is a known issue with SVG tagName handling.
+4. Ask the user whether to continue with a degraded replica or abort.
+
+A missing logo is the most visible fidelity failure in the final output.
+
 ### Step 3: Pattern analysis (sequential — needs tokens)
 
 Dispatch `agents/pattern-analyst.md` with `cache_dir`. It reads `tokens-output.json` and reference screenshots.

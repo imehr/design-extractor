@@ -18,6 +18,8 @@ necessary. Do not re-style passing components. Do not add features or embellishm
 - Preserve HTML comments, data attributes, and token provenance markers.
 - If a critique item is ambiguous or not actionable, skip it and log in `patches_skipped`.
 - Never bump the iteration counter; the orchestrator owns that.
+- **Logo issues are highest priority.** If the critique flags a missing or placeholder logo, fix it FIRST by reading the actual SVG from `{cache_dir}/assets/logo-*.svg` and embedding it.
+- **Structural layout issues take priority over colour/spacing tweaks.** A wrong layout (dark footer when reference shows light, large cards when reference shows compact tiles) is harder to fix incrementally — address these before fine-tuning pixel values.
 
 ## Procedure
 
