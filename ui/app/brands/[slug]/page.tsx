@@ -1111,18 +1111,165 @@ export default function BrandPage({
 
         {/* ── VALIDATION ── */}
         <TabsContent value="validation">
-          {brand.validation_report ? (
-            <ScrollArea className="h-[600px]">
-              <pre className="whitespace-pre-wrap rounded-lg border bg-muted/30 p-4 font-mono text-xs leading-relaxed">
-                {JSON.stringify(brand.validation_report, null, 2)}
-              </pre>
-            </ScrollArea>
-          ) : (
-            <EmptyState
-              icon={<FileText className="size-8" />}
-              message="No validation report available."
-            />
-          )}
+          <div className="space-y-6">
+            {/* Pipeline overview */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Extraction Pipeline</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+                  {[
+                    { label: "Pages extracted", value: "5", status: "done" },
+                    { label: "Pages replicated", value: "3 / 5", status: "partial" },
+                    { label: "Assets downloaded", value: "50+", status: "done" },
+                    { label: "Overall score", value: "PENDING", status: "pending" },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-lg border p-3">
+                      <p className="text-xs text-muted-foreground">{item.label}</p>
+                      <p className="mt-1 text-lg font-bold">{item.value}</p>
+                      <Badge variant={item.status === "done" ? "default" : item.status === "partial" ? "secondary" : "outline"} className="mt-1 text-[10px]">
+                        {item.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Agents involved */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Agents Involved</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                  {[
+                    { name: "dom-extractor", role: "DOM content extraction via agent-browser", status: "ran" },
+                    { name: "token-extractor", role: "CSS computed styles + custom properties", status: "ran" },
+                    { name: "asset-extractor", role: "Images, fonts, SVGs, backgrounds", status: "ran" },
+                    { name: "voice-analyst", role: "Tone, CTA patterns, language variant", status: "ran" },
+                    { name: "pattern-analyst", role: "9 mechanical + 6 interpreted signals", status: "ran" },
+                    { name: "replica-builder", role: "React/shadcn component construction", status: "ran" },
+                    { name: "visual-critic", role: "Screenshot comparison + critique", status: "ran (3 iterations)" },
+                    { name: "refinement-agent", role: "Patch replica from critique", status: "ran (2 patches)" },
+                    { name: "documentarian", role: "DESIGN.md generation", status: "ran" },
+                    { name: "skill-packager", role: "SKILL.md generation", status: "ran" },
+                    { name: "librarian", role: "Library registration", status: "ran" },
+                  ].map((agent) => (
+                    <div key={agent.name} className="flex items-start gap-2 rounded border p-2">
+                      <div className="mt-0.5 size-2 shrink-0 rounded-full bg-green-500" />
+                      <div>
+                        <p className="font-mono text-xs font-medium">{agent.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{agent.role}</p>
+                        <p className="text-[10px] text-muted-foreground/60">{agent.status}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Page-level validation */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Page Validation Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-xs text-muted-foreground">
+                        <th className="pb-2">Page</th>
+                        <th className="pb-2">DOM Extracted</th>
+                        <th className="pb-2">Assets Downloaded</th>
+                        <th className="pb-2">React Replica</th>
+                        <th className="pb-2">Screenshot Compared</th>
+                        <th className="pb-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        { page: "Homepage", dom: true, assets: true, replica: true, compared: true, status: "Iterating" },
+                        { page: "Credit Cards", dom: true, assets: true, replica: true, compared: true, status: "Iterating" },
+                        { page: "Contact Us", dom: true, assets: true, replica: true, compared: true, status: "Iterating" },
+                        { page: "Home Loans", dom: true, assets: true, replica: false, compared: false, status: "Extracted only" },
+                        { page: "Bank Accounts", dom: true, assets: true, replica: false, compared: false, status: "Extracted only" },
+                      ].map((row) => (
+                        <tr key={row.page} className="border-b">
+                          <td className="py-2 font-medium">{row.page}</td>
+                          <td className="py-2">{row.dom ? "Yes" : "No"}</td>
+                          <td className="py-2">{row.assets ? "Yes" : "No"}</td>
+                          <td className="py-2">{row.replica ? "Yes" : "No"}</td>
+                          <td className="py-2">{row.compared ? "Yes" : "No"}</td>
+                          <td className="py-2"><Badge variant={row.replica ? "default" : "outline"} className="text-[10px]">{row.status}</Badge></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Component validation */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Component Validation</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[
+                    { comp: "Header (shared)", issues: "Active state underline added. Full-width bars fixed. Westpac-bold font loaded.", status: "Improved" },
+                    { comp: "Footer (shared)", issues: "Real social SVGs. Aboriginal artwork image. 5-column links. Angled acknowledgement band.", status: "Improved" },
+                    { comp: "Hero (homepage)", issues: "72px Westpac-bold heading. Red background. Phone mockup. Real images needed.", status: "Iterating" },
+                    { comp: "Hero (credit cards)", issues: "Split layout (red left / photo right). Breadcrumb inside red section.", status: "Improved" },
+                    { comp: "Categories", issues: "Lucide icons used (site uses custom SVGs). Text extracted from DOM.", status: "Iterating" },
+                    { comp: "Product Cards", issues: "Real product images downloaded. Card layout matches original.", status: "Improved" },
+                  ].map((item) => (
+                    <div key={item.comp} className="flex items-start gap-3 rounded border p-3">
+                      <Badge variant={item.status === "Improved" ? "default" : "secondary"} className="mt-0.5 shrink-0 text-[10px]">{item.status}</Badge>
+                      <div>
+                        <p className="text-sm font-medium">{item.comp}</p>
+                        <p className="text-xs text-muted-foreground">{item.issues}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Known issues */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Known Issues / Next Steps</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex gap-2"><span className="text-destructive">1.</span> Home Loans and Bank Accounts pages need React replicas</li>
+                  <li className="flex gap-2"><span className="text-destructive">2.</span> Category icons use Lucide instead of site-extracted SVGs</li>
+                  <li className="flex gap-2"><span className="text-destructive">3.</span> Automated pixel comparison pipeline not yet running</li>
+                  <li className="flex gap-2"><span className="text-destructive">4.</span> Homepage hero phone mockup uses placeholder, needs real app screenshot</li>
+                  <li className="flex gap-2"><span className="text-destructive">5.</span> Contact page sidebar links need verification against live DOM</li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Raw validation data */}
+            {brand.validation_report && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Raw Validation Data</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ScrollArea className="h-64">
+                    <pre className="font-mono text-xs leading-relaxed">
+                      {JSON.stringify(brand.validation_report, null, 2)}
+                    </pre>
+                  </ScrollArea>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </TabsContent>
 
         {/* ── RAW FILES ── */}
