@@ -40,15 +40,30 @@ export default function HomeLoansPage() {
               HOME LOANS
             </h1>
             <p className="mb-5 max-w-[400px] text-sm leading-6 text-white/90">
-              Compare home loans and rates, use our calculators, and find guides to help you on your property journey.
+              You could save around $9k in interest in the first year of your home loan package (based on a $400k variable home loan and $398 annual fee applied). Explore our home loan rates, calculators and popular guides.
             </p>
             <div className="flex gap-3">
-              <Button className="rounded-[3px] bg-white text-sm font-bold text-[#181B25] hover:bg-white/90">Apply now</Button>
-              <Button className="rounded-[3px] border border-white bg-transparent text-sm font-bold text-white hover:bg-white/10">Book a lender</Button>
+              <Button className="rounded-[3px] bg-white text-sm font-bold text-[#181B25] hover:bg-white/90">Start applying</Button>
+              <Button className="rounded-[3px] border border-white bg-transparent text-sm font-bold text-white hover:bg-white/10">Book appointment</Button>
             </div>
+            <Link href="#" className="mt-3 block text-sm text-white/80 underline">Continue application</Link>
           </div>
           <div className="hidden w-[50%] shrink-0 md:block">
             <img src="/brands/westpac/home-loans-hero.jpg" alt="Home loans" className="size-full object-cover" style={{ minHeight: 280 }} />
+          </div>
+        </div>
+      </div>
+
+      {/* I'm looking for tabs */}
+      <div className="border-b border-[#DEDEE1] bg-white py-6">
+        <div className="mx-auto max-w-[1280px] px-6">
+          <h2 className="mb-4 text-lg font-bold text-[#1F1C4F]">I&apos;m looking for:</h2>
+          <div className="flex gap-4">
+            {["First home buyer", "Refinancing", "Investing", "Upgrading", "Building", "Buying"].map((tab) => (
+              <button key={tab} className="rounded-lg border border-[#DEDEE1] px-4 py-2 text-sm text-[#575F65] hover:border-[#DA1710]">
+                {tab}
+              </button>
+            ))}
           </div>
         </div>
       </div>
