@@ -1238,10 +1238,51 @@ export default function BrandPage({
               </CardContent>
             </Card>
 
+            {/* Harness architecture */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">Harness: Autonomous Validation Loop</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  The <code className="rounded bg-muted px-1 font-mono">validation-monitor</code> agent (opus) orchestrates the pipeline autonomously.
+                  It reads validation state, identifies failing gates, dispatches fix agents, re-validates, and loops until all gates pass.
+                </p>
+                <div className="rounded-lg bg-muted/50 p-3 font-mono text-[10px] leading-5">
+                  <p className="text-muted-foreground/60">// Harness loop</p>
+                  <p>while (not all_gates_pass) &#123;</p>
+                  <p className="pl-4">failing = first_failing_gate()</p>
+                  <p className="pl-4">dispatch_fix_agent(failing)</p>
+                  <p className="pl-4">re_validate()</p>
+                  <p>&#125;</p>
+                  <p>notify_user(&quot;Ready for review&quot;)</p>
+                </div>
+                <div className="mt-3 space-y-1">
+                  <p className="text-xs font-medium">8 Validation Gates (priority order):</p>
+                  {[
+                    { gate: "1. Pages extracted", threshold: "4+ pages with valid JSON", status: "PASS (5/5)" },
+                    { gate: "2. Assets downloaded", threshold: "Logo + font + 10+ images", status: "PASS (50+)" },
+                    { gate: "3. React replicas built", threshold: "3+ pages, TypeScript clean", status: "PASS (3/5)" },
+                    { gate: "4. Screenshot comparison", threshold: "Visual match per component", status: "ITERATING" },
+                    { gate: "5. DESIGN.md current", threshold: "References React components, current date", status: "PASS" },
+                    { gate: "6. SKILL.md current", threshold: "Valid frontmatter, 8+ triggers", status: "PASS" },
+                    { gate: "7. UI tabs populated", threshold: "All 9 tabs render content", status: "PASS" },
+                    { gate: "8. No stale data", threshold: "No metrics from old pipeline", status: "PASS" },
+                  ].map((g) => (
+                    <div key={g.gate} className="flex items-center justify-between rounded border px-2 py-1 text-xs">
+                      <span className="text-muted-foreground">{g.gate}</span>
+                      <span className="text-[10px] text-muted-foreground/60">{g.threshold}</span>
+                      <Badge variant={g.status === "PASS" || g.status.startsWith("PASS") ? "default" : "secondary"} className="text-[10px]">{g.status}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Known issues */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Known Issues / Next Steps</CardTitle>
+                <CardTitle className="text-sm">Remaining Work (Gate 4: Screenshot Comparison)</CardTitle>
               </CardHeader>
               <CardContent>
                 <ul className="space-y-2 text-sm text-muted-foreground">
