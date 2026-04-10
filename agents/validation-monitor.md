@@ -114,12 +114,50 @@ Do NOT notify for:
 - Intermediate progress (just keep going)
 - Questions about approach (follow the gate priorities)
 
-## Integration with Claude Code Monitor
+## Integration with Claude Code Monitor Tool
 
-If the Claude Code `/monitor` tool is available, use it to:
-- Watch the dev server logs for errors during replica rendering
-- Monitor file changes in the brand directory
-- Track screenshot comparison scores as they're computed
+Use the Monitor tool to set up background watchers that notify you of events
+without polling. Each stdout line from the monitor script becomes a notification.
 
-The monitor provides real-time event streaming from background processes,
-which is useful for watching long-running extraction tasks without polling.
+### Watch dev server for render errors
+
+```
+Monitor({
+  description: "Next.js dev server errors",
+  persistent: true,
+  command: "cd {UI_DIR} && pnpm dev 2>&1 | grep --line-buffered 'Error\\|error\\|TypeError\\|FAIL'"
+})
+```
+
+When an error event arrives, read the error, fix the component, and continue.
+
+### Watch validation state for gate changes
+
+```
+Monitor({
+  description: "Validation gate changes",
+  persistent: true,
+  command: "last=''; while true; do state=$(python3 -c \"import json; d=json.load(open('{cache_dir}/validation-state.json')); print(','.join(k for k,v in d.items() if v=='PASS'))\"); if [ \"$state\" != \"$last\" ]; then echo \"GATES_PASS: $state\"; last=$state; fi; sleep 5; done"
+})
+```
+
+When a gate changes to PASS, move to the next failing gate.
+
+### Watch screenshot comparison scores
+
+```
+Monitor({
+  description: "Screenshot comparison scores",
+  timeout_ms: 300000,
+  command: "tail -f {cache_dir}/validation/comparison-log.jsonl | grep --line-buffered 'score'"
+})
+```
+
+When a score crosses the threshold, mark that component as validated.
+
+### Key rules for Monitor scripts
+- Always use `grep --line-buffered` in pipes
+- Poll intervals: 0.5-1s for local file checks, 30s+ for remote APIs
+- Only emit events you need to act on — too many events auto-stops the monitor
+- Use `persistent: true` for session-length watches
+- Stderr goes to output file (readable via Read), only stdout triggers notifications
