@@ -45,7 +45,41 @@ export async function GET(
     // ignore
   }
 
+  // Also list local React component files and public assets
+  let localFiles: string[] = [];
+  try {
+    const projectRoot = path.resolve(process.cwd());
+    const walkLocal = async (dir: string, prefix = ""): Promise<string[]> => {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
+      const result: string[] = [];
+      for (const entry of entries) {
+        const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+        if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+        if (entry.isDirectory()) {
+          result.push(...(await walkLocal(path.join(dir, entry.name), rel)));
+        } else {
+          result.push(rel);
+        }
+      }
+      return result;
+    };
+    const localDirs = [
+      { dir: path.join(projectRoot, "components", "brands"), prefix: "components/brands" },
+      { dir: path.join(projectRoot, "app", "brands", slug, "replica"), prefix: `app/brands/${slug}/replica` },
+      { dir: path.join(projectRoot, "public", "brands"), prefix: "public/brands" },
+    ];
+    for (const { dir, prefix } of localDirs) {
+      try {
+        localFiles.push(...(await walkLocal(dir, prefix)));
+      } catch {
+        // dir may not exist
+      }
+    }
+  } catch {
+    // ignore
+  }
+
   // Flatten: spread summary fields to top level for the page component
   const { summary, ...rest } = brand;
-  return NextResponse.json({ ...summary, ...rest, files });
+  return NextResponse.json({ ...summary, ...rest, files, localFiles });
 }

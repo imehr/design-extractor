@@ -369,11 +369,13 @@ export default function BrandPage({
     );
   }
 
+  const tokens = brand.design_tokens as Record<string, unknown> | null;
   const colors = extractColors(brand.design_tokens);
   const fontFamilies = brand.design_tokens?.typography?.families ?? [];
   const fontSizes = brand.design_tokens?.typography?.sizes ?? [];
-  const spacingScale = brand.design_tokens?.typography?.scale ?? [];
-  const baseUnit = brand.design_tokens?.typography?.detected_base_unit;
+  const spacingData = tokens?.spacing as Record<string, unknown> | undefined;
+  const spacingScale = (spacingData?.scale as string[] | undefined) ?? [];
+  const baseUnit = spacingData?.detected_base_unit as string | undefined;
 
   const assetFiles = brand.files.filter((f) => f.startsWith("assets/"));
   const svgAssets = assetFiles.filter((f) => f.endsWith(".svg"));
@@ -664,6 +666,116 @@ export default function BrandPage({
               </Card>
             )}
 
+            {/* Font Weights */}
+            {((tokens?.typography as Record<string, unknown>)?.weights as {value: string; count: number}[] | undefined?.length ?? 0) > 0 && (
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Font Weights</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-4">
+                    {((tokens?.typography as Record<string, unknown>)?.weights as {value: string; count: number}[] | undefined ?? []).map((w: {value: string; count: number}) => (
+                      <div key={w.value} className="text-center">
+                        <span className="text-2xl" style={{ fontWeight: Number(w.value) }}>Aa</span>
+                        <p className="font-mono text-xs text-muted-foreground">{w.value}</p>
+                        <p className="text-[10px] text-muted-foreground/60">{w.count}x</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Line Heights */}
+            {((tokens?.typography as Record<string, unknown>)?.line_heights as {value: string; count: number}[] | undefined?.length ?? 0) > 0 && (
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Line Heights</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-3">
+                    {((tokens?.typography as Record<string, unknown>)?.line_heights as {value: string; count: number}[] | undefined ?? []).slice(0, 8).map((lh: {value: string; count: number}) => (
+                      <div key={lh.value} className="rounded border px-3 py-2 text-center">
+                        <span className="font-mono text-sm">{lh.value}</span>
+                        <p className="text-[10px] text-muted-foreground">{lh.count}x</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Border Radii */}
+            {((tokens?.borders as Record<string, unknown>)?.radii as {value: string; count: number}[] | undefined?.length ?? 0) > 0 && (
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Border Radii</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap items-end gap-4">
+                    {((tokens?.borders as Record<string, unknown>)?.radii as {value: string; count: number}[] | undefined ?? []).map((r: {value: string; count: number}) => (
+                      <div key={r.value} className="flex flex-col items-center gap-2">
+                        <div
+                          className="size-16 border-2 border-foreground/20 bg-muted"
+                          style={{ borderRadius: r.value }}
+                        />
+                        <span className="font-mono text-[10px] text-muted-foreground">{r.value}</span>
+                        <span className="text-[10px] text-muted-foreground/60">{r.count}x</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Shadows */}
+            {(tokens?.shadows as {value: string; count: number}[] | undefined?.length ?? 0) > 0 && (
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Box Shadows</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-6">
+                    {(tokens?.shadows as {value: string; count: number}[] | undefined ?? []).map((s: {value: string; count: number}, i: number) => (
+                      <div key={i} className="flex flex-col items-center gap-2">
+                        <div
+                          className="size-20 rounded-lg bg-white"
+                          style={{ boxShadow: s.value }}
+                        />
+                        <span className="max-w-32 break-all font-mono text-[10px] text-muted-foreground">{s.value}</span>
+                        <span className="text-[10px] text-muted-foreground/60">{s.count}x</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Breakpoints */}
+            {(tokens?.breakpoints as number[] | undefined?.length ?? 0) > 0 && (
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Breakpoints</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {(tokens?.breakpoints as number[] | undefined ?? []).map((bp: number) => (
+                      <div key={bp} className="rounded border px-3 py-1.5 font-mono text-xs text-muted-foreground">
+                        {bp}px
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Transitions */}
+            {(tokens?.transitions as {value: string; count: number}[] | undefined?.length ?? 0) > 0 && (
+              <Card>
+                <CardHeader><CardTitle className="text-sm">Transitions</CardTitle></CardHeader>
+                <CardContent>
+                  <div className="space-y-1">
+                    {(tokens?.transitions as {value: string; count: number}[] | undefined ?? []).slice(0, 6).map((t: {value: string; count: number}, i: number) => (
+                      <div key={i} className="flex items-center gap-3 rounded border px-3 py-2">
+                        <span className="max-w-lg truncate font-mono text-xs text-muted-foreground">{t.value}</span>
+                        <Badge variant="outline" className="ml-auto text-[10px]">{t.count}x</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {brand.design_tokens_css && (
               <Card>
                 <CardHeader>
@@ -693,42 +805,67 @@ export default function BrandPage({
         {/* ── COMPONENTS ── */}
         <TabsContent value="components">
           <div className="space-y-4">
+            {/* Shared components */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Layers className="size-4" /> Detected Components
+                  <Layers className="size-4" /> Shared Components (React/shadcn)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-5">
-                  {["Navigation", "Hero", "Cards", "Footer", "Forms"].map((comp) => (
-                    <div
-                      key={comp}
-                      className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-4 text-center"
-                    >
-                      <LayoutTemplate className="size-6 text-muted-foreground" />
-                      <span className="text-sm font-medium">{comp}</span>
-                      <Badge variant="outline" className="text-[10px]">
-                        Detected
-                      </Badge>
-                    </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {[
+                    { name: "WestpacHeader", file: "westpac-header.tsx", desc: "Utility bar + nav with active state, logo, Sign in button, search", uses: "shadcn Button, Lucide Search" },
+                    { name: "WestpacFooter", file: "westpac-footer.tsx", desc: "Link columns with chevrons, social SVGs, legal text, Aboriginal artwork", uses: "shadcn Separator, Lucide ChevronRight" },
+                    { name: "WestpacHero", file: "westpac-hero.tsx", desc: "Red hero with serif heading, subtitle, CTA, phone mockup", uses: "Custom Westpac-bold font" },
+                    { name: "WestpacLogo", file: "westpac-logo.tsx", desc: "Extracted SVG W mark as React component", uses: "Inline SVG" },
+                    { name: "WestpacCategories", file: "westpac-categories.tsx", desc: "6-tile grid: Home loans, Bank accounts, Credit cards, Personal loans, Business, More", uses: "Lucide Home, Landmark, CreditCard, etc." },
+                    { name: "WestpacSections", file: "westpac-sections.tsx", desc: "Best Banking App, Security, Property Investment, Help, Quick Links, Legal", uses: "shadcn Card, Button, Separator" },
+                  ].map((comp) => (
+                    <Card key={comp.name} className="border-l-2 border-l-green-500">
+                      <CardContent className="p-4">
+                        <h3 className="mb-1 text-sm font-bold">{comp.name}</h3>
+                        <p className="mb-2 text-xs text-muted-foreground">{comp.desc}</p>
+                        <p className="font-mono text-[10px] text-muted-foreground/60">{comp.file}</p>
+                        <Badge variant="secondary" className="mt-2 text-[10px]">{comp.uses}</Badge>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
-            {brand.has_replica && (
-              <div className="rounded-lg border bg-muted/30 p-4 text-sm text-muted-foreground">
-                A working replica is available in the{" "}
-                <span className="font-medium text-foreground">Replica</span> tab.
-              </div>
-            )}
-
-            <div className="rounded-lg border border-dashed p-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                shadcn component replicas are coming in the next phase.
-              </p>
-            </div>
+            {/* Page replicas */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MonitorPlay className="size-4" /> Page Replicas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {[
+                    { name: "Homepage", path: `/brands/${brand.slug}/replica`, file: "replica/page.tsx" },
+                    { name: "Credit Cards", path: `/brands/${brand.slug}/replica/credit-cards`, file: "replica/credit-cards/page.tsx" },
+                    { name: "Contact Us", path: `/brands/${brand.slug}/replica/contact-us`, file: "replica/contact-us/page.tsx" },
+                  ].map((page) => (
+                    <div key={page.name} className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <p className="text-sm font-medium">{page.name}</p>
+                        <p className="font-mono text-[10px] text-muted-foreground">{page.file}</p>
+                      </div>
+                      <Link
+                        href={page.path}
+                        target="_blank"
+                        className="inline-flex h-7 items-center gap-1 rounded-lg bg-primary px-2.5 text-xs font-medium text-primary-foreground hover:bg-primary/80"
+                      >
+                        <ExternalLink className="size-3" /> Open
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
 
