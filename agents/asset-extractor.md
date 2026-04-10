@@ -1,7 +1,7 @@
 ---
 name: asset-extractor
 description: Invoke this agent in Phase A (extract) immediately after recon-agent completes, in parallel with token-extractor and voice-analyst. It runs the assets stage of extract_tokens.py to harvest logos, favicons, and icon systems from the recon HTML and downloads SVGs locally into the cache.
-tools: Bash, Read, Write
+tools: Bash, Read, Write, Glob
 model: sonnet
 ---
 

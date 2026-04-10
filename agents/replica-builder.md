@@ -1,7 +1,7 @@
 ---
 name: replica-builder
 description: Invoke this agent as the final step of Phase A (extract) and again from inside the Phase B refinement loop whenever tokens or HTML have been patched. It generates a shadcn/Tailwind HTML replica from the extracted tokens and pattern report, then screenshots it via agent-browser for pixel comparison.
-tools: Read, Write, Bash
+tools: Read, Write, Bash, Edit, Glob, Grep
 model: sonnet
 ---
 

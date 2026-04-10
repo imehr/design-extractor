@@ -333,7 +333,7 @@ export default function BrandPage({
   const [brand, setBrand] = useState<BrandDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [replicaPage, setReplicaPage] = useState("index.html");
+  const [replicaPage, setReplicaPage] = useState("replica");
   const [replicaWidth, setReplicaWidth] = useState(1440);
 
   useEffect(() => {
@@ -736,50 +736,84 @@ export default function BrandPage({
         <TabsContent value="replica">
           {brand.has_replica ? (
             <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap items-center gap-2">
-                {availableReplicaPages.length > 1 && (
-                  <>
-                    <span className="text-sm text-muted-foreground">Page:</span>
-                    <div className="flex gap-1.5">
-                      {availableReplicaPages.map((page) => (
-                        <Button
-                          key={page}
-                          size="sm"
-                          variant={replicaPage === page ? "default" : "outline"}
-                          onClick={() => setReplicaPage(page)}
-                        >
-                          {page.replace(".html", "")}
-                        </Button>
-                      ))}
-                    </div>
-                    <div className="mx-2 h-4 w-px bg-border" />
-                  </>
-                )}
-                <span className="text-sm text-muted-foreground">Width:</span>
-                <div className="flex gap-1.5">
-                  {BREAKPOINTS.map((bp) => (
-                    <Button
-                      key={bp.width}
-                      size="sm"
-                      variant={replicaWidth === bp.width ? "default" : "outline"}
-                      onClick={() => setReplicaWidth(bp.width)}
-                    >
-                      {bp.label}
-                    </Button>
+              {/* React replica pages */}
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  These pages are built with React, shadcn/ui, Tailwind, and Lucide icons using extracted content and downloaded assets.
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  {[
+                    { name: "Homepage", path: `/brands/${brand.slug}/replica`, desc: "Hero, category tiles, security, property investment, help" },
+                    { name: "Credit Cards", path: `/brands/${brand.slug}/replica/credit-cards`, desc: "Product cards, FAQ, feature grid" },
+                    { name: "Contact Us", path: `/brands/${brand.slug}/replica/contact-us`, desc: "Sidebar nav, support contacts, app steps" },
+                  ].map((page) => (
+                    <Card key={page.name}>
+                      <CardContent className="p-4">
+                        <h3 className="mb-1 text-sm font-semibold">{page.name}</h3>
+                        <p className="mb-3 text-xs text-muted-foreground">{page.desc}</p>
+                        <div className="flex gap-2">
+                          <Link
+                            href={page.path}
+                            target="_blank"
+                            className="inline-flex h-7 items-center gap-1.5 rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/80"
+                          >
+                            <ExternalLink className="size-3" />
+                            Open page
+                          </Link>
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
                 </div>
               </div>
-              <div className="flex justify-center overflow-auto rounded-lg border bg-muted/30 p-4 shadow-inner">
-                <div
-                  className="overflow-hidden rounded-md border bg-white shadow-md transition-all"
-                  style={{ width: `${replicaWidth}px`, maxWidth: "100%" }}
-                >
-                  <iframe
-                    key={`${brand.slug}-${replicaPage}`}
-                    src={`/api/brands/${brand.slug}/file/replica/${replicaPage}`}
-                    title={`${brand.slug} – ${replicaPage}`}
-                    className="h-[700px] w-full border-0"
-                  />
+
+              {/* Embedded preview */}
+              <div className="mt-4">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Preview:</span>
+                  <div className="flex gap-1.5">
+                    {[
+                      { label: "Home", path: "replica" },
+                      { label: "Credit Cards", path: "replica/credit-cards" },
+                      { label: "Contact Us", path: "replica/contact-us" },
+                    ].map((p) => (
+                      <Button
+                        key={p.label}
+                        size="sm"
+                        variant={replicaPage === p.path ? "default" : "outline"}
+                        onClick={() => setReplicaPage(p.path)}
+                      >
+                        {p.label}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="mx-2 h-4 w-px bg-border" />
+                  <span className="text-sm text-muted-foreground">Width:</span>
+                  <div className="flex gap-1.5">
+                    {BREAKPOINTS.map((bp) => (
+                      <Button
+                        key={bp.width}
+                        size="sm"
+                        variant={replicaWidth === bp.width ? "default" : "outline"}
+                        onClick={() => setReplicaWidth(bp.width)}
+                      >
+                        {bp.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex justify-center overflow-auto rounded-lg border bg-muted/30 p-4 shadow-inner">
+                  <div
+                    className="overflow-hidden rounded-md border bg-white shadow-md transition-all"
+                    style={{ width: `${replicaWidth}px`, maxWidth: "100%" }}
+                  >
+                    <iframe
+                      key={`${brand.slug}-${replicaPage}`}
+                      src={`/brands/${brand.slug}/${replicaPage}`}
+                      title={`${brand.slug} replica`}
+                      className="h-[700px] w-full border-0"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
