@@ -1,0 +1,60 @@
+{
+  "layer": "pixel_comparison",
+  "components": {
+    "desktop-full": {
+      "criterion_id": "V-PIX-XX",
+      "status": "MISSING",
+      "reason": "No replica found at /Users/mehran/.claude/design-library/cache/westpac-com-au/screenshots/iterations/1/desktop-full.png",
+      "threshold": 0.85
+    },
+    "tablet-full": {
+      "criterion_id": "V-PIX-XX",
+      "status": "MISSING",
+      "reason": "No replica found at /Users/mehran/.claude/design-library/cache/westpac-com-au/screenshots/iterations/1/tablet-full.png",
+      "threshold": 0.85
+    },
+    "mobile-full": {
+      "criterion_id": "V-PIX-XX",
+      "status": "MISSING",
+      "reason": "No replica found at /Users/mehran/.claude/design-library/cache/westpac-com-au/screenshots/iterations/1/mobile-full.png",
+      "threshold": 0.85
+    },
+    "reference-nav": {
+      "criterion_id": "V-PIX-XX",
+      "status": "MISSING",
+      "reason": "No replica found at /Users/mehran/.claude/design-library/cache/westpac-com-au/screenshots/iterations/1/reference-nav.png",
+      "threshold": 0.85
+    },
+    "reference-card": {
+      "criterion_id": "V-PIX-XX",
+      "status": "MISSING",
+      "reason": "No replica found at /Users/mehran/.claude/design-library/cache/westpac-com-au/screenshots/iterations/1/reference-card.png",
+      "threshold": 0.85
+    },
+    "reference-footer": {
+      "criterion_id": "V-PIX-XX",
+      "status": "MISSING",
+      "reason": "No replica found at /Users/mehran/.claude/design-library/cache/westpac-com-au/screenshots/iterations/1/reference-footer.png",
+      "threshold": 0.85
+    },
+    "reference-button-set": {
+      "criterion_id": "V-PIX-XX",
+      "status": "MISSING",
+      "reason": "No replica found at /Users/mehran/.claude/design-library/cache/westpac-com-au/screenshots/iterations/1/reference-button-set.png",
+      "threshold": 0.85
+    }
+  },
+  "summary": {
+    "total": 7,
+    "compared": 0,
+    "passed": 0,
+    "failed": 0,
+    "missing": 7,
+    "average_similarity": 0.0
+  },
+  "gate_5_layer_1_verdict": {
+    "status": "FAIL",
+    "average_similarity": 0.0,
+    "required_threshold": 0.83
+  }
+}

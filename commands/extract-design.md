@@ -1,6 +1,6 @@
 ---
 name: extract
-description: Extract a complete design system from a URL — tokens, patterns, voice, and an iteratively-refined shadcn/Tailwind HTML replica that converges to >=0.85 visual similarity. Produces a per-brand DESIGN.md and an installable per-brand SKILL.md in ~/.claude/design-library/.
+description: Extract a complete design system from a URL — DOM content, assets, fonts, and React/shadcn component replicas validated by screenshot comparison. Produces DESIGN.md, SKILL.md, and installable brand components.
 argument-hint: <url>
 ---
 
@@ -10,156 +10,164 @@ Extract a complete design system from a URL and publish it to the local design l
 
 The user-supplied URL is: $ARGUMENTS
 
+## Core principles (learned from production use)
+
+1. **Extract, don't imagine** — every text string, link, icon, and image comes from the actual DOM, never fabricated from screenshots
+2. **Download ALL assets** — images, fonts, SVGs, background images. Verify downloads are actual files, not HTML error pages
+3. **Build with React/shadcn** — replicas are Next.js pages with shadcn/ui, Tailwind, and Lucide React icons. Never standalone HTML files
+4. **Minimum 4-5 pages** — one page cannot capture the design essence. Extract home, product, contact, and 1-2 more
+5. **Screenshot-validate every component** — capture original and replica at same viewport, compare, fix differences, repeat
+6. **No emojis** — use SVG icons from Lucide React or extracted from the site. Never emoji characters
+7. **No stale data** — when rebuilding, immediately update or remove old scores. Every visible metric must reflect current state
+8. **Self-improving** — every issue found during extraction must update agent/skill files, not just be noted
+
 ## Setup
 
-Derive the slug from the URL by stripping the protocol and path, then replacing dots with hyphens:
-- `https://linear.app` -> `linear-app`
-- `https://stripe.com/pricing` -> `stripe-com`
+Derive the slug from the URL:
+- `https://www.westpac.com.au` → `westpac-com-au`
+- `https://linear.app` → `linear-app`
 
-Set the following variables for all subsequent agent dispatches:
-- `url` = the full URL as provided
+Variables:
+- `url` = the full URL
 - `slug` = the derived slug
 - `cache_dir` = `~/.claude/design-library/cache/{slug}`
-- `PLUGIN_DIR` = the directory containing this plugin (the parent of `commands/`)
+- `PLUGIN_DIR` = the plugin directory
+- `UI_DIR` = `{PLUGIN_DIR}/ui`
 
-Create the cache directory:
+Create directories:
 ```bash
-mkdir -p {cache_dir}/{recon,screenshots/reference,screenshots/iterations,replica,assets,validation,patches,skill,skill/references}
+mkdir -p {cache_dir}/{dom-extraction,screenshots/reference,screenshots/comparison,assets/images,assets/fonts,assets/social-icons,validation}
+mkdir -p {UI_DIR}/public/brands/{slug}/{fonts,social}
+mkdir -p {UI_DIR}/components/brands/{slug}
+mkdir -p {UI_DIR}/app/brands/{slug}/replica
 ```
 
-## Phase A — Extract
+## Phase A — Multi-page DOM extraction
 
-### Step 1: Reconnaissance (sequential — gates everything else)
+### Step 1: Identify key pages (4-5 minimum)
 
-Dispatch `agents/recon-agent.md` with:
-- `url` and `cache_dir`
+Navigate to the homepage with agent-browser. Extract all internal links. Classify into page types:
+- Homepage (required)
+- Product/service listing (required)
+- Product/service detail
+- Contact/support (required)
+- About/info
+- Any page with forms, tables, or unique layouts
 
-Wait for completion. If recon-output.json contains `"error"`, report it to the user and ask whether to continue with degraded extraction or abort.
+### Step 2: Extract DOM from each page
 
-### Step 2: Parallel extraction (fan-out)
+For each page, dispatch `agents/dom-extractor.md` which uses agent-browser eval to extract:
+- Header/nav: utility links, nav links, logo SVG
+- Main content: headings, links, images, text
+- Footer: links, social SVGs, legal text
+- Fonts: @font-face declarations with source URLs
+- Background images: CSS background-image URLs
+- Computed styles: key measurements (heights, font sizes, colors, padding)
 
-Dispatch these three agents in parallel using the Agent tool with `run_in_background: true`:
+Output: `{cache_dir}/dom-extraction/{page-slug}.json` + reference screenshot per page
 
-1. **token-extractor** — `agents/token-extractor.md` with `url`, `cache_dir`
-2. **asset-extractor** — `agents/asset-extractor.md` with `url`, `cache_dir`
-3. **voice-analyst** — `agents/voice-analyst.md` with `url`, `cache_dir`
+### Step 3: Download ALL assets
 
-Wait for all three to complete. Check each output file for errors. Report any failures but continue — partial data is acceptable.
+For each unique asset found across all pages:
+- Images: download to `{UI_DIR}/public/brands/{slug}/`
+- Fonts: resolve relative URLs against stylesheet URL, download to `{UI_DIR}/public/brands/{slug}/fonts/`
+- Social SVGs: extract from footer DOM, save to `{UI_DIR}/public/brands/{slug}/social/`
+- Background images: download to `{UI_DIR}/public/brands/{slug}/`
+- Logo SVG: extract inline from header DOM
 
-### Step 2b: Logo verification (blocking check)
+**Verify every download**: run `file` command to confirm it's an actual asset, not an HTML error page.
 
-After the parallel extraction completes, verify at least one logo SVG or PNG was saved to disk:
+### Step 4: Register fonts
 
+Add `@font-face` declarations to `{UI_DIR}/app/globals.css` for each custom font downloaded.
+
+## Phase B — React/shadcn component replicas
+
+### Step 5: Build shared components
+
+Create shared brand components at `{UI_DIR}/components/brands/{slug}/`:
+- `{brand}-logo.tsx` — SVG logo as React component
+- `{brand}-header.tsx` — using shadcn NavigationMenu, Button, Lucide Search icon. Include active page state with red underline. Full-width bars.
+- `{brand}-footer.tsx` — using extracted link columns, real social SVGs, legal text, any artwork. Separator component.
+
+Every text string in these components must come from the DOM extraction JSON.
+
+### Step 6: Build per-page replicas
+
+For each extracted page, create a Next.js page at `{UI_DIR}/app/brands/{slug}/replica/{page-slug}/page.tsx`:
+- Import shared header/footer components
+- Build page-specific sections using extracted headings, text, links, images
+- Use shadcn Card, Button, Input, Separator, Badge, Tabs where appropriate
+- Use Lucide React icons for generic icons
+- Use downloaded images via `/brands/{slug}/filename` paths
+- Use real custom fonts via the fontFamily CSS property
+
+### Step 7: TypeScript verification
 ```bash
-ls {cache_dir}/assets/logo-*.svg {cache_dir}/assets/logo-*.png 2>/dev/null | head -5
+cd {UI_DIR} && npx tsc --noEmit
 ```
+Fix any type errors before proceeding.
 
-If NO logo files exist:
-1. Report the failure to the user: "BLOCKING: No brand logo was extracted. The replica will use a placeholder."
-2. Read `{cache_dir}/assets-output.json` and check the `saved_assets` field.
-3. If `saved_assets.svg_logos` is 0 despite logos being detected, the SVG extraction failed — this is a known issue with SVG tagName handling.
-4. Ask the user whether to continue with a degraded replica or abort.
+## Phase C — Screenshot validation
 
-A missing logo is the most visible fidelity failure in the final output.
+### Step 8: Compare each page
 
-### Step 3: Pattern analysis (sequential — needs tokens)
+For each replicated page:
 
-Dispatch `agents/pattern-analyst.md` with `cache_dir`. It reads `tokens-output.json` and reference screenshots.
+1. Navigate agent-browser to the original URL, screenshot the viewport
+2. Navigate agent-browser to the replica URL (localhost:3000/brands/{slug}/replica/...), screenshot the viewport
+3. Compare the two screenshots visually
+4. List every difference with exact values (wrong color, wrong spacing, wrong font, missing section, wrong content)
+5. Fix each difference in the React component
+6. Re-screenshot and re-compare
+7. Repeat until the screenshots match
 
-Wait for completion. Expected outputs: `patterns.json` and `patterns-llm.json`.
+### Step 9: Component-level comparison
 
-### Step 4: Replica generation (sequential — needs all Phase A data)
+For key components (header, footer, hero):
+1. Scroll the component into view on the original site, screenshot
+2. Scroll the same component into view on the replica, screenshot
+3. Compare side-by-side
+4. Fix differences
 
-Dispatch `agents/replica-builder.md` with `cache_dir`. It reads tokens, patterns, and voice data to generate `replica/index.html`, then screenshots it.
+## Phase D — Publish
 
-Wait for completion. Expected outputs: `replica/index.html` and `screenshots/iterations/1/*.png`.
+### Step 10: Extract tokens from successful replicas
 
-## Phase B — Evaluate and refine (max 5 iterations)
+Now that the replicas are visually accurate, extract design tokens FROM them:
+- Color palette (from the extracted computed styles)
+- Typography scale
+- Spacing values
+- Border radii
+- Shadows
+- Motion/transitions
 
-Initialize: `iteration = 1`, `prev_score = 0.0`
+### Step 11: Generate DESIGN.md
 
-### Loop
+Dispatch `agents/documentarian.md` to produce the canonical design system document from extracted tokens, patterns, voice analysis, and validated replica data.
 
-While `iteration <= 5`:
+### Step 12: Generate SKILL.md
 
-#### B.1 — Score the current replica
+Dispatch `agents/skill-packager.md` to produce the installable per-brand skill with positive/negative triggers.
 
-Run pixel comparison:
-```bash
-python3 $PLUGIN_DIR/scripts/pixel_compare.py \
-  --original-dir {cache_dir}/screenshots/reference/ \
-  --replica-dir {cache_dir}/screenshots/iterations/{iteration}/ \
-  --output-json {cache_dir}/pixel_scores.json
-```
+### Step 13: Register in library
 
-Run weighted scoring:
-```bash
-python3 $PLUGIN_DIR/scripts/score_replica.py \
-  --reference-dir {cache_dir}/screenshots/reference/ \
-  --replica-dir {cache_dir}/screenshots/iterations/{iteration}/ \
-  --output {cache_dir}/iteration_scores.json
-```
+Update `~/.claude/design-library/index.json` and write `metadata.json` with:
+- Score: null (pending proper evaluation) or computed from screenshot comparison
+- Confidence: based on extraction quality
+- Pages extracted/replicated counts
+- replica_type: "react_shadcn"
 
-Read `iteration_scores.json`. Extract `overall_score` and `blocking_failures`.
+### Step 14: Update brand detail page
 
-#### B.2 — Check convergence
-
-If `overall_score >= 0.85 AND blocking_failures == []`:
-- Log: "Converged at iteration {iteration} with score {overall_score}"
-- Break the loop.
-
-If `iteration > 1 AND (overall_score - prev_score) < 0.01`:
-- Log: "Plateau detected at iteration {iteration} (delta < 0.01). Early exit."
-- Break the loop.
-
-Update `prev_score = overall_score`.
-
-#### B.3 — Visual critique
-
-Dispatch `agents/visual-critic.md` with `cache_dir` and `iteration`.
-
-Wait for completion. Expected output: `llm_critique.json`.
-
-#### B.4 — Refinement
-
-Dispatch `agents/refinement-agent.md` with `cache_dir`, `iteration`, and `next_iteration = iteration + 1`.
-
-Wait for completion. Expected outputs: updated `replica/index.html`, new screenshots at `screenshots/iterations/{iteration+1}/`, patch log at `patches/{iteration}.json`.
-
-Increment `iteration`.
-
-### End of loop
-
-Append iteration results to `{cache_dir}/validation/iterations.jsonl` (one JSON object per line per iteration).
-
-Report the final score and iteration count to the user.
-
-## Phase C — Publish
-
-### Step 6: Documentation
-
-Dispatch `agents/documentarian.md` with `cache_dir`, `url`, `slug`.
-
-Wait for completion. Expected output: `{cache_dir}/DESIGN.md`.
-
-### Step 7: Skill packaging
-
-Dispatch `agents/skill-packager.md` with `cache_dir`, `url`, `slug`.
-
-Wait for completion. Expected outputs: `{cache_dir}/skill/SKILL.md` and `{cache_dir}/skill/references/*.{json,md,html}`.
-
-### Step 8: Library registration
-
-Dispatch `agents/librarian.md` with `cache_dir`, `slug`.
-
-Wait for completion. Expected: brand entry at `~/.claude/design-library/brands/{slug}/`, updated `index.json`.
+Ensure the Replica tab at `/brands/{slug}` links to the React pages, not HTML iframes. Verify the Overview tab shows current tokens. Remove any stale scores.
 
 ## Completion
 
-Report to the user:
+Report:
 1. Brand slug and library path
-2. Final overall score and iteration count
-3. Any degraded signals (confidence < HIGH)
-4. Next steps: `/design-extractor:browse` to view in the library UI, `/design-extractor:apply {slug}` to install the brand's SKILL.md
-
-If the final score is below 0.85, note the confidence level and suggest the user inspect the replica manually.
+2. Pages extracted and replicated
+3. Components built (shared + per-page)
+4. Assets downloaded (images, fonts, SVGs)
+5. Any degraded signals or missing content
+6. Links to the replica pages at localhost:3000
