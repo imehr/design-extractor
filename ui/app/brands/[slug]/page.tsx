@@ -866,11 +866,17 @@ export default function BrandPage({
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {[
-                    { name: "Homepage", path: `/brands/${brand.slug}/replica`, file: "replica/page.tsx" },
-                    { name: "Credit Cards", path: `/brands/${brand.slug}/replica/credit-cards`, file: "replica/credit-cards/page.tsx" },
-                    { name: "Contact Us", path: `/brands/${brand.slug}/replica/contact-us`, file: "replica/contact-us/page.tsx" },
-                  ].map((page) => (
+                  {(() => {
+                    const replicaFiles = (brand.localFiles ?? []).filter((f: string) => f.includes("replica/") && f.endsWith("page.tsx"));
+                    return replicaFiles.map((f: string) => {
+                      const parts = f.split("/replica/");
+                      const sub = parts[1]?.replace("/page.tsx", "") || "";
+                      const isHome = sub === "page.tsx" || sub === "";
+                      const slug = isHome ? "" : sub;
+                      const name = isHome ? "Homepage" : slug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+                      return { name, path: `/brands/${brand.slug}/replica${slug ? `/${slug}` : ""}`, file: `replica/${slug ? slug + "/" : ""}page.tsx` };
+                    });
+                  })().map((page) => (
                     <div key={page.name} className="flex items-center justify-between rounded-lg border p-3">
                       <div>
                         <p className="text-sm font-medium">{page.name}</p>
@@ -901,15 +907,20 @@ export default function BrandPage({
                   These pages are built with React, shadcn/ui, Tailwind, and Lucide icons using extracted content and downloaded assets.
                 </p>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  {[
-                    { name: "Homepage", path: `/brands/${brand.slug}/replica`, desc: "Hero, category tiles, security, property investment, help" },
-                    { name: "Credit Cards", path: `/brands/${brand.slug}/replica/credit-cards`, desc: "Product cards, FAQ, feature grid" },
-                    { name: "Contact Us", path: `/brands/${brand.slug}/replica/contact-us`, desc: "Sidebar nav, support contacts, app steps" },
-                  ].map((page) => (
+                  {(() => {
+                    const replicaFiles = (brand.localFiles ?? []).filter((f: string) => f.includes("replica/") && f.endsWith("page.tsx"));
+                    return replicaFiles.map((f: string) => {
+                      const parts = f.split("/replica/");
+                      const sub = parts[1]?.replace("/page.tsx", "") || "";
+                      const isHome = sub === "page.tsx" || sub === "";
+                      const slug = isHome ? "" : sub;
+                      const name = isHome ? "Homepage" : slug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+                      return { name, path: `/brands/${brand.slug}/replica${slug ? `/${slug}` : ""}` };
+                    });
+                  })().map((page) => (
                     <Card key={page.name}>
                       <CardContent className="p-4">
                         <h3 className="mb-1 text-sm font-semibold">{page.name}</h3>
-                        <p className="mb-3 text-xs text-muted-foreground">{page.desc}</p>
                         <div className="flex gap-2">
                           <Link
                             href={page.path}
@@ -930,12 +941,18 @@ export default function BrandPage({
               <div className="mt-4">
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <span className="text-sm text-muted-foreground">Preview:</span>
-                  <div className="flex gap-1.5">
-                    {[
-                      { label: "Home", path: "replica" },
-                      { label: "Credit Cards", path: "replica/credit-cards" },
-                      { label: "Contact Us", path: "replica/contact-us" },
-                    ].map((p) => (
+                  <div className="flex flex-wrap gap-1.5">
+                    {(() => {
+                      const replicaFiles = (brand.localFiles ?? []).filter((f: string) => f.includes("replica/") && f.endsWith("page.tsx"));
+                      return replicaFiles.map((f: string) => {
+                        const parts = f.split("/replica/");
+                        const sub = parts[1]?.replace("/page.tsx", "") || "";
+                        const isHome = sub === "page.tsx" || sub === "";
+                        const slug = isHome ? "" : sub;
+                        const label = isHome ? "Home" : slug.split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+                        return { label, path: `replica${slug ? `/${slug}` : ""}` };
+                      });
+                    })().map((p) => (
                       <Button
                         key={p.label}
                         size="sm"
@@ -1157,57 +1174,59 @@ export default function BrandPage({
                 Page-by-page comparison
               </h3>
               <div className="space-y-6">
-                {[
-                  { name: "Homepage", slug: "homepage", preview: `/brands/${brand.slug}/replica` },
-                  { name: "Credit Cards", slug: "credit-cards", preview: `/brands/${brand.slug}/replica/credit-cards` },
-                  { name: "Contact Us", slug: "contact-us", preview: `/brands/${brand.slug}/replica/contact-us` },
-                  { name: "Home Loans", slug: "home-loans", preview: `/brands/${brand.slug}/replica/home-loans` },
-                  { name: "Bank Accounts", slug: "bank-accounts", preview: `/brands/${brand.slug}/replica/bank-accounts` },
-                ].map((page) => {
+                {(() => {
                   const vp = (brand.validation_report as Record<string, unknown>)?.pixel_comparison_viewport as Record<string, Record<string, number>> | undefined;
-                  const score = vp?.[page.slug]?.close ?? 0;
-                  return (
-                    <div key={page.slug} className="rounded-xl border border-[#d2d2d7]/40 p-5">
-                      <div className="mb-4 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <h4 className="text-[17px] font-semibold text-[#1d1d1f]">{page.name}</h4>
-                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${score >= 70 ? "bg-green-100 text-green-800" : score >= 50 ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"}`}>
-                            {score}%
-                          </span>
+                  if (!vp) return null;
+                  return Object.entries(vp).map(([slug, data]) => {
+                    const score = data?.close ?? 0;
+                    const name = slug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+                    const preview = slug === "homepage" ? `/brands/${brand.slug}/replica` : `/brands/${brand.slug}/replica/${slug}`;
+                    // Try multiple screenshot path patterns
+                    const origImg = `/api/brands/${brand.slug}/file/screenshots/harness/orig-${slug}.png`;
+                    const replImg = `/api/brands/${brand.slug}/file/screenshots/harness/repl-${slug}.png`;
+                    return (
+                      <div key={slug} className="rounded-xl border border-[#d2d2d7]/40 p-5">
+                        <div className="mb-4 flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <h4 className="text-[17px] font-semibold text-[#1d1d1f]">{name}</h4>
+                            <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${score >= 70 ? "bg-green-100 text-green-800" : score >= 50 ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"}`}>
+                              {score}%
+                            </span>
+                          </div>
+                          <Link
+                            href={preview}
+                            target="_blank"
+                            className="text-[13px] text-[#0071e3] hover:underline"
+                          >
+                            Open preview
+                          </Link>
                         </div>
-                        <Link
-                          href={page.preview}
-                          target="_blank"
-                          className="text-[13px] text-[#0071e3] hover:underline"
-                        >
-                          Open preview
-                        </Link>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Original (1280x720)</p>
-                          <div className="overflow-hidden rounded-lg border bg-[#f5f5f7]">
-                            <img
-                              src={`/api/brands/${brand.slug}/file/dom-extraction/${page.slug}-screenshot.png`}
-                              alt={`Original ${page.name}`}
-                              className="w-full"
-                            />
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Original (1280x720)</p>
+                            <div className="overflow-hidden rounded-lg border bg-[#f5f5f7]">
+                              <img
+                                src={origImg}
+                                alt={`Original ${name}`}
+                                className="w-full"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Preview (1280x720)</p>
+                            <div className="overflow-hidden rounded-lg border bg-[#f5f5f7]">
+                              <img
+                                src={replImg}
+                                alt={`Preview ${name}`}
+                                className="w-full"
+                              />
+                            </div>
                           </div>
                         </div>
-                        <div>
-                          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Preview (1280x720)</p>
-                          <div className="overflow-hidden rounded-lg border bg-[#f5f5f7]">
-                            <img
-                              src={`/api/brands/${brand.slug}/file/dom-extraction/${page.slug}-replica.png`}
-                              alt={`Preview ${page.name}`}
-                              className="w-full"
-                            />
-                          </div>
-                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  });
+                })()}
               </div>
             </div>
 
