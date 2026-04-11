@@ -1196,12 +1196,11 @@ export default function BrandPage({
                         </div>
                         <div>
                           <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Preview (1280x720)</p>
-                          <div className="aspect-video overflow-hidden rounded-lg border bg-[#f5f5f7]">
-                            <iframe
-                              src={page.preview}
-                              title={`Preview ${page.name}`}
-                              className="border-0"
-                              style={{ width: "1280px", height: "720px", transform: "scale(0.5)", transformOrigin: "top left" }}
+                          <div className="overflow-hidden rounded-lg border bg-[#f5f5f7]">
+                            <img
+                              src={`/api/brands/${brand.slug}/file/dom-extraction/${page.slug}-replica.png`}
+                              alt={`Preview ${page.name}`}
+                              className="w-full"
                             />
                           </div>
                         </div>
