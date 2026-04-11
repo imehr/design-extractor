@@ -334,8 +334,8 @@ export default function BrandPage({
   const [brand, setBrand] = useState<BrandDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [replicaPage, setReplicaPage] = useState("replica");
-  const [replicaWidth, setReplicaWidth] = useState(1440);
+  const [replicaPage, setPreviewPage] = useState("replica");
+  const [replicaWidth, setPreviewWidth] = useState(1440);
 
   useEffect(() => {
     fetch(`/api/brands/${slug}`)
@@ -392,7 +392,7 @@ export default function BrandPage({
 
   const logoFile = svgAssets.find((f) => f.includes("logo"));
 
-  const availableReplicaPages = REPLICA_PAGES.filter((p) =>
+  const availablePreviewPages = REPLICA_PAGES.filter((p) =>
     brand.files.some((f) => f === `replica/${p}`)
   );
 
@@ -463,7 +463,7 @@ export default function BrandPage({
           <TabsTrigger value="design-md">DESIGN.md</TabsTrigger>
           <TabsTrigger value="tokens">Tokens</TabsTrigger>
           <TabsTrigger value="components">Components</TabsTrigger>
-          <TabsTrigger value="replica">Replica</TabsTrigger>
+          <TabsTrigger value="replica">Preview</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="skill">Skill</TabsTrigger>
           <TabsTrigger value="validation">Validation</TabsTrigger>
@@ -841,7 +841,7 @@ export default function BrandPage({
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MonitorPlay className="size-4" /> Page Replicas
+                  <MonitorPlay className="size-4" /> Page Previews
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -920,7 +920,7 @@ export default function BrandPage({
                         key={p.label}
                         size="sm"
                         variant={replicaPage === p.path ? "default" : "outline"}
-                        onClick={() => setReplicaPage(p.path)}
+                        onClick={() => setPreviewPage(p.path)}
                       >
                         {p.label}
                       </Button>
@@ -934,7 +934,7 @@ export default function BrandPage({
                         key={bp.width}
                         size="sm"
                         variant={replicaWidth === bp.width ? "default" : "outline"}
-                        onClick={() => setReplicaWidth(bp.width)}
+                        onClick={() => setPreviewWidth(bp.width)}
                       >
                         {bp.label}
                       </Button>
@@ -1183,7 +1183,7 @@ export default function BrandPage({
                         <th className="pb-2">Page</th>
                         <th className="pb-2">DOM Extracted</th>
                         <th className="pb-2">Assets Downloaded</th>
-                        <th className="pb-2">React Replica</th>
+                        <th className="pb-2">React Preview</th>
                         <th className="pb-2">Screenshot Compared</th>
                         <th className="pb-2">Status</th>
                       </tr>
@@ -1197,10 +1197,10 @@ export default function BrandPage({
                         { page: "Bank Accounts", slug: "bank-accounts", replicaPath: "replica/bank-accounts/page.tsx" },
                       ].map((p) => {
                         const hasDom = brand.files.some((f: string) => f.includes("dom-extraction") && f.includes(p.slug));
-                        const hasReplica = (brand.localFiles ?? []).some((f: string) => f.includes(p.replicaPath));
+                        const hasPreview = (brand.localFiles ?? []).some((f: string) => f.includes(p.replicaPath));
                         const hasAssets = brand.files.filter((f: string) => f.startsWith("assets/")).length > 5;
-                        const status = hasReplica ? "Replicated" : hasDom ? "Extracted only" : "Pending";
-                        return { page: p.page, dom: hasDom, assets: hasAssets, replica: hasReplica, compared: hasReplica, status };
+                        const status = hasPreview ? "Previewted" : hasDom ? "Extracted only" : "Pending";
+                        return { page: p.page, dom: hasDom, assets: hasAssets, replica: hasPreview, compared: hasPreview, status };
                       }).map((row) => (
                         <tr key={row.page} className="border-b">
                           <td className="py-2 font-medium">{row.page}</td>

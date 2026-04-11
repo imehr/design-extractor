@@ -1,0 +1,55 @@
+# Quality Reference: DESIGN.md Structure
+
+This is the target quality bar for every DESIGN.md output.
+Based on the Apple design system documentation from getdesign.md.
+
+## Required Sections (9 minimum)
+
+### 1. Visual Theme & Atmosphere
+- Narrative description of the brand's design philosophy
+- Key characteristics as bullet list
+- NOT a token dump -- this is editorial writing about what makes the design distinctive
+
+### 2. Color Palette & Roles
+- Organized by role: Primary, Interactive, Text, Surface, Button States, Shadows
+- Each color: name, hex, CSS variable if any, specific usage context
+- NOT just a flat list of hex values
+
+### 3. Typography Rules
+- Font family with fallback stacks
+- Full hierarchy TABLE: Role | Font | Size | Weight | Line Height | Letter Spacing | Notes
+- Principles section explaining the typography philosophy
+
+### 4. Component Stylings
+- Buttons: every variant with exact CSS (bg, text, padding, radius, border, font, hover, active, focus)
+- Cards & Containers: bg, border, radius, shadow, content alignment, hover
+- Navigation: bg, height, text style, active state, logo, mobile behavior
+- Image Treatment: how images are handled (solid bg, full-bleed, rounded corners)
+- Distinctive Components: brand-specific patterns (hero module, product grid, comparison strip)
+
+### 5. Layout Principles
+- Spacing System: base unit, full scale
+- Grid & Container: max width, column layout, gutter
+- Whitespace Philosophy: how space is used intentionally
+- Border Radius Scale: micro through full pill
+
+### 6. Depth & Elevation
+- Table: Level | Treatment | Use
+- Shadow Philosophy: when and why shadows are used
+- Decorative Depth: glass effects, color transitions, product shadows
+
+### 7. Do's and Don'ts
+- Concrete rules with reasoning
+- "Do use X for Y" / "Don't use X because Z"
+- At least 8 Do's and 8 Don'ts
+
+### 8. Responsive Behavior
+- Breakpoints TABLE: Name | Width | Key Changes
+- Touch Targets: minimum sizes
+- Collapsing Strategy: how components adapt
+- Image Behavior: scaling, cropping rules
+
+### 9. Agent Prompt Guide
+- Quick Color Reference: list of key colors with roles
+- Example Component Prompts: 4-5 concrete prompts showing exact values
+- Iteration Guide: numbered rules for consistency checking
