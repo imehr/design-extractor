@@ -18,10 +18,11 @@ export default function BankAccountsPage() {
     <div className="min-h-screen bg-white" style={{ fontFamily: '-apple-system, system-ui, "Segoe UI", Roboto, sans-serif', fontSize: 16, color: "#181B25" }}>
       <WestpacHeader activePage="Personal" />
 
-      {/* Hero: split layout - red left + phone image right */}
-      <div className="w-full">
-        <div className="mx-auto flex max-w-[1280px]">
-          <div className="flex-1 bg-[#DA1710] px-6 py-10">
+      {/* Hero: full-width image with red overlay left */}
+      <div className="relative w-full" style={{ minHeight: 300 }}>
+        <img src="/brands/westpac/ba-everyday.png" alt="" className="absolute inset-0 size-full object-cover" />
+        <div className="relative mx-auto max-w-[1280px] px-6 py-10">
+          <div className="max-w-[500px]">
             <div className="mb-2 flex items-center gap-1 text-sm text-white/80">
               <Link href="#" className="text-white/80 hover:text-white">Personal</Link>
               <ChevronRight className="size-3 text-white/60" />
@@ -33,9 +34,6 @@ export default function BankAccountsPage() {
             <p className="mb-5 max-w-[400px] text-sm leading-6 text-white/90">
               From managing to reaching your money goals, it takes a little Westpac. Get started — browse our range of bank accounts.
             </p>
-          </div>
-          <div className="hidden w-[50%] shrink-0 md:block">
-            <img src="/brands/westpac/ba-app.png" alt="Bank accounts" className="size-full object-cover" style={{ minHeight: 280 }} />
           </div>
         </div>
       </div>
