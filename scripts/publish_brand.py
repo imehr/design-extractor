@@ -494,7 +494,18 @@ def main():
             f.write(skill_md)
         print(f"  SKILL.md: generated ({len(skill_md)} bytes)")
 
-    # 5. Update metadata
+    # 5. Read validation report for scores
+    report_path = brands_dir / "validation" / "report.json"
+    if report_path.exists():
+        with open(report_path) as f:
+            report = json.load(f)
+        avg_score = report.get("viewport_avg", 0)
+        if avg_score:
+            metadata["overall_score"] = round(avg_score / 100, 3)  # Store as 0-1
+            metadata["validation_status"] = report.get("overall_status", "in_progress")
+        print(f"  Validation score: {avg_score}%")
+
+    # 6. Update metadata
     metadata["pages_extracted"] = len(measurements)
     metadata["has_design_tokens"] = True
     metadata["has_design_md"] = True

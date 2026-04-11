@@ -32,8 +32,17 @@ export async function GET(
       for (const entry of entries) {
         const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
         if (entry.name.startsWith(".")) continue;
-        if (entry.isDirectory()) {
-          result.push(...(await walk(path.join(dir, entry.name), rel)));
+        const fullPath = path.join(dir, entry.name);
+        // Follow symlinks: check if entry is a directory OR a symlink pointing to a directory
+        let isDir = entry.isDirectory();
+        if (!isDir && entry.isSymbolicLink()) {
+          try {
+            const stat = await fs.stat(fullPath);
+            isDir = stat.isDirectory();
+          } catch { /* broken symlink */ }
+        }
+        if (isDir) {
+          result.push(...(await walk(fullPath, rel)));
         } else {
           result.push(rel);
         }
