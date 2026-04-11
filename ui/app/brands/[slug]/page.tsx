@@ -472,66 +472,70 @@ export default function BrandPage({
 
         {/* ── OVERVIEW ── */}
         <TabsContent value="overview">
-          <div className="space-y-6">
-            <Card>
-              <CardContent className="pt-4">
-                <div className="mb-3 flex items-center gap-3">
-                  <ScoreBadge score={brand.overall_score} confidence={brand.confidence} />
-                  <span className="text-sm text-muted-foreground">
-                    Confidence: <strong>{brand.confidence || "unknown"}</strong>
-                  </span>
-                </div>
-                {summaryParagraph && (
-                  <p className="text-sm leading-relaxed text-muted-foreground">
-                    {summaryParagraph}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {colors.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Palette className="size-4" /> Color Palette
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-3">
-                    {colors.slice(0, 10).map(({ hex, count }) => (
-                      <div key={hex} className="flex flex-col items-center gap-1">
-                        <div
-                          className="size-12 rounded-lg border shadow-sm"
-                          style={{ backgroundColor: hex }}
-                          title={`${hex} (×${count})`}
-                        />
-                        <span className="font-mono text-[10px] text-muted-foreground">
-                          {hex}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+          <div className="space-y-12">
+            {/* At a Glance narrative */}
+            {brand.design_md && (
+              <div className="mx-auto max-w-3xl">
+                <p className="text-[17px] leading-[1.47] tracking-[-0.374px] text-[#1d1d1f]">
+                  {(() => {
+                    const lines = brand.design_md.split("\n");
+                    const atGlanceIdx = lines.findIndex((l: string) => l.includes("Visual Theme") || l.includes("At a Glance"));
+                    if (atGlanceIdx === -1) return brand.design_md.split("\n\n").slice(1, 3).join(" ").replace(/[#*]/g, "").trim().substring(0, 600);
+                    const paragraphs: string[] = [];
+                    for (let i = atGlanceIdx + 1; i < lines.length && paragraphs.length < 2; i++) {
+                      const line = lines[i].trim();
+                      if (line.startsWith("##")) break;
+                      if (line.length > 50 && !line.startsWith("-") && !line.startsWith("*") && !line.startsWith("|")) {
+                        paragraphs.push(line.replace(/[*`]/g, ""));
+                      }
+                    }
+                    return paragraphs.join("\n\n") || "Design system extracted from the live web.";
+                  })()}
+                </p>
+              </div>
             )}
 
+            {/* Color palette - large swatches */}
+            {colors.length > 0 && (
+              <div>
+                <h3 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                  Colour Palette
+                </h3>
+                <div className="grid grid-cols-5 gap-3 md:grid-cols-10">
+                  {colors.slice(0, 10).map(({ hex, count }) => {
+                    const fg = contrastColor(hex);
+                    return (
+                      <div key={hex} className="group">
+                        <div
+                          className="flex aspect-square items-end rounded-xl p-2 shadow-sm transition-transform group-hover:scale-105"
+                          style={{ backgroundColor: hex, color: fg }}
+                        >
+                          <span className="font-mono text-[9px] font-medium opacity-80">{hex}</span>
+                        </div>
+                        <p className="mt-1 text-center text-[10px] text-[#86868b]">{count}x</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Typography */}
             {fontFamilies.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Type className="size-4" /> Typography
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
+              <div>
+                <h3 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                  Typography
+                </h3>
+                <div className="space-y-6">
                   {fontFamilies.slice(0, 3).map((f, i) => {
                     const name = primaryFontName(f.value);
                     return (
-                      <div key={i} className="flex items-baseline gap-3">
-                        <span className="text-2xl" style={{ fontFamily: f.value }}>
+                      <div key={i} className="flex items-baseline gap-6 border-b border-[#d2d2d7]/40 pb-6">
+                        <span className="text-[40px] font-semibold leading-[1.1] text-[#1d1d1f]" style={{ fontFamily: f.value }}>
                           Aa
                         </span>
                         <div>
-                          <span className="text-sm font-medium">{name}</span>
+                          <span className="text-[17px] font-semibold text-[#1d1d1f]">{name}</span>
                           <span className="ml-2 text-xs text-muted-foreground">
                             ×{f.count} usages
                           </span>
@@ -539,9 +543,24 @@ export default function BrandPage({
                       </div>
                     );
                   })}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             )}
+
+            {/* Quick stats */}
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {[
+                { label: "Base Unit", value: baseUnit || "4px" },
+                { label: "Max Width", value: "1280px" },
+                { label: "Card Radius", value: "16px" },
+                { label: "Motion", value: "200ms ease" },
+              ].map((s) => (
+                <div key={s.label} className="rounded-xl bg-[#f5f5f7] p-5">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">{s.label}</p>
+                  <p className="mt-1 font-mono text-[21px] font-semibold text-[#1d1d1f]">{s.value}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </TabsContent>
 
@@ -639,7 +658,7 @@ export default function BrandPage({
                     <div key={i}>
                       <div className="mb-1 flex items-baseline gap-2">
                         <span className="text-sm font-medium">{primaryFontName(f.value)}</span>
-                        <span className="text-xs text-muted-foreground">×{f.count} usages</span>
+                        <span className="text-xs text-muted-foreground">{f.count} usages</span>
                       </div>
                       <p className="break-all font-mono text-[10px] text-muted-foreground">
                         {f.value}
