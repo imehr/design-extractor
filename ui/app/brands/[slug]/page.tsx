@@ -1185,25 +1185,23 @@ export default function BrandPage({
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Original</p>
+                          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Original (1280x720)</p>
                           <div className="overflow-hidden rounded-lg border bg-[#f5f5f7]">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={`/api/brands/${brand.slug}/file/dom-extraction/${page.slug}-screenshot.png`}
                               alt={`Original ${page.name}`}
                               className="w-full"
-                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
                             />
                           </div>
                         </div>
                         <div>
-                          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Preview</p>
-                          <div className="overflow-hidden rounded-lg border bg-[#f5f5f7]">
+                          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Preview (1280x720)</p>
+                          <div className="aspect-video overflow-hidden rounded-lg border bg-[#f5f5f7]">
                             <iframe
                               src={page.preview}
                               title={`Preview ${page.name}`}
-                              className="h-[400px] w-full scale-[0.5] origin-top-left border-0"
-                              style={{ width: "200%", height: "800px", transform: "scale(0.5)", transformOrigin: "top left" }}
+                              className="border-0"
+                              style={{ width: "1280px", height: "720px", transform: "scale(0.5)", transformOrigin: "top left" }}
                             />
                           </div>
                         </div>
