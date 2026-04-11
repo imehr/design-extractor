@@ -15,6 +15,7 @@ interface BrandSummary {
   overall_score: number | null;
   confidence: string;
   categories: string[];
+  validation_status?: string;
 }
 
 interface LibraryIndex {
@@ -46,60 +47,30 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Hero */}
-      <section className="bg-[#f5f5f7] px-6 py-20 text-center">
-        <h1 className="text-[40px] font-semibold leading-[1.1] tracking-tight text-[#1d1d1f]">
-          Design System Inspirations
-        </h1>
-        <p className="mx-auto mt-3 max-w-md text-[17px] leading-[1.47] tracking-[-0.374px] text-[#86868b]">
-          Drop into your project and let coding agents build matching UI.
-        </p>
-        <div className="mx-auto mt-8 max-w-sm">
-          <div className="relative">
+      {/* Compact header with search */}
+      <section className="px-6 pt-8 pb-4">
+        <div className="mx-auto flex max-w-4xl items-center justify-between">
+          <div>
+            <h1 className="text-[28px] font-semibold tracking-tight text-[#1d1d1f]">
+              Design Library
+            </h1>
+            <p className="mt-0.5 text-[13px] text-[#86868b]">{filtered.length} extracted design systems</p>
+          </div>
+          <div className="relative w-64">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#86868b]" />
             <Input
-              placeholder="Search all designs..."
+              placeholder="Search designs..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="h-10 rounded-lg border-[#d2d2d7] bg-white pl-9 text-sm"
+              className="h-9 rounded-lg border-[#d2d2d7] bg-[#f5f5f7] pl-9 text-sm"
             />
           </div>
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="border-b border-[#d2d2d7]/40 px-6 py-16">
-        <div className="mx-auto grid max-w-3xl grid-cols-3 gap-12 text-center">
-          {[
-            { step: "1", title: "Extract", desc: "Point at a URL. Tokens, assets, fonts, and voice are extracted from the live DOM." },
-            { step: "2", title: "Preview", desc: "React/shadcn components replicate the design. Screenshot-validated against original." },
-            { step: "3", title: "Use", desc: "Copy the DESIGN.md into your project. Coding agents build matching UI." },
-          ].map((s) => (
-            <div key={s.step}>
-              <div className="mx-auto mb-3 flex size-8 items-center justify-center rounded-full bg-[#1d1d1f] text-xs font-semibold text-white">
-                {s.step}
-              </div>
-              <h3 className="text-sm font-semibold text-[#1d1d1f]">{s.title}</h3>
-              <p className="mt-1.5 text-[13px] leading-[1.38] text-[#86868b]">{s.desc}</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-10 text-center">
-          <code className="rounded-lg bg-[#f5f5f7] px-4 py-2 font-mono text-[13px] text-[#1d1d1f]">
-            npx design-extractor extract https://example.com
-          </code>
-        </div>
-      </section>
-
-      {/* Brand list */}
-      <section className="px-6 py-12">
+      {/* Brand list — immediately visible */}
+      <section className="px-6 pb-12">
         <div className="mx-auto max-w-4xl">
-          <div className="mb-6 flex items-baseline justify-between">
-            <h2 className="text-[21px] font-semibold leading-[1.19] tracking-[0.011em] text-[#1d1d1f]">
-              Find Designs
-            </h2>
-            <span className="text-[13px] text-[#86868b]">{filtered.length} designs</span>
-          </div>
 
           {filtered.length === 0 ? (
             <div className="rounded-xl bg-[#f5f5f7] p-12 text-center">
