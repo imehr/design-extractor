@@ -11,6 +11,43 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'TomatoGrotesk';
+  src: url('/brands/woolworths-group/fonts/TomatoGrotesk-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'TomatoGrotesk';
+  src: url('/brands/woolworths-group/fonts/TomatoGrotesk-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'TomatoGrotesk';
+  src: url('/brands/woolworths-group/fonts/TomatoGrotesk-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/brands/woolworths-group/fonts/Montserrat-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/brands/woolworths-group/fonts/Montserrat-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/brands/woolworths-group/fonts/Montserrat-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-display: swap;
+}
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {

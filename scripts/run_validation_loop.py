@@ -30,36 +30,26 @@ except ImportError:
     print("Missing dependencies: pip install Pillow pixelmatch")
     sys.exit(1)
 
-# Page configs: slug -> original URL path + replica route
-WESTPAC_PAGES = {
-    "homepage": {
-        "original_url": "https://www.westpac.com.au/",
-        "replica_route": "/brands/westpac-com-au/replica",
-    },
-    "credit-cards": {
-        "original_url": "https://www.westpac.com.au/personal-banking/credit-cards/",
-        "replica_route": "/brands/westpac-com-au/replica/credit-cards",
-    },
-    "contact-us": {
-        "original_url": "https://www.westpac.com.au/contact-us/",
-        "replica_route": "/brands/westpac-com-au/replica/contact-us",
-    },
-    "home-loans": {
-        "original_url": "https://www.westpac.com.au/personal-banking/home-loans/",
-        "replica_route": "/brands/westpac-com-au/replica/home-loans",
-    },
-    "bank-accounts": {
-        "original_url": "https://www.westpac.com.au/personal-banking/bank-accounts/",
-        "replica_route": "/brands/westpac-com-au/replica/bank-accounts",
-    },
-}
-
-CACHE_DIR = Path.home() / ".claude" / "design-library" / "cache" / "westpac-com-au"
-BRANDS_DIR = Path.home() / ".claude" / "design-library" / "brands" / "westpac-com-au"
-SCREENSHOT_DIR = CACHE_DIR / "screenshots" / "harness"
-REPORT_PATH = BRANDS_DIR / "validation" / "report.json"
-MANIFEST_PATH = CACHE_DIR / "validation" / "improvement-manifest.json"
 VIEWPORT = "1280x720"
+
+
+def load_pages(brand_slug: str) -> dict:
+    """Load page configs from cache/{slug}/validation/pages.json, or fall back to defaults."""
+    pages_file = Path.home() / ".claude" / "design-library" / "cache" / brand_slug / "validation" / "pages.json"
+    if pages_file.exists():
+        with open(pages_file) as f:
+            return json.load(f)
+    # Legacy fallback for westpac
+    if brand_slug == "westpac-com-au":
+        return {
+            "homepage": {"original_url": "https://www.westpac.com.au/", "replica_route": "/brands/westpac-com-au/replica"},
+            "credit-cards": {"original_url": "https://www.westpac.com.au/personal-banking/credit-cards/", "replica_route": "/brands/westpac-com-au/replica/credit-cards"},
+            "contact-us": {"original_url": "https://www.westpac.com.au/contact-us/", "replica_route": "/brands/westpac-com-au/replica/contact-us"},
+            "home-loans": {"original_url": "https://www.westpac.com.au/personal-banking/home-loans/", "replica_route": "/brands/westpac-com-au/replica/home-loans"},
+            "bank-accounts": {"original_url": "https://www.westpac.com.au/personal-banking/bank-accounts/", "replica_route": "/brands/westpac-com-au/replica/bank-accounts"},
+        }
+    print(f"Error: No pages.json found at {pages_file}")
+    sys.exit(1)
 
 
 def run_agent_browser(url: str, output_path: str, session: str = "harness", wait_secs: int = 3) -> bool:
@@ -202,9 +192,9 @@ def build_improvement_manifest(scores: dict, target: float = 80.0) -> dict:
                 "gap": round(target - close_pct, 1),
                 "original_screenshot": str(SCREENSHOT_DIR / f"orig-{slug}.png"),
                 "replica_screenshot": str(SCREENSHOT_DIR / f"repl-{slug}.png"),
-                "replica_tsx": f"ui/app/brands/westpac-com-au/replica/{slug}/page.tsx"
+                "replica_tsx": f"ui/app/brands/{CACHE_DIR.name}/replica/{slug}/page.tsx"
                 if slug != "homepage"
-                else "ui/app/brands/westpac-com-au/replica/page.tsx",
+                else f"ui/app/brands/{CACHE_DIR.name}/replica/page.tsx",
             })
 
     pages_needing_work.sort(key=lambda p: p["current_score"])
@@ -275,9 +265,17 @@ def main():
     parser.add_argument("--score-only", action="store_true", help="Only re-score existing screenshots")
     args = parser.parse_args()
 
+    # Set paths based on brand slug
+    global CACHE_DIR, BRANDS_DIR, SCREENSHOT_DIR, REPORT_PATH, MANIFEST_PATH
+    CACHE_DIR = Path.home() / ".claude" / "design-library" / "cache" / args.brand
+    BRANDS_DIR = Path.home() / ".claude" / "design-library" / "brands" / args.brand
+    SCREENSHOT_DIR = CACHE_DIR / "screenshots" / "harness"
+    REPORT_PATH = BRANDS_DIR / "validation" / "report.json"
+    MANIFEST_PATH = CACHE_DIR / "validation" / "improvement-manifest.json"
+
     SCREENSHOT_DIR.mkdir(parents=True, exist_ok=True)
 
-    pages = WESTPAC_PAGES  # TODO: make this data-driven per brand
+    pages = load_pages(args.brand)
 
     if args.score_only:
         print("Re-scoring existing screenshots...")
