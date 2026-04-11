@@ -1,5 +1,4 @@
-import { Button } from "@/components/ui/button";
-import { WestpacLogo } from "./westpac-logo";
+import Image from "next/image";
 
 interface WestpacHeroProps {
   heading: string;
@@ -15,12 +14,23 @@ export function WestpacHero({
   ctaHref = "#",
 }: WestpacHeroProps) {
   return (
-    <div className="w-full bg-[#DA1710]" style={{ padding: "48px 0" }}>
-      <div className="mx-auto flex max-w-[1280px] items-start gap-10 px-6">
-        {/* Left: Text */}
-        <div className="flex-1 pt-4">
+    <div className="relative w-full overflow-hidden bg-[#DA1710]" style={{ height: 424 }}>
+      {/* Hero background image — contains the red bg + phone mockup */}
+      <div className="absolute inset-0">
+        <Image
+          src="/brands/westpac/hero-home.png"
+          alt=""
+          fill
+          className="object-cover object-right"
+          priority
+        />
+      </div>
+
+      {/* Text overlay */}
+      <div className="relative mx-auto max-w-[1280px] px-[60px] pt-[90px]">
+        <div className="max-w-[765px]">
           <h1
-            className="mb-4 max-w-[765px] text-white"
+            className="mb-4 text-white"
             style={{
               fontFamily: '"Westpac-bold", "Times New Roman", Times, serif',
               fontSize: "72px",
@@ -30,7 +40,7 @@ export function WestpacHero({
           >
             {heading}
           </h1>
-          <p className="mb-6 max-w-[600px] text-base leading-6 text-white/95">
+          <p className="mb-6 max-w-[480px] text-base leading-6 text-white/95">
             {subtitle}
           </p>
           <a
@@ -39,31 +49,6 @@ export function WestpacHero({
           >
             {ctaText}
           </a>
-        </div>
-
-        {/* Right: Phone mockup */}
-        <div className="hidden flex-shrink-0 md:block" style={{ width: 300 }}>
-          <div className="ml-auto w-[220px] rounded-[28px] bg-white p-2 shadow-xl">
-            <div className="flex min-h-[380px] flex-col items-center rounded-[20px] bg-[#F3F4F6] px-4 py-5">
-              <WestpacLogo className="mb-3 h-[14px] w-[36px]" />
-              <p className="mb-3 text-center text-[11px] text-[#575F65]">
-                How would you like to
-                <br />
-                connect with us?
-              </p>
-              <div className="flex w-full flex-col gap-2">
-                <div className="rounded-lg bg-white p-2.5 text-[13px] text-[#181B25] shadow-sm">
-                  Phone call
-                </div>
-                <div className="rounded-lg bg-white p-2.5 text-[13px] text-[#181B25] shadow-sm">
-                  Video call
-                </div>
-                <div className="rounded-lg bg-white p-2.5 text-[13px] text-[#181B25] shadow-sm">
-                  In branch
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

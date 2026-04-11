@@ -27,29 +27,29 @@ export default function HomeLoansPage() {
     <div className="min-h-screen bg-white" style={{ fontFamily: '-apple-system, system-ui, "Segoe UI", Roboto, sans-serif', fontSize: 16, color: "#181B25" }}>
       <WestpacHeader activePage="Personal" />
 
-      {/* Hero */}
-      <div className="w-full">
-        <div className="mx-auto flex max-w-[1280px]">
-          <div className="flex-1 bg-[#DA1710] px-6 py-10">
+      {/* Hero: full-width bg image with red overlay on left */}
+      <div className="relative w-full" style={{ height: 494 }}>
+        <img src="/brands/westpac/home-loans-hero.jpg" alt="" className="absolute inset-0 size-full object-cover object-right" />
+        <div className="absolute inset-y-0 left-0 w-[55%] bg-[#DA1710]" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#DA1710] via-[#DA1710]/80 to-transparent" />
+        <div className="relative mx-auto max-w-[1280px] px-6 py-10">
+          <div className="max-w-[500px]">
             <div className="mb-2 flex items-center gap-1 text-sm text-white/80">
               <Link href="#" className="text-white/80 hover:text-white">Personal</Link>
               <ChevronRight className="size-3 text-white/60" />
               <span className="text-white">Home loans</span>
             </div>
-            <h1 className="mb-3 text-white" style={{ fontFamily: '"Westpac-bold", "Times New Roman", Times, serif', fontSize: 54, fontWeight: 400, lineHeight: "48px" }}>
+            <h1 className="mb-3 text-white" style={{ fontFamily: '"Westpac-bold", "Times New Roman", Times, serif', fontSize: 54, fontWeight: 400, lineHeight: "56px" }}>
               HOME LOANS
             </h1>
-            <p className="mb-5 max-w-[400px] text-sm leading-6 text-white/90">
+            <p className="mb-6 max-w-[420px] text-sm leading-6 text-white/90">
               You could save around $9k in interest in the first year of your home loan package (based on a $400k variable home loan and $398 annual fee applied). Explore our home loan rates, calculators and popular guides.
             </p>
             <div className="flex gap-3">
-              <Button className="rounded-[3px] bg-white text-sm font-bold text-[#181B25] hover:bg-white/90">Start applying</Button>
-              <Button className="rounded-[3px] border border-white bg-transparent text-sm font-bold text-white hover:bg-white/10">Book appointment</Button>
+              <Button className="h-10 rounded-[3px] bg-white px-5 text-sm font-bold text-[#181B25] hover:bg-white/90">Start applying</Button>
+              <Button className="h-10 rounded-[3px] border border-white bg-transparent px-5 text-sm font-bold text-white hover:bg-white/10">Book appointment</Button>
             </div>
             <Link href="#" className="mt-3 block text-sm text-white/80 underline">Continue application</Link>
-          </div>
-          <div className="hidden w-[50%] shrink-0 md:block">
-            <img src="/brands/westpac/home-loans-hero.jpg" alt="Home loans" className="size-full object-cover" style={{ minHeight: 280 }} />
           </div>
         </div>
       </div>
@@ -58,9 +58,9 @@ export default function HomeLoansPage() {
       <div className="border-b border-[#DEDEE1] bg-white py-6">
         <div className="mx-auto max-w-[1280px] px-6">
           <h2 className="mb-4 text-lg font-bold text-[#1F1C4F]">I&apos;m looking for:</h2>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-3">
             {["First home buyer", "Refinancing", "Investing", "Upgrading", "Building", "Buying"].map((tab) => (
-              <button key={tab} className="rounded-lg border border-[#DEDEE1] px-4 py-2 text-sm text-[#575F65] hover:border-[#DA1710]">
+              <button key={tab} className="rounded-full border border-[#DEDEE1] px-5 py-2 text-sm text-[#575F65] transition-colors hover:border-[#DA1710] hover:text-[#DA1710]">
                 {tab}
               </button>
             ))}
@@ -69,8 +69,8 @@ export default function HomeLoansPage() {
       </div>
 
       {/* Why choose section */}
-      <div className="mx-auto max-w-[1280px] px-6 py-10">
-        <h2 className="mb-8 text-center text-2xl font-bold text-[#1F1C4F]">Why choose a Westpac home loan?</h2>
+      <div className="mx-auto max-w-[1280px] px-6 py-12">
+        <h2 className="mb-10 text-center text-2xl font-bold text-[#1F1C4F]">Why choose a Westpac home loan?</h2>
         <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
           {FEATURES.map((f) => (
             <div key={f.title} className="text-center">
@@ -87,7 +87,7 @@ export default function HomeLoansPage() {
       <Separator className="bg-[#DEDEE1]" />
 
       {/* Product cards */}
-      <div className="mx-auto max-w-[1280px] px-6 py-10">
+      <div className="mx-auto max-w-[1280px] px-6 py-12">
         <h2 className="mb-8 text-2xl font-bold text-[#1F1C4F]">What kind of home loan are you looking for?</h2>
         <div className="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-5">
           {PRODUCT_CARDS.map((card) => (

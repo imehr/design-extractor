@@ -17,10 +17,37 @@ Extract, don't imagine. The content in the output JSON must match what is actual
 
 For each URL provided:
 
+### Step 0 — Verify URL
+```bash
+agent-browser open "{url}"
+```
+Check the page title. If the title contains "Page not found", "404", "Not Found", "Error", or the page body is empty, stop and report the URL as invalid. Do not proceed with extraction on a dead page.
+
 ### Step 1 — Navigate
 ```bash
-agent-browser navigate "{url}" --viewport 1440x900
+agent-browser open "{url}" --viewport 1440x900
 ```
+
+### Step 1.5 — DOM measurements
+```bash
+agent-browser eval "(() => {
+  const hero = document.querySelector('[class*=hero], [class*=Hero], section:first-of-type');
+  const header = document.querySelector('header') || document.querySelector('[role=banner]');
+  const h1 = document.querySelector('h1');
+  const firstSection = document.querySelector('main section') || document.querySelector('main > div > div');
+  return JSON.stringify({
+    heroHeight: hero ? hero.getBoundingClientRect().height : null,
+    headerHeight: header ? header.getBoundingClientRect().height : null,
+    h1Left: h1 ? h1.getBoundingClientRect().left : null,
+    contentPaddingLeft: h1 ? getComputedStyle(h1).paddingLeft : null,
+    firstSectionTop: firstSection ? firstSection.getBoundingClientRect().top : null,
+    firstSectionHeight: firstSection ? firstSection.getBoundingClientRect().height : null,
+    viewportWidth: window.innerWidth,
+    viewportHeight: window.innerHeight
+  });
+})()"
+```
+Save the output to `{cache_dir}/dom-extraction/{page-slug}-measurements.json`.
 
 ### Step 2 — Screenshot
 ```bash

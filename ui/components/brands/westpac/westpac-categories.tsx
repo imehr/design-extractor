@@ -69,25 +69,27 @@ const CATEGORIES = [
 
 export function WestpacCategories() {
   return (
-    <div className="w-full bg-white py-12">
-      <div className="mx-auto max-w-[1280px] px-6">
-        <div className="grid grid-cols-1 gap-x-12 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="w-full bg-white">
+      <div className="mx-auto max-w-[1280px] px-6 py-10">
+        <div className="grid grid-cols-1 gap-x-12 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
           {CATEGORIES.map((cat) => (
             <div key={cat.title}>
               <div className="mb-3 flex items-center gap-3">
-                <cat.icon className="size-8 text-[#1F1C4F]" strokeWidth={1.5} />
-                <h3 className="text-2xl font-bold text-[#1F1C4F]">
+                <div className="flex size-10 items-center justify-center rounded bg-[#DA1710]">
+                  <cat.icon className="size-5 text-white" strokeWidth={2} />
+                </div>
+                <h3 className="text-xl font-bold text-[#1F1C4F]">
                   {cat.title}
                 </h3>
               </div>
-              <ul className="space-y-1.5">
+              <ul className="ml-[52px] space-y-1">
                 {cat.links.map((link) => (
                   <li key={link.text}>
                     <Link
                       href={link.href}
-                      className="flex items-center gap-1 text-base text-[#181B25] hover:text-[#DA1710]"
+                      className="flex items-center gap-1 text-[14px] leading-6 text-[#181B25] underline decoration-transparent hover:text-[#DA1710] hover:decoration-[#DA1710]"
                     >
-                      <ChevronRight className="size-4 text-[#DA1710]" />
+                      <ChevronRight className="size-4 flex-shrink-0 text-[#DA1710]" />
                       {link.text}
                     </Link>
                   </li>

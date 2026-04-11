@@ -71,11 +71,15 @@ export default function CreditCardsPage() {
     <div className="min-h-screen bg-white" style={{ fontFamily: '-apple-system, system-ui, "Segoe UI", Roboto, sans-serif', fontSize: 16, color: "#181B25" }}>
       <WestpacHeader activePage="Personal" />
 
-      {/* Hero: red left half + photo right half */}
-      <div className="w-full">
-        <div className="mx-auto flex max-w-[1280px]">
-          {/* Left: red section with content */}
-          <div className="flex-1 bg-[#DA1710] px-6 py-10">
+      {/* Hero: red bg full-width, photo positioned right */}
+      <div className="relative w-full bg-[#DA1710]" style={{ height: 403 }}>
+        <img
+          src="/brands/westpac/credit-cards-hero.jpg"
+          alt="Credit cards"
+          className="absolute right-0 top-0 hidden h-full w-[45%] object-cover md:block"
+        />
+        <div className="relative mx-auto max-w-[1280px] px-[60px] pt-[90px]">
+          <div className="max-w-[500px]">
             <div className="mb-2 flex items-center gap-1 text-sm text-white/80">
               <Link href="#" className="text-white/80 hover:text-white">Personal</Link>
               <ChevronRight className="size-3 text-white/60" />
@@ -91,35 +95,27 @@ export default function CreditCardsPage() {
               Whichever credit card you&apos;re after, you&apos;ll find it with a little Westpac.
             </p>
             <div className="flex gap-3">
-              <Button className="rounded-[3px] bg-white text-sm font-bold text-[#181B25] hover:bg-white/90">
-                Apply now &#9660;
+              <Button className="inline-flex items-center gap-1.5 rounded-[3px] bg-white text-sm font-bold text-[#181B25] hover:bg-white/90">
+                Apply now
+                <ChevronDown className="size-3" />
               </Button>
               <Button className="rounded-[3px] border border-white bg-transparent text-sm font-bold text-white hover:bg-white/10">
                 Continue application
               </Button>
             </div>
           </div>
-          {/* Right: photo */}
-          <div className="hidden w-[50%] shrink-0 md:block">
-            <img
-              src="/brands/westpac/credit-cards-hero.jpg"
-              alt="Credit cards"
-              className="size-full object-cover"
-              style={{ minHeight: 280 }}
-            />
-          </div>
         </div>
       </div>
 
-      {/* Important Notice - full width */}
-      <div className="mx-auto max-w-[1280px] px-6 py-4">
-        <div className="rounded-lg border-t-4 border-[#FFC72C] bg-[#FFF9E6] p-4">
+      {/* Important Notice */}
+      <div className="mx-auto max-w-[1280px] px-[60px] py-6">
+        <div className="border-l border-t border-[#C40000] p-6">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 size-5 shrink-0 text-[#FFC72C]" />
+            <AlertTriangle className="mt-0.5 size-6 shrink-0 text-[#575F65]" />
             <div>
               <h3 className="text-base font-bold text-[#181B25]">Important Notice</h3>
               <p className="mt-1 text-sm text-[#575F65]">
-                From 12 April 2026, we are making changes to some Westpac Credit Card fees including updates to Cash Advance Fee, Missed Payment Fee and the way we charge the Westpac Credit Card Comprehensive Insurance premium.
+                From 30 April 2026, we are making changes to some Westpac Credit Card fees including updates to Cash Advance Fee, Missed Payment Fee and the way we charge the Westpac Credit Card Comprehensive Insurance premium. <Link href="#" className="font-bold text-[#DA1710] underline">Find out more</Link>.
               </p>
             </div>
           </div>
@@ -127,9 +123,9 @@ export default function CreditCardsPage() {
       </div>
 
       {/* I want to: section */}
-      <div className="mx-auto max-w-[1280px] px-6 py-8">
+      <div className="mx-auto max-w-[1280px] px-[60px] py-8">
         <h2 className="mb-6 text-2xl font-bold text-[#1F1C4F]">I want to:</h2>
-        <div className="grid grid-cols-3 gap-4 md:grid-cols-6">
+        <div className="flex flex-wrap gap-4 md:flex-nowrap">
           {[
             "Earn reward points",
             "Have a low purchase rate",
@@ -141,7 +137,7 @@ export default function CreditCardsPage() {
             <Link
               key={text}
               href="#"
-              className="flex flex-col items-center gap-2 rounded-xl border border-[#DEDEE1] p-4 text-center hover:border-[#DA1710]"
+              className="flex flex-1 flex-col items-center gap-2 rounded-xl border border-[#DEDEE1] p-4 text-center hover:border-[#DA1710]"
             >
               <div className="flex size-10 items-center justify-center rounded-full bg-[#F3F4F6]">
                 <CreditCard className="size-5 text-[#575F65]" />

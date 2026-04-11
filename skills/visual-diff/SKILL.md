@@ -28,17 +28,28 @@ description: "Compare a replica screenshot against the reference capture via pix
 - Patching the replica itself (that is the shadcn-replication skill's job via the refinement-agent)
 - Rendering new screenshots of the source (that is the design-extraction skill's job)
 
-## Stub status
+## How it works
 
-This is a Phase 1 stub. The full methodology is documented in:
-- `/Users/mehran/Documents/github/design-extractor/docs/concepts.md` (Phase 6 deliverable)
-- `/Users/mehran/Documents/github/design-extractor/blueprints/scaffolding-notes.md` (current scaffolding rationale)
+1. **Capture** — Use agent-browser to screenshot original pages and replica pages at identical viewport (1280x720)
+   - `agent-browser open "{url}" --session orig && agent-browser screenshot {path} --session orig`
 
-The detailed how-to lands in Phase 4 (visual-diff). Until then, follow the principles above and reference the existing brand-extractor skill at `~/.claude/plugins/local/brand-extractor/skills/brand-extraction/SKILL.md` for proven patterns.
+2. **Compare** — Run `python3 scripts/run_validation_loop.py --brand {slug} --score-only` to pixel-compare all pages
 
-## Progressive disclosure (planned)
+3. **Generate diff images** — Use pixelmatch to produce red/yellow diff images showing exactly where pixels diverge
 
-Following harness-mode 3-tier progressive disclosure (metadata -> body -> references), the detailed how-to will be split out of this file as it grows. References will live at:
+4. **Identify root causes** — Use agent-browser eval to measure exact DOM positions on originals and compare with replica CSS values
+
+5. **Fix cycle** — Edit React components, re-screenshot replica, re-compare, loop
+
+## Key thresholds
+
+- Target: 80% viewport pixel match (close threshold=0.3)
+- Hero sections: Use agent-browser eval to get exact height, text position, image position
+- Content padding: Measure h1.left from original, use px-[{value}px] in replica
+
+## Progressive disclosure
+
+Following harness-mode 3-tier progressive disclosure (metadata -> body -> references), detailed how-to content is split into reference files as it grows. References:
 - `references/pixel-compare.md` — pixelmatch invocation, tolerance tuning, region extraction
 - `references/structural-critique.md` — LLM vision prompt for layout and token-level critique
 - `references/score-rubric.md` — weight formula, blocking-failure list, plateau rules

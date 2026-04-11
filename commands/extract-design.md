@@ -20,6 +20,7 @@ The user-supplied URL is: $ARGUMENTS
 6. **No emojis** — use SVG icons from Lucide React or extracted from the site. Never emoji characters
 7. **No stale data** — when rebuilding, immediately update or remove old scores. Every visible metric must reflect current state
 8. **Self-improving** — every issue found during extraction must update agent/skill files, not just be noted
+9. **Verify original URLs before extraction** — test each URL returns 200, not a redirect or 404. Use `agent-browser open` + check the page title
 
 ## Setup
 
@@ -65,6 +66,8 @@ For each page, dispatch `agents/dom-extractor.md` which uses agent-browser eval 
 - Computed styles: key measurements (heights, font sizes, colors, padding)
 
 Output: `{cache_dir}/dom-extraction/{page-slug}.json` + reference screenshot per page
+
+After extracting DOM, run DOM measurement to capture exact hero heights, content padding, and section positions for each page. Use agent-browser eval to measure bounding rects of key sections (hero, nav, content blocks, footer). Store in `{cache_dir}/dom-extraction/{page-slug}-measurements.json`.
 
 ### Step 3: Download ALL assets
 
@@ -114,8 +117,8 @@ Fix any type errors before proceeding.
 
 For each replicated page:
 
-1. Navigate agent-browser to the original URL, screenshot the viewport
-2. Navigate agent-browser to the replica URL (localhost:3000/brands/{slug}/replica/...), screenshot the viewport
+1. Open the original URL with `agent-browser open {original-url}`, then capture with `agent-browser screenshot {cache_dir}/screenshots/reference/{page-slug}.png`
+2. Open the replica URL with `agent-browser open http://localhost:3000/brands/{slug}/replica/{page-slug}`, then capture with `agent-browser screenshot {cache_dir}/screenshots/comparison/{page-slug}.png`
 3. Compare the two screenshots visually
 4. List every difference with exact values (wrong color, wrong spacing, wrong font, missing section, wrong content)
 5. Fix each difference in the React component
@@ -125,12 +128,38 @@ For each replicated page:
 ### Step 9: Component-level comparison
 
 For key components (header, footer, hero):
-1. Scroll the component into view on the original site, screenshot
-2. Scroll the same component into view on the replica, screenshot
+1. Scroll the component into view on the original site, then `agent-browser screenshot {cache_dir}/screenshots/reference/{page-slug}-{component}.png`
+2. Scroll the same component into view on the replica, then `agent-browser screenshot {cache_dir}/screenshots/comparison/{page-slug}-{component}.png`
 3. Compare side-by-side
 4. Fix differences
 
-## Phase D — Publish
+## Phase D — Validation harness loop
+
+Run the validation harness to score all replicas:
+```bash
+python3 scripts/run_validation_loop.py --brand {slug} --base-url http://localhost:3000 --target 80
+```
+
+This captures screenshots of originals and replicas, runs pixel comparison, and writes:
+- `~/.claude/design-library/brands/{slug}/validation/report.json` — gates and scores
+- `~/.claude/design-library/cache/{slug}/validation/improvement-manifest.json` — pages that need work
+
+If average score < 80%, dispatch the validation-monitor agent to improve replicas:
+```
+dispatch agents/validation-monitor.md with:
+  slug = {slug}
+  base_url = http://localhost:3000
+  target = 80
+```
+
+The monitor will:
+1. Read the improvement manifest
+2. For each failing page, use agent-browser eval to measure original DOM
+3. Dispatch parallel subagents to fix each page's React components
+4. Re-run the harness
+5. Loop until scores reach target or plateau
+
+## Phase E — Publish
 
 ### Step 10: Extract tokens from successful replicas
 

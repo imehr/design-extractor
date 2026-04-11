@@ -4,7 +4,16 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { WestpacHeader } from "@/components/brands/westpac/westpac-header";
 import { WestpacFooter } from "@/components/brands/westpac/westpac-footer";
-import { ChevronRight, Search } from "lucide-react";
+import {
+  ChevronRight,
+  ChevronDown,
+  Wallet,
+  PiggyBank,
+  Clock,
+  UserPlus,
+  Baby,
+  Home,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 
 // Extracted from DOM
@@ -18,9 +27,10 @@ export default function BankAccountsPage() {
     <div className="min-h-screen bg-white" style={{ fontFamily: '-apple-system, system-ui, "Segoe UI", Roboto, sans-serif', fontSize: 16, color: "#181B25" }}>
       <WestpacHeader activePage="Personal" />
 
-      {/* Hero: full-width image with red overlay left */}
-      <div className="relative w-full" style={{ minHeight: 300 }}>
+      {/* Hero: full-width background image with text overlay */}
+      <div className="relative w-full" style={{ minHeight: 320 }}>
         <img src="/brands/westpac/ba-everyday.png" alt="" className="absolute inset-0 size-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-r from-[#DA1710]/90 via-[#DA1710]/60 to-transparent" />
         <div className="relative mx-auto max-w-[1280px] px-6 py-10">
           <div className="max-w-[500px]">
             <div className="mb-2 flex items-center gap-1 text-sm text-white/80">
@@ -28,12 +38,18 @@ export default function BankAccountsPage() {
               <ChevronRight className="size-3 text-white/60" />
               <span className="text-white">Bank accounts</span>
             </div>
-            <h1 className="mb-3 text-white" style={{ fontFamily: '"Westpac-bold", "Times New Roman", Times, serif', fontSize: 54, fontWeight: 400, lineHeight: "48px" }}>
+            <h1
+              className="mb-3 text-white"
+              style={{ fontFamily: '"Westpac-bold", "Times New Roman", Times, serif', fontSize: 54, fontWeight: 400, lineHeight: "48px" }}
+            >
               BANK ACCOUNTS
             </h1>
             <p className="mb-5 max-w-[400px] text-sm leading-6 text-white/90">
               From managing to reaching your money goals, it takes a little Westpac. Get started — browse our range of bank accounts.
             </p>
+            <Button className="inline-flex items-center gap-1.5 rounded-[3px] bg-white text-sm font-bold text-[#181B25] hover:bg-white/90">
+              Find your fit <ChevronDown className="ml-1 size-4" />
+            </Button>
           </div>
         </div>
       </div>
@@ -43,12 +59,19 @@ export default function BankAccountsPage() {
         <div className="mx-auto max-w-[1280px] px-6">
           <h2 className="mb-4 text-lg font-bold text-[#1F1C4F]">I&apos;m looking for</h2>
           <div className="flex gap-6">
-            {["Everyday", "Savings", "Term Deposit", "New to", "Youth accounts", "Home Loan"].map((tab) => (
-              <button key={tab} className="flex flex-col items-center gap-2 rounded-lg px-4 py-2 text-xs text-[#575F65] hover:bg-[#F3F4F6]">
+            {([
+              { label: "Everyday", icon: Wallet },
+              { label: "Savings", icon: PiggyBank },
+              { label: "Term Deposit", icon: Clock },
+              { label: "New to", icon: UserPlus },
+              { label: "Youth accounts", icon: Baby },
+              { label: "Home Loan", icon: Home },
+            ] as const).map(({ label, icon: Icon }) => (
+              <button key={label} className="flex flex-col items-center gap-2 rounded-lg px-4 py-2 text-xs text-[#575F65] hover:bg-[#F3F4F6]">
                 <div className="flex size-10 items-center justify-center rounded-full bg-[#F3F4F6]">
-                  <Search className="size-4 text-[#DA1710]" />
+                  <Icon className="size-5 text-[#DA1710]" />
                 </div>
-                {tab}
+                {label}
               </button>
             ))}
           </div>
