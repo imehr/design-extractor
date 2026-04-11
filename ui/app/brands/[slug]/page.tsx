@@ -1131,217 +1131,133 @@ export default function BrandPage({
 
         {/* ── VALIDATION ── */}
         <TabsContent value="validation">
-          <div className="space-y-6">
-            {/* Pipeline overview */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Extraction Pipeline</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                  {[
-                    { label: "Pages extracted", value: String(brand.metadata?.pages_extracted ?? "5"), status: "done" },
-                    { label: "Pages replicated", value: String(brand.metadata?.pages_replicated ?? "5") + " / " + String(brand.metadata?.pages_extracted ?? "5"), status: (brand.metadata?.pages_replicated === brand.metadata?.pages_extracted) ? "done" : "partial" },
-                    { label: "Assets downloaded", value: String(brand.files.filter((f: string) => f.startsWith("assets/")).length) + "+", status: "done" },
-                    { label: "Overall score", value: brand.confidence || "PENDING", status: brand.overall_score ? "done" : "pending" },
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-lg border p-3">
-                      <p className="text-xs text-muted-foreground">{item.label}</p>
-                      <p className="mt-1 text-lg font-bold">{item.value}</p>
-                      <Badge variant={item.status === "done" ? "default" : item.status === "partial" ? "secondary" : "outline"} className="mt-1 text-[10px]">
-                        {item.status}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+          <div className="space-y-10">
+            {/* Verdict banner */}
+            <div className={`rounded-2xl p-8 text-center ${brand.overall_score && brand.overall_score >= 0.7 ? "bg-green-50" : "bg-amber-50"}`}>
+              <p className="text-[40px] font-semibold leading-[1.1] tracking-tight">
+                {brand.overall_score ? `${Math.round(brand.overall_score * 100)}%` : "—"}
+              </p>
+              <p className="mt-2 text-[17px] text-[#86868b]">
+                {brand.overall_score && brand.overall_score >= 0.7
+                  ? "Ready for review"
+                  : "Improvement in progress"}
+              </p>
+              <p className="mt-1 text-[13px] text-[#86868b]/60">
+                Viewport pixel comparison average across {
+                  brand.validation_report
+                    ? Object.keys((brand.validation_report as Record<string, unknown>).pixel_comparison_viewport || {}).length
+                    : 5
+                } pages
+              </p>
+            </div>
 
-            {/* Agents involved */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Agents Involved</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {[
-                    { name: "dom-extractor", role: "DOM content extraction via agent-browser", status: "ran" },
-                    { name: "token-extractor", role: "CSS computed styles + custom properties", status: "ran" },
-                    { name: "asset-extractor", role: "Images, fonts, SVGs, backgrounds", status: "ran" },
-                    { name: "voice-analyst", role: "Tone, CTA patterns, language variant", status: "ran" },
-                    { name: "pattern-analyst", role: "9 mechanical + 6 interpreted signals", status: "ran" },
-                    { name: "replica-builder", role: "React/shadcn component construction", status: "ran" },
-                    { name: "visual-critic", role: "Screenshot comparison + critique", status: "ran (3 iterations)" },
-                    { name: "refinement-agent", role: "Patch replica from critique", status: "ran (2 patches)" },
-                    { name: "documentarian", role: "DESIGN.md generation", status: "ran" },
-                    { name: "skill-packager", role: "SKILL.md generation", status: "ran" },
-                    { name: "librarian", role: "Library registration", status: "ran" },
-                  ].map((agent) => (
-                    <div key={agent.name} className="flex items-start gap-2 rounded border p-2">
-                      <div className="mt-0.5 size-2 shrink-0 rounded-full bg-green-500" />
-                      <div>
-                        <p className="font-mono text-xs font-medium">{agent.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{agent.role}</p>
-                        <p className="text-[10px] text-muted-foreground/60">{agent.status}</p>
+            {/* Per-page comparison with screenshots */}
+            <div>
+              <h3 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                Page-by-page comparison
+              </h3>
+              <div className="space-y-6">
+                {[
+                  { name: "Homepage", slug: "homepage", preview: `/brands/${brand.slug}/replica` },
+                  { name: "Credit Cards", slug: "credit-cards", preview: `/brands/${brand.slug}/replica/credit-cards` },
+                  { name: "Contact Us", slug: "contact-us", preview: `/brands/${brand.slug}/replica/contact-us` },
+                  { name: "Home Loans", slug: "home-loans", preview: `/brands/${brand.slug}/replica/home-loans` },
+                  { name: "Bank Accounts", slug: "bank-accounts", preview: `/brands/${brand.slug}/replica/bank-accounts` },
+                ].map((page) => {
+                  const vp = (brand.validation_report as Record<string, unknown>)?.pixel_comparison_viewport as Record<string, Record<string, number>> | undefined;
+                  const score = vp?.[page.slug]?.close ?? 0;
+                  return (
+                    <div key={page.slug} className="rounded-xl border border-[#d2d2d7]/40 p-5">
+                      <div className="mb-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <h4 className="text-[17px] font-semibold text-[#1d1d1f]">{page.name}</h4>
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${score >= 70 ? "bg-green-100 text-green-800" : score >= 50 ? "bg-amber-100 text-amber-800" : "bg-red-100 text-red-800"}`}>
+                            {score}%
+                          </span>
+                        </div>
+                        <Link
+                          href={page.preview}
+                          target="_blank"
+                          className="text-[13px] text-[#0071e3] hover:underline"
+                        >
+                          Open preview
+                        </Link>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Original</p>
+                          <div className="overflow-hidden rounded-lg border bg-[#f5f5f7]">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={`/api/brands/${brand.slug}/file/dom-extraction/${page.slug}-screenshot.png`}
+                              alt={`Original ${page.name}`}
+                              className="w-full"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Preview</p>
+                          <div className="overflow-hidden rounded-lg border bg-[#f5f5f7]">
+                            <iframe
+                              src={page.preview}
+                              title={`Preview ${page.name}`}
+                              className="h-[400px] w-full scale-[0.5] origin-top-left border-0"
+                              style={{ width: "200%", height: "800px", transform: "scale(0.5)", transformOrigin: "top left" }}
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  );
+                })}
+              </div>
+            </div>
 
-            {/* Page-level validation */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Page Validation Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b text-left text-xs text-muted-foreground">
-                        <th className="pb-2">Page</th>
-                        <th className="pb-2">DOM Extracted</th>
-                        <th className="pb-2">Assets Downloaded</th>
-                        <th className="pb-2">React Preview</th>
-                        <th className="pb-2">Screenshot Compared</th>
-                        <th className="pb-2">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[
-                        { page: "Homepage", slug: "homepage", replicaPath: "replica/page.tsx" },
-                        { page: "Credit Cards", slug: "credit-cards", replicaPath: "replica/credit-cards/page.tsx" },
-                        { page: "Contact Us", slug: "contact-us", replicaPath: "replica/contact-us/page.tsx" },
-                        { page: "Home Loans", slug: "home-loans", replicaPath: "replica/home-loans/page.tsx" },
-                        { page: "Bank Accounts", slug: "bank-accounts", replicaPath: "replica/bank-accounts/page.tsx" },
-                      ].map((p) => {
-                        const hasDom = brand.files.some((f: string) => f.includes("dom-extraction") && f.includes(p.slug));
-                        const hasPreview = (brand.localFiles ?? []).some((f: string) => f.includes(p.replicaPath));
-                        const hasAssets = brand.files.filter((f: string) => f.startsWith("assets/")).length > 5;
-                        const status = hasPreview ? "Previewted" : hasDom ? "Extracted only" : "Pending";
-                        return { page: p.page, dom: hasDom, assets: hasAssets, replica: hasPreview, compared: hasPreview, status };
-                      }).map((row) => (
-                        <tr key={row.page} className="border-b">
-                          <td className="py-2 font-medium">{row.page}</td>
-                          <td className="py-2">{row.dom ? "Yes" : "No"}</td>
-                          <td className="py-2">{row.assets ? "Yes" : "No"}</td>
-                          <td className="py-2">{row.replica ? "Yes" : "No"}</td>
-                          <td className="py-2">{row.compared ? "Yes" : "No"}</td>
-                          <td className="py-2"><Badge variant={row.replica ? "default" : "outline"} className="text-[10px]">{row.status}</Badge></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Validation gates */}
+            <div>
+              <h3 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                Validation Gates
+              </h3>
+              <div className="space-y-2">
+                {(() => {
+                  const domCount = brand.files.filter((f: string) => f.includes("dom-extraction") && f.endsWith(".json")).length;
+                  const assetCount = brand.files.filter((f: string) => f.startsWith("assets/")).length;
+                  const replicaCount = (brand.localFiles ?? []).filter((f: string) => f.includes("replica/") && f.endsWith("page.tsx")).length;
+                  const vp = (brand.validation_report as Record<string, unknown>)?.viewport_avg as number | undefined;
+                  return [
+                    { gate: "Pages extracted", status: domCount >= 4, detail: `${domCount} pages` },
+                    { gate: "Assets downloaded", status: assetCount >= 10, detail: `${assetCount} files` },
+                    { gate: "React previews built", status: replicaCount >= 3, detail: `${replicaCount} pages` },
+                    { gate: "Screenshot match", status: (vp ?? 0) >= 70, detail: vp ? `${vp}% avg` : "pending" },
+                    { gate: "DESIGN.md", status: brand.design_md !== null, detail: brand.design_md ? `${brand.design_md.split("\n").length} lines` : "missing" },
+                    { gate: "SKILL.md", status: brand.skill_md !== null, detail: brand.skill_md ? `${brand.skill_md.split("\n").length} lines` : "missing" },
+                  ];
+                })().map((g) => (
+                  <div key={g.gate} className="flex items-center gap-3 rounded-lg border border-[#d2d2d7]/40 px-4 py-3">
+                    <div className={`size-2 rounded-full ${g.status ? "bg-green-500" : "bg-amber-500"}`} />
+                    <span className="flex-1 text-sm text-[#1d1d1f]">{g.gate}</span>
+                    <span className="text-[13px] text-[#86868b]">{g.detail}</span>
+                    <span className={`text-xs font-medium ${g.status ? "text-green-700" : "text-amber-700"}`}>
+                      {g.status ? "PASS" : "NEEDS WORK"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-            {/* Component validation */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Component Validation</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {[
-                    { comp: "Header (shared)", issues: "Active state underline added. Full-width bars fixed. Westpac-bold font loaded.", status: "Improved" },
-                    { comp: "Footer (shared)", issues: "Real social SVGs. Aboriginal artwork image. 5-column links. Angled acknowledgement band.", status: "Improved" },
-                    { comp: "Hero (homepage)", issues: "72px Westpac-bold heading. Red background. Phone mockup. Real images needed.", status: "Iterating" },
-                    { comp: "Hero (credit cards)", issues: "Split layout (red left / photo right). Breadcrumb inside red section.", status: "Improved" },
-                    { comp: "Categories", issues: "Lucide icons used (site uses custom SVGs). Text extracted from DOM.", status: "Iterating" },
-                    { comp: "Product Cards", issues: "Real product images downloaded. Card layout matches original.", status: "Improved" },
-                  ].map((item) => (
-                    <div key={item.comp} className="flex items-start gap-3 rounded border p-3">
-                      <Badge variant={item.status === "Improved" ? "default" : "secondary"} className="mt-0.5 shrink-0 text-[10px]">{item.status}</Badge>
-                      <div>
-                        <p className="text-sm font-medium">{item.comp}</p>
-                        <p className="text-xs text-muted-foreground">{item.issues}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Harness architecture */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Harness: Autonomous Validation Loop</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  The <code className="rounded bg-muted px-1 font-mono">validation-monitor</code> agent (opus) orchestrates the pipeline autonomously.
-                  It reads validation state, identifies failing gates, dispatches fix agents, re-validates, and loops until all gates pass.
-                </p>
-                <div className="rounded-lg bg-muted/50 p-3 font-mono text-[10px] leading-5">
-                  <p className="text-muted-foreground/60">// Harness loop</p>
-                  <p>while (not all_gates_pass) &#123;</p>
-                  <p className="pl-4">failing = first_failing_gate()</p>
-                  <p className="pl-4">dispatch_fix_agent(failing)</p>
-                  <p className="pl-4">re_validate()</p>
-                  <p>&#125;</p>
-                  <p>notify_user(&quot;Ready for review&quot;)</p>
-                </div>
-                <div className="mt-3 space-y-1">
-                  <p className="text-xs font-medium">8 Validation Gates (priority order):</p>
-                  {(() => {
-                    const domCount = brand.files.filter((f: string) => f.includes("dom-extraction") && f.endsWith(".json")).length;
-                    const assetCount = brand.files.filter((f: string) => f.startsWith("assets/")).length;
-                    const replicaCount = (brand.localFiles ?? []).filter((f: string) => f.includes("replica/") && f.endsWith("page.tsx")).length;
-                    const hasDesign = brand.design_md !== null;
-                    const hasSkill = brand.skill_md !== null;
-                    return [
-                      { gate: "1. Pages extracted", threshold: "4+ pages with valid JSON", status: domCount >= 4 ? `PASS (${domCount}/5)` : `FAIL (${domCount}/5)` },
-                      { gate: "2. Assets downloaded", threshold: "Logo + font + 10+ images", status: assetCount >= 10 ? `PASS (${assetCount})` : `FAIL (${assetCount})` },
-                      { gate: "3. React replicas built", threshold: "3+ pages, TypeScript clean", status: replicaCount >= 3 ? `PASS (${replicaCount}/5)` : `FAIL (${replicaCount}/5)` },
-                      { gate: "4. Screenshot comparison", threshold: "Visual match per component", status: (brand.validation_report as Record<string,unknown>)?.gates_passing ? `${(brand.validation_report as Record<string,unknown>).overall_status}` : "5/5 pairs ready" },
-                      { gate: "5. DESIGN.md current", threshold: "References React components", status: hasDesign ? "PASS" : "FAIL" },
-                      { gate: "6. SKILL.md current", threshold: "Valid frontmatter, 8+ triggers", status: hasSkill ? "PASS" : "FAIL" },
-                      { gate: "7. UI tabs populated", threshold: "All 9 tabs render content", status: "PASS" },
-                      { gate: "8. No stale data", threshold: "No metrics from old pipeline", status: brand.overall_score === null ? "PASS" : "CHECK" },
-                    ];
-                  })().map((g) => (
-                    <div key={g.gate} className="flex items-center justify-between rounded border px-2 py-1 text-xs">
-                      <span className="text-muted-foreground">{g.gate}</span>
-                      <span className="text-[10px] text-muted-foreground/60">{g.threshold}</span>
-                      <Badge variant={g.status === "PASS" || g.status.startsWith("PASS") ? "default" : "secondary"} className="text-[10px]">{g.status}</Badge>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Known issues */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Remaining Work (Gate 4: Screenshot Comparison)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li className="flex gap-2"><span className="text-destructive">1.</span> Home Loans and Bank Accounts pages need React replicas</li>
-                  <li className="flex gap-2"><span className="text-destructive">2.</span> Category icons use Lucide instead of site-extracted SVGs</li>
-                  <li className="flex gap-2"><span className="text-destructive">3.</span> Automated pixel comparison pipeline not yet running</li>
-                  <li className="flex gap-2"><span className="text-destructive">4.</span> Homepage hero phone mockup uses placeholder, needs real app screenshot</li>
-                  <li className="flex gap-2"><span className="text-destructive">5.</span> Contact page sidebar links need verification against live DOM</li>
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Raw validation data */}
+            {/* Raw report */}
             {brand.validation_report && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">Raw Validation Data</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-64">
-                    <pre className="font-mono text-xs leading-relaxed">
-                      {JSON.stringify(brand.validation_report, null, 2)}
-                    </pre>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+              <details className="rounded-xl border border-[#d2d2d7]/40">
+                <summary className="cursor-pointer px-5 py-3 text-[13px] font-medium text-[#86868b]">
+                  Raw validation data
+                </summary>
+                <div className="border-t px-5 py-4">
+                  <pre className="font-mono text-[11px] leading-relaxed text-[#86868b]">
+                    {JSON.stringify(brand.validation_report, null, 2)}
+                  </pre>
+                </div>
+              </details>
             )}
           </div>
         </TabsContent>
