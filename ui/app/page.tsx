@@ -47,23 +47,38 @@ export default function HomePage() {
 
   return (
     <div>
-      {/* Compact header with search */}
-      <section className="px-6 pt-8 pb-4">
-        <div className="mx-auto flex max-w-4xl items-center justify-between">
-          <div>
-            <h1 className="text-[28px] font-semibold tracking-tight text-[#1d1d1f]">
-              Design Library
-            </h1>
-            <p className="mt-0.5 text-[13px] text-[#86868b]">{filtered.length} extracted design systems</p>
+      {/* Header with context */}
+      <section className="px-6 pt-8 pb-2">
+        <div className="mx-auto max-w-4xl">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-[28px] font-semibold tracking-tight text-[#1d1d1f]">
+                Design Library
+              </h1>
+              <p className="mt-1 max-w-lg text-[14px] leading-relaxed text-[#86868b]">
+                Extracted design systems from live websites. Each entry contains tokens, fonts, assets,
+                React/shadcn replicas, and a DESIGN.md that coding agents use to build matching UI.
+              </p>
+            </div>
+            <div className="relative w-64 shrink-0">
+              <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#86868b]" />
+              <Input
+                placeholder="Search designs..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-9 rounded-lg border-[#d2d2d7] bg-[#f5f5f7] pl-9 text-sm"
+              />
+            </div>
           </div>
-          <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#86868b]" />
-            <Input
-              placeholder="Search designs..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-9 rounded-lg border-[#d2d2d7] bg-[#f5f5f7] pl-9 text-sm"
-            />
+
+          {/* Usage hint */}
+          <div className="mt-4 rounded-lg bg-[#f5f5f7] px-4 py-3">
+            <p className="text-[13px] text-[#6e6e73]">
+              <span className="font-medium text-[#1d1d1f]">Extract a new site:</span>{" "}
+              run <code className="rounded bg-white px-1.5 py-0.5 font-mono text-[12px] text-[#1d1d1f]">/extract https://example.com</code> in Claude Code.{" "}
+              <span className="font-medium text-[#1d1d1f]">Use in your project:</span>{" "}
+              copy the DESIGN.md into your repo and agents will match the brand automatically.
+            </p>
           </div>
         </div>
       </section>
