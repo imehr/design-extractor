@@ -29,12 +29,12 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
-        <header className="flex items-center justify-between border-b px-6 py-3">
-          <span className="text-sm font-semibold tracking-tight">
-            Design Library
-          </span>
-          <Badge variant="secondary">design-extractor v0.1.0</Badge>
+      <body className="min-h-full flex flex-col bg-white text-[#1d1d1f]">
+        <header className="sticky top-0 z-50 flex h-12 items-center justify-between border-b border-[#d2d2d7]/40 bg-white/80 px-6 backdrop-blur-xl backdrop-saturate-[180%]">
+          <a href="/" className="text-xs font-semibold tracking-tight text-[#1d1d1f]">
+            design.library
+          </a>
+          <span className="text-[10px] tracking-wide text-[#86868b]">v0.2.0</span>
         </header>
         <main className="flex-1">{children}</main>
       </body>
