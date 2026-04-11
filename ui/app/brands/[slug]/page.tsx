@@ -467,6 +467,7 @@ export default function BrandPage({
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="skill">Skill</TabsTrigger>
           <TabsTrigger value="validation">Validation</TabsTrigger>
+          <TabsTrigger value="usage">Usage</TabsTrigger>
           <TabsTrigger value="files">Raw Files</TabsTrigger>
         </TabsList>
 
@@ -1342,6 +1343,130 @@ export default function BrandPage({
                 </CardContent>
               </Card>
             )}
+          </div>
+        </TabsContent>
+
+        {/* ── USAGE ── */}
+        <TabsContent value="usage">
+          <div className="mx-auto max-w-3xl space-y-10">
+            <div>
+              <h2 className="text-[28px] font-semibold leading-[1.14] tracking-[0.007em] text-[#1d1d1f]">
+                Use this design system
+              </h2>
+              <p className="mt-2 text-[17px] leading-[1.47] tracking-[-0.374px] text-[#86868b]">
+                Copy the DESIGN.md into your project and let coding agents build matching UI.
+              </p>
+            </div>
+
+            {/* Quick install */}
+            <div className="rounded-2xl bg-[#f5f5f7] p-8">
+              <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                Quick Start
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <p className="mb-2 text-sm text-[#1d1d1f]">1. Copy the DESIGN.md into your project root:</p>
+                  <code className="block rounded-lg bg-[#1d1d1f] px-4 py-3 font-mono text-sm text-white">
+                    cp ~/.claude/design-library/brands/{brand.slug}/DESIGN.md ./DESIGN.md
+                  </code>
+                </div>
+                <div>
+                  <p className="mb-2 text-sm text-[#1d1d1f]">2. Copy the skill for Claude Code agents:</p>
+                  <code className="block rounded-lg bg-[#1d1d1f] px-4 py-3 font-mono text-sm text-white">
+                    cp -r ~/.claude/design-library/brands/{brand.slug}/skill/ ./.claude/skills/{brand.slug}/
+                  </code>
+                </div>
+                <div>
+                  <p className="mb-2 text-sm text-[#1d1d1f]">3. Copy the assets (fonts, images, icons):</p>
+                  <code className="block rounded-lg bg-[#1d1d1f] px-4 py-3 font-mono text-sm text-white">
+                    cp -r ~/.claude/design-library/brands/{brand.slug}/assets/ ./public/brands/{brand.slug}/
+                  </code>
+                </div>
+              </div>
+            </div>
+
+            {/* What you get */}
+            <div>
+              <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                What&apos;s Included
+              </h3>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                {[
+                  { name: "DESIGN.md", desc: "Complete design system documentation (1,137 lines). Visual theme, colour palette, typography rules, component stylings, layout principles, do's/don'ts, responsive behaviour, agent prompt guide.", size: "~50KB" },
+                  { name: "SKILL.md", desc: "Claude Code skill file. Drop into .claude/skills/ and agents will build matching UI automatically. 12 positive triggers, do/don't table.", size: "~5KB" },
+                  { name: "design-tokens.json", desc: "Raw extracted tokens: colours, typography, spacing, radii, shadows, breakpoints, transitions. Machine-readable.", size: "~15KB" },
+                  { name: "assets/", desc: "Brand font (Westpac-bold), logo SVG, social icon SVGs, favicon variants, 35+ downloaded images.", size: "~2MB" },
+                ].map((item) => (
+                  <div key={item.name} className="rounded-xl border border-[#d2d2d7]/40 p-5">
+                    <div className="flex items-baseline justify-between">
+                      <h4 className="font-mono text-sm font-semibold text-[#1d1d1f]">{item.name}</h4>
+                      <span className="text-[11px] text-[#86868b]">{item.size}</span>
+                    </div>
+                    <p className="mt-2 text-[13px] leading-[1.38] text-[#86868b]">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* React components */}
+            <div>
+              <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                React Components (shadcn/ui)
+              </h3>
+              <p className="mb-4 text-sm text-[#86868b]">
+                Copy the pre-built React components into your Next.js project:
+              </p>
+              <code className="block rounded-lg bg-[#1d1d1f] px-4 py-3 font-mono text-sm text-white">
+                cp -r {`{project}/ui/components/brands/westpac/ ./components/brands/westpac/`}
+              </code>
+              <div className="mt-4 space-y-2">
+                {[
+                  "WestpacHeader — Nav bar with utility links, logo, active page state",
+                  "WestpacFooter — Link columns, social icons, Aboriginal artwork, legal",
+                  "WestpacHero — Red hero with serif heading, CTA buttons",
+                  "WestpacCategories — Product category grid with icons",
+                  "WestpacLogo — Extracted W mark SVG",
+                ].map((comp) => (
+                  <div key={comp} className="flex items-center gap-2 text-[13px] text-[#1d1d1f]">
+                    <div className="size-1.5 rounded-full bg-[#1d1d1f]" />
+                    {comp}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* File locations */}
+            <div>
+              <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                File Locations
+              </h3>
+              <div className="space-y-3 font-mono text-[13px]">
+                <div className="flex justify-between border-b border-[#d2d2d7]/40 pb-2">
+                  <span className="text-[#86868b]">Library root</span>
+                  <span className="text-[#1d1d1f]">~/.claude/design-library/</span>
+                </div>
+                <div className="flex justify-between border-b border-[#d2d2d7]/40 pb-2">
+                  <span className="text-[#86868b]">Brand directory</span>
+                  <span className="text-[#1d1d1f]">~/.claude/design-library/brands/{brand.slug}/</span>
+                </div>
+                <div className="flex justify-between border-b border-[#d2d2d7]/40 pb-2">
+                  <span className="text-[#86868b]">React components</span>
+                  <span className="text-[#1d1d1f]">ui/components/brands/westpac/</span>
+                </div>
+                <div className="flex justify-between border-b border-[#d2d2d7]/40 pb-2">
+                  <span className="text-[#86868b]">Preview pages</span>
+                  <span className="text-[#1d1d1f]">ui/app/brands/{brand.slug}/replica/</span>
+                </div>
+                <div className="flex justify-between border-b border-[#d2d2d7]/40 pb-2">
+                  <span className="text-[#86868b]">Public assets</span>
+                  <span className="text-[#1d1d1f]">ui/public/brands/westpac/</span>
+                </div>
+                <div className="flex justify-between pb-2">
+                  <span className="text-[#86868b]">Extraction cache</span>
+                  <span className="text-[#1d1d1f]">~/.claude/design-library/cache/{brand.slug}/</span>
+                </div>
+              </div>
+            </div>
           </div>
         </TabsContent>
 
