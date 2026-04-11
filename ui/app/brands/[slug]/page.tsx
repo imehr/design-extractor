@@ -315,8 +315,6 @@ function titleCase(slug: string | undefined): string {
     .join(" ");
 }
 
-const REPLICA_PAGES = ["index.html", "credit-cards.html", "contact-us.html"];
-
 const BREAKPOINTS = [
   { label: "Desktop", width: 1440 },
   { label: "Tablet", width: 768 },
@@ -392,9 +390,7 @@ export default function BrandPage({
 
   const logoFile = svgAssets.find((f) => f.includes("logo"));
 
-  const availablePreviewPages = REPLICA_PAGES.filter((p) =>
-    brand.files.some((f) => f === `replica/${p}`)
-  );
+  const availablePreviewPages: string[] = [];
 
   const summaryParagraph = brand.design_md
     ? brand.design_md
@@ -836,23 +832,20 @@ export default function BrandPage({
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {[
-                    { name: "WestpacHeader", file: "westpac-header.tsx", desc: "Utility bar + nav with active state, logo, Sign in button, search", uses: "shadcn Button, Lucide Search" },
-                    { name: "WestpacFooter", file: "westpac-footer.tsx", desc: "Link columns with chevrons, social SVGs, legal text, Aboriginal artwork", uses: "shadcn Separator, Lucide ChevronRight" },
-                    { name: "WestpacHero", file: "westpac-hero.tsx", desc: "Red hero with serif heading, subtitle, CTA, phone mockup", uses: "Custom Westpac-bold font" },
-                    { name: "WestpacLogo", file: "westpac-logo.tsx", desc: "Extracted SVG W mark as React component", uses: "Inline SVG" },
-                    { name: "WestpacCategories", file: "westpac-categories.tsx", desc: "6-tile grid: Home loans, Bank accounts, Credit cards, Personal loans, Business, More", uses: "Lucide Home, Landmark, CreditCard, etc." },
-                    { name: "WestpacSections", file: "westpac-sections.tsx", desc: "Best Banking App, Security, Property Investment, Help, Quick Links, Legal", uses: "shadcn Card, Button, Separator" },
-                  ].map((comp) => (
-                    <Card key={comp.name} className="border-l-2 border-l-green-500">
-                      <CardContent className="p-4">
-                        <h3 className="mb-1 text-sm font-bold">{comp.name}</h3>
-                        <p className="mb-2 text-xs text-muted-foreground">{comp.desc}</p>
-                        <p className="font-mono text-[10px] text-muted-foreground/60">{comp.file}</p>
-                        <Badge variant="secondary" className="mt-2 text-[10px]">{comp.uses}</Badge>
-                      </CardContent>
-                    </Card>
-                  ))}
+                  {(brand.localFiles ?? [])
+                    .filter((f: string) => f.startsWith("components/brands/") && f.endsWith(".tsx"))
+                    .map((f: string) => {
+                      const fileName = f.split("/").pop() || f;
+                      const name = fileName.replace(".tsx", "").split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+                      return (
+                        <Card key={f} className="border-l-2 border-l-green-500">
+                          <CardContent className="p-4">
+                            <h3 className="mb-1 text-sm font-bold">{name}</h3>
+                            <p className="font-mono text-[10px] text-muted-foreground/60">{fileName}</p>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                 </div>
               </CardContent>
             </Card>
@@ -1327,7 +1320,7 @@ export default function BrandPage({
                   { name: "DESIGN.md", desc: "Complete design system documentation (1,137 lines). Visual theme, colour palette, typography rules, component stylings, layout principles, do's/don'ts, responsive behaviour, agent prompt guide.", size: "~50KB" },
                   { name: "SKILL.md", desc: "Claude Code skill file. Drop into .claude/skills/ and agents will build matching UI automatically. 12 positive triggers, do/don't table.", size: "~5KB" },
                   { name: "design-tokens.json", desc: "Raw extracted tokens: colours, typography, spacing, radii, shadows, breakpoints, transitions. Machine-readable.", size: "~15KB" },
-                  { name: "assets/", desc: "Brand font (Westpac-bold), logo SVG, social icon SVGs, favicon variants, 35+ downloaded images.", size: "~2MB" },
+                  { name: "assets/", desc: "Brand fonts, logo SVG, social icon SVGs, downloaded images and backgrounds.", size: "~2MB" },
                 ].map((item) => (
                   <div key={item.name} className="rounded-xl border border-[#d2d2d7]/40 p-5">
                     <div className="flex items-baseline justify-between">
@@ -1349,21 +1342,21 @@ export default function BrandPage({
                 Copy the pre-built React components into your Next.js project:
               </p>
               <code className="block rounded-lg bg-[#1d1d1f] px-4 py-3 font-mono text-sm text-white">
-                cp -r {`{project}/ui/components/brands/westpac/ ./components/brands/westpac/`}
+                {`cp -r {project}/ui/components/brands/${brand.slug.split("-").slice(0, -2).join("-") || brand.slug}/ ./components/brands/`}
               </code>
               <div className="mt-4 space-y-2">
-                {[
-                  "WestpacHeader — Nav bar with utility links, logo, active page state",
-                  "WestpacFooter — Link columns, social icons, Aboriginal artwork, legal",
-                  "WestpacHero — Red hero with serif heading, CTA buttons",
-                  "WestpacCategories — Product category grid with icons",
-                  "WestpacLogo — Extracted W mark SVG",
-                ].map((comp) => (
-                  <div key={comp} className="flex items-center gap-2 text-[13px] text-[#1d1d1f]">
-                    <div className="size-1.5 rounded-full bg-[#1d1d1f]" />
-                    {comp}
-                  </div>
-                ))}
+                {(brand.localFiles ?? [])
+                  .filter((f: string) => f.startsWith("components/brands/") && f.endsWith(".tsx"))
+                  .map((f: string) => {
+                    const fileName = f.split("/").pop() || f;
+                    const name = fileName.replace(".tsx", "").split("-").map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join("");
+                    return (
+                      <div key={f} className="flex items-center gap-2 text-[13px] text-[#1d1d1f]">
+                        <div className="size-1.5 rounded-full bg-[#1d1d1f]" />
+                        {name} <span className="text-[#86868b]">({fileName})</span>
+                      </div>
+                    );
+                  })}
               </div>
             </div>
 
@@ -1383,7 +1376,7 @@ export default function BrandPage({
                 </div>
                 <div className="flex justify-between border-b border-[#d2d2d7]/40 pb-2">
                   <span className="text-[#86868b]">React components</span>
-                  <span className="text-[#1d1d1f]">ui/components/brands/westpac/</span>
+                  <span className="text-[#1d1d1f]">ui/components/brands/{brand.slug}/</span>
                 </div>
                 <div className="flex justify-between border-b border-[#d2d2d7]/40 pb-2">
                   <span className="text-[#86868b]">Preview pages</span>
@@ -1391,7 +1384,7 @@ export default function BrandPage({
                 </div>
                 <div className="flex justify-between border-b border-[#d2d2d7]/40 pb-2">
                   <span className="text-[#86868b]">Public assets</span>
-                  <span className="text-[#1d1d1f]">ui/public/brands/westpac/</span>
+                  <span className="text-[#1d1d1f]">ui/public/brands/{brand.slug}/</span>
                 </div>
                 <div className="flex justify-between pb-2">
                   <span className="text-[#86868b]">Extraction cache</span>
