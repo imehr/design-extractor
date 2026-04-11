@@ -159,7 +159,21 @@ The monitor will:
 4. Re-run the harness
 5. Loop until scores reach target or plateau
 
-## Phase E — Publish
+## Phase E — Publish artifacts
+
+Before any manual steps, run the publish pipeline to generate all brand artifacts:
+```bash
+python3 scripts/publish_brand.py --brand {slug}
+```
+
+This generates:
+- `design-tokens.json` — synthesized from DOM extraction measurements (colors, typography, spacing, layout)
+- `design-tokens.css` — CSS custom properties for all tokens
+- `DESIGN.md` — 9-section design system document
+- `skill/SKILL.md` — installable brand skill with triggers and quick reference
+- Updated `metadata.json` with publish flags
+
+## Phase E (continued) — Publish
 
 ### Step 10: Extract tokens from successful replicas
 
