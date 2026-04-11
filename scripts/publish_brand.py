@@ -65,12 +65,21 @@ def synthesize_design_tokens(measurements: list[dict], dom_data: list[dict], bra
             if isinstance(styles, dict) and "fontSize" in styles:
                 typography_samples[role] = styles
 
-    # Collect font families
+    # Collect font families (handle both dict and list formats)
     font_families = {}
     for m in measurements:
-        ff = m.get("fontFamilies", {})
-        for role, family in ff.items():
-            font_families[role] = family
+        ff = m.get("fontFamilies", m.get("fonts", {}))
+        if isinstance(ff, dict):
+            for role, family in ff.items():
+                font_families[role] = family
+        elif isinstance(ff, list):
+            for i, family in enumerate(ff):
+                if isinstance(family, str):
+                    role = "heading" if i == 0 else "body" if i == 1 else f"font-{i}"
+                    font_families[role] = family
+                elif isinstance(family, dict):
+                    role = family.get("role", family.get("name", f"font-{i}"))
+                    font_families[role] = family.get("value", family.get("family", str(family)))
 
     # Extract layout
     layout = {}

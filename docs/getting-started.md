@@ -100,6 +100,11 @@ Launch the library browser UI:
 
 This starts a Next.js dev server at `http://localhost:5173`. The UI reads brand data from `~/.claude/design-library/` and presents a card grid with category filtering, search, and per-brand detail pages. See [ui-guide.md](./ui-guide.md) for a walkthrough.
 
+The UI now also includes:
+- a `/docs` page explaining the architecture and self-improvement loop
+- an `Improve Quality` action on the Validation tab
+- assisted-capture guidance when source sites block automated browsing
+
 ## Installing a brand into a project
 
 To make Claude auto-load a brand's design rules whenever you mention it:
@@ -136,6 +141,8 @@ This usually means the page uses `networkidle` wait strategies that never resolv
 |---|---|
 | `/design-extractor:extract <url>` | Run full extraction pipeline on a URL |
 | `/design-extractor:browse` | Launch the library browser UI |
+| `/design-extractor:improve <slug>` | Start an improvement job for a brand |
+| `/design-extractor:learn-feedback <slug> "<feedback>"` | Feed operator feedback back into the harness |
 | `/design-extractor:apply <slug>` | Install a brand's SKILL.md into the current project |
 | `/design-extractor:list` | List all brands in the library |
 | `/design-extractor:seed-library` | Populate the library with the Nimbus sample brand |

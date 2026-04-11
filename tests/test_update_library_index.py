@@ -84,3 +84,24 @@ def test_add_idempotent(tmp_path):
     data = _load_index(tmp_path)
     matches = [b for b in data["brands"] if b["slug"] == "dupe-brand"]
     assert len(matches) == 1, f"Expected 1 entry, found {len(matches)}"
+
+
+def test_add_brand_reads_top_level_overall_score(tmp_path):
+    meta = {
+        "name": "Top Level Brand",
+        "source_url": "https://top-level.example.com",
+        "extracted_at": "2026-04-12",
+        "extractor_version": "0.2.0",
+        "overall_score": 0.81,
+        "confidence": "MEDIUM",
+        "categories": ["retail"],
+    }
+    meta_path = tmp_path / "top-level-metadata.json"
+    meta_path.write_text(json.dumps(meta))
+
+    result = _run(["--add", "top-level-brand", "--metadata", str(meta_path)], home=tmp_path)
+    assert result.returncode == 0, f"Failed: {result.stderr}"
+
+    data = _load_index(tmp_path)
+    record = next(b for b in data["brands"] if b["slug"] == "top-level-brand")
+    assert record["overall_score"] == pytest.approx(0.81)

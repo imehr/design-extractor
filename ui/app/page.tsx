@@ -79,6 +79,9 @@ export default function HomePage() {
               <span className="font-medium text-[#1d1d1f]">Use in your project:</span>{" "}
               copy the DESIGN.md into your repo and agents will match the brand automatically.
             </p>
+            <p className="mt-2 text-[13px] text-[#6e6e73]">
+              Need the full workflow? Open <Link href="/docs" className="font-medium text-[#0071e3] hover:underline">Docs</Link> for setup, validation, blocked-site fallback, and the self-improvement loop.
+            </p>
           </div>
         </div>
       </section>

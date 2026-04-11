@@ -18,10 +18,10 @@ import {
   Type,
   Image,
   Code2,
-  LayoutTemplate,
   MonitorPlay,
   FolderOpen,
   ChevronRight,
+  RefreshCw,
 } from "lucide-react";
 
 /* ─── types ─── */
@@ -80,6 +80,20 @@ interface BrandDetail {
   has_screenshots: boolean;
   files: string[];
   localFiles: string[];
+}
+
+interface ImprovementJobState {
+  job_id: string;
+  brand: string;
+  target_score: number;
+  status: string;
+  current_iteration: number;
+  max_iterations: number;
+  current_score: number | null;
+  pages_needing_work: Array<{ slug?: string; current_score?: number }>;
+  blocked_reason: { code: string; detail: string } | null;
+  assisted_capture_steps: string[];
+  updated_at: string;
 }
 
 /* ─── color helpers ─── */
@@ -334,6 +348,9 @@ export default function BrandPage({
   const [copied, setCopied] = useState(false);
   const [replicaPage, setPreviewPage] = useState("replica");
   const [replicaWidth, setPreviewWidth] = useState(1440);
+  const [improveJob, setImproveJob] = useState<ImprovementJobState | null>(null);
+  const [improveError, setImproveError] = useState<string | null>(null);
+  const [startingImprove, setStartingImprove] = useState(false);
 
   useEffect(() => {
     fetch(`/api/brands/${slug}`)
@@ -345,11 +362,59 @@ export default function BrandPage({
       .catch((e) => setError(e.message));
   }, [slug]);
 
+  useEffect(() => {
+    if (!improveJob || improveJob.status !== "running") return;
+
+    const interval = window.setInterval(() => {
+      fetch(`/api/brands/${slug}/jobs/${improveJob.job_id}`)
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          return r.json();
+        })
+        .then((data: ImprovementJobState) => {
+          setImproveJob(data);
+          if (data.status !== "running") {
+            fetch(`/api/brands/${slug}`)
+              .then((r) => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+              })
+              .then((fresh: BrandDetail) => setBrand(fresh))
+              .catch(() => {
+                // Leave the current brand detail in place if the refresh fails.
+              });
+          }
+        })
+        .catch((e) => setImproveError(e.message));
+    }, 2000);
+
+    return () => window.clearInterval(interval);
+  }, [slug, improveJob]);
+
   function handleCopy(text: string) {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     });
+  }
+
+  async function handleImprove() {
+    setStartingImprove(true);
+    setImproveError(null);
+    try {
+      const response = await fetch(`/api/brands/${slug}/improve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetScore: 80 }),
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      setImproveJob(data.job as ImprovementJobState);
+    } catch (e) {
+      setImproveError(e instanceof Error ? e.message : "Failed to start improvement job");
+    } finally {
+      setStartingImprove(false);
+    }
   }
 
   if (error) {
@@ -389,15 +454,16 @@ export default function BrandPage({
   const imgAssets = assetFiles.filter((f) => !f.endsWith(".svg"));
 
   const logoFile = svgAssets.find((f) => f.includes("logo"));
-
-  const availablePreviewPages: string[] = [];
-
-  const summaryParagraph = brand.design_md
-    ? brand.design_md
-        .split("\n\n")
-        .map((p) => p.trim())
-        .find((p) => p.length > 40 && !p.startsWith("#")) ?? ""
-    : "";
+  const validationReport = (brand.validation_report ?? {}) as Record<string, unknown>;
+  const validationViewportAvg =
+    typeof validationReport.viewport_avg === "number"
+      ? validationReport.viewport_avg
+      : null;
+  const displayScore =
+    validationViewportAvg !== null ? validationViewportAvg / 100 : brand.overall_score;
+  const qualityTarget = improveJob?.target_score ?? 80;
+  const meetsQualityTarget =
+    displayScore !== null && displayScore * 100 >= qualityTarget;
 
   const fileGroups = groupFilesByDir(brand.files);
   const localFileGroups = groupFilesByDir(brand.localFiles ?? []);
@@ -442,7 +508,7 @@ export default function BrandPage({
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-2">
-          <ScoreBadge score={brand.overall_score} confidence={brand.confidence} />
+          <ScoreBadge score={displayScore} confidence={brand.confidence} />
           <div className="flex flex-wrap justify-end gap-1">
             {brand.categories.map((cat) => (
               <Badge key={cat} variant="outline" className="text-xs">
@@ -1143,23 +1209,84 @@ export default function BrandPage({
         <TabsContent value="validation">
           <div className="space-y-10">
             {/* Verdict banner */}
-            <div className={`rounded-2xl p-8 text-center ${brand.overall_score && brand.overall_score >= 0.7 ? "bg-green-50" : "bg-amber-50"}`}>
+            <div className={`rounded-2xl p-8 text-center ${meetsQualityTarget ? "bg-green-50" : "bg-amber-50"}`}>
               <p className="text-[40px] font-semibold leading-[1.1] tracking-tight">
-                {brand.overall_score ? `${Math.round(brand.overall_score * 100)}%` : "—"}
+                {displayScore !== null ? `${Math.round(displayScore * 100)}%` : "—"}
               </p>
               <p className="mt-2 text-[17px] text-[#86868b]">
-                {brand.overall_score && brand.overall_score >= 0.7
-                  ? "Ready for review"
-                  : "Improvement in progress"}
+                {meetsQualityTarget ? "Ready for review" : "Improvement recommended"}
               </p>
               <p className="mt-1 text-[13px] text-[#86868b]/60">
-                Viewport pixel comparison average across {
-                  brand.validation_report
-                    ? Object.keys((brand.validation_report as Record<string, unknown>).pixel_comparison_viewport || {}).length
-                    : 5
+                Live viewport validation score across {
+                  Object.keys(validationReport.pixel_comparison_viewport || {}).length || 5
                 } pages
               </p>
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <Button onClick={handleImprove} disabled={startingImprove || improveJob?.status === "running"}>
+                  {startingImprove || improveJob?.status === "running" ? (
+                    <>
+                      <RefreshCw className="size-4 animate-spin" /> Improve in progress
+                    </>
+                  ) : (
+                    "Improve Quality"
+                  )}
+                </Button>
+                <span className="text-xs text-[#86868b]">
+                  Target: {qualityTarget}% · live report overrides stale metadata
+                </span>
+              </div>
+              {improveError && (
+                <p className="mt-3 text-sm text-red-600">{improveError}</p>
+              )}
             </div>
+
+            {improveJob && (
+              <div className="rounded-2xl border border-[#d2d2d7]/40 bg-white p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#1d1d1f]">Improvement Job</p>
+                    <p className="text-xs text-[#86868b]">
+                      Status: {improveJob.status} · Iteration {improveJob.current_iteration}/{improveJob.max_iterations}
+                    </p>
+                  </div>
+                  {typeof improveJob.current_score === "number" && (
+                    <Badge variant="outline" className="font-mono text-xs">
+                      {Math.round(improveJob.current_score * 100)}%
+                    </Badge>
+                  )}
+                </div>
+
+                {improveJob.pages_needing_work.length > 0 && (
+                  <div className="mt-4">
+                    <p className="mb-2 text-xs font-medium uppercase tracking-[0.06em] text-[#86868b]">
+                      Remaining pages
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {improveJob.pages_needing_work.map((page, index) => (
+                        <Badge key={`${page.slug ?? "page"}-${index}`} variant="secondary">
+                          {(page.slug ?? "unknown").replaceAll("-", " ")}
+                          {typeof page.current_score === "number" ? ` · ${page.current_score}%` : ""}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {improveJob.blocked_reason && (
+                  <div className="mt-4 rounded-xl bg-amber-50 p-4 text-left">
+                    <p className="text-sm font-semibold text-amber-900">Assisted capture required</p>
+                    <p className="mt-1 text-sm text-amber-800">{improveJob.blocked_reason.detail}</p>
+                    {improveJob.assisted_capture_steps.length > 0 && (
+                      <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-amber-900">
+                        {improveJob.assisted_capture_steps.map((step) => (
+                          <li key={step}>{step}</li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Per-page comparison with screenshots */}
             <div>

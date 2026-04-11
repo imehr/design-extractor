@@ -23,6 +23,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from improvement_job import sync_metadata_with_report
+
 try:
     from PIL import Image
     from pixelmatch import pixelmatch
@@ -259,7 +261,7 @@ def update_validation_report(scores: dict) -> None:
 def main():
     parser = argparse.ArgumentParser(description="Validation Harness")
     parser.add_argument("--brand", default="westpac-com-au", help="Brand slug")
-    parser.add_argument("--base-url", default="http://localhost:3000", help="Dev server base URL")
+    parser.add_argument("--base-url", default="http://localhost:5173", help="Dev server base URL")
     parser.add_argument("--target", type=float, default=80.0, help="Target score percentage")
     parser.add_argument("--skip-originals", action="store_true", help="Skip re-capturing originals if they exist")
     parser.add_argument("--score-only", action="store_true", help="Only re-score existing screenshots")
@@ -310,6 +312,8 @@ def main():
 
     # Update report
     update_validation_report(scores)
+    if (BRANDS_DIR / "metadata.json").exists():
+        sync_metadata_with_report(BRANDS_DIR / "metadata.json", REPORT_PATH)
 
     # Summary
     if manifest["pages_needing_work"]:

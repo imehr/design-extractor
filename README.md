@@ -48,6 +48,22 @@ For now (Phase 1), the only working command is:
 /design-extractor:browse-library     # opens the static Nimbus sample brand
 ```
 
+## Improvement workflow
+
+The local webapp now exposes a Validation-tab `Improve Quality` action that starts a filesystem-backed improvement job. In Claude Code, the matching command is:
+
+```bash
+/design-extractor:improve <slug>
+```
+
+When anti-bot protection blocks automated source capture, the system should switch to assisted-capture mode instead of asking you to abandon the run.
+
+To feed operator or review feedback back into the harness itself:
+
+```bash
+/design-extractor:learn-feedback <slug> "<feedback>"
+```
+
 ## Architecture at a glance
 
 ```
@@ -81,6 +97,7 @@ Phase C — Publish
 - `docs/per-brand-skill-spec.md` — per-brand SKILL.md format and trigger testing
 - `docs/patterns-and-relationships.md` — the 15 pattern signals
 - `docs/ui-guide.md` — library browser walkthrough
+- `HARNESS.md` — harness contract for the hybrid MASFactory-aligned controller
 - `docs/troubleshooting.md` — known failure modes and degradation rules
 - `blueprints/scaffolding-notes.md` — architecture rationale
 - `tests/fixtures/linear-app-ground-truth.md` — gold-standard hand-written DESIGN.md

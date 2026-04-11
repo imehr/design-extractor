@@ -1,0 +1,97 @@
+{
+  "name": "design-extractor-runtime",
+  "version": "0.1.0",
+  "description": "Hybrid MASFactory-aligned harness for design-extractor validation, improvement, and learning orchestration.",
+  "execution_mode": "python_runtime",
+  "metadata": {
+    "author": "design-extractor",
+    "tags": ["design-extraction", "validation", "improvement", "learning", "hybrid-harness"]
+  },
+  "nodes": [
+    {
+      "id": "ENTRY",
+      "type": "interaction",
+      "label": "Improvement Request",
+      "instructions": "Collect or receive the brand slug, target score, base URL, and optional feedback payload for an improvement run.",
+      "input_fields": [],
+      "output_fields": ["brand_slug", "target_score", "base_url", "feedback_payload"]
+    },
+    {
+      "id": "ValidationPlanner",
+      "type": "agent",
+      "label": "Validation Planner",
+      "instructions": "Plan the next validation iteration. Prioritize live validation report data, improvement manifest gaps, and blocked-site handling rules. Return a bounded next-step decision for the controller.",
+      "model": "sonnet",
+      "tools": [],
+      "input_fields": ["brand_slug", "target_score", "feedback_payload"],
+      "output_fields": ["improvement_plan", "next_action", "assisted_capture_required"],
+      "skill_query": {
+        "task_family": "design_extractor_validation_planning",
+        "capabilities": ["planning", "validation", "fallback"]
+      },
+      "skill_policy": "retrieve_or_synthesize",
+      "contracts": [
+        {
+          "id": "planner_required_fields",
+          "type": "required_fields",
+          "fields": ["improvement_plan", "next_action", "assisted_capture_required"]
+        }
+      ]
+    },
+    {
+      "id": "FeedbackSynthesizer",
+      "type": "agent",
+      "label": "Feedback Synthesizer",
+      "instructions": "Convert user and review feedback into durable learning notes for agents, skills, and harness governance. Keep recommendations general enough to reuse across runs.",
+      "model": "sonnet",
+      "tools": [],
+      "input_fields": ["feedback_payload", "improvement_plan"],
+      "output_fields": ["learning_notes", "promotion_recommendation"],
+      "skill_query": {
+        "task_family": "design_extractor_feedback_learning",
+        "capabilities": ["feedback", "skill-learning", "harness-governance"]
+      },
+      "skill_policy": "retrieve_or_synthesize",
+      "contracts": [
+        {
+          "id": "feedback_required_fields",
+          "type": "required_fields",
+          "fields": ["learning_notes", "promotion_recommendation"]
+        }
+      ]
+    },
+    {
+      "id": "ImproveLoop",
+      "type": "optimization",
+      "label": "Improvement Loop",
+      "input_fields": ["improvement_plan", "target_score"],
+      "output_fields": ["best_improvement_summary"],
+      "config": {
+        "max_iterations": 5,
+        "score_field": "validation_score",
+        "simplicity_field": "improvement_summary_bytes",
+        "sub_nodes": [],
+        "sub_edges": []
+      }
+    }
+  ],
+  "edges": [
+    { "source": "ENTRY", "target": "ValidationPlanner" },
+    { "source": "ValidationPlanner", "target": "FeedbackSynthesizer" },
+    { "source": "ValidationPlanner", "target": "ImproveLoop" }
+  ],
+  "state": {
+    "shared_variables": {},
+    "context_adapters": [
+      {
+        "type": "skill_registry",
+        "config": {
+          "path": "state/learning/registry.json",
+          "top_k": 5,
+          "promotion_threshold": 0.8,
+          "auto_promote": false
+        }
+      }
+    ]
+  }
+}

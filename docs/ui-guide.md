@@ -22,6 +22,7 @@ The home page shows all extracted brands in a card grid.
 - **Category tabs** — filter by: All, AI & ML, Dev Tools, Infrastructure, Fintech, Enterprise, Consumer
 - **Search** — client-side filter by brand name or slug
 - **Card grid** — responsive (1 column on mobile, 2 on tablet, 3 on desktop)
+- **Docs** — `/docs` explains setup, architecture, blocked-site fallback, and the self-improvement loop
 
 ### Card contents
 
@@ -85,6 +86,12 @@ The per-brand SKILL.md content in a code block with a "Copy to clipboard" button
 #### 8. Validation
 
 The validation report (`validation/report.json`) rendered as formatted JSON. Shows gate verdicts, iteration scores, and the final convergence state. Displays "No validation report available" if the file doesn't exist.
+
+The Validation tab now also:
+- derives the displayed score from the live validation report
+- exposes an `Improve Quality` button
+- shows improvement job state (running, stalled, completed, assisted capture required)
+- surfaces assisted-capture steps when anti-bot protection blocks automated browsing
 
 #### 9. Raw Files
 

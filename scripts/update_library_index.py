@@ -64,13 +64,16 @@ def save_index(data: dict) -> None:
 def brand_record_from_metadata(slug: str, metadata_path: Path) -> dict:
     with metadata_path.open() as f:
         meta = json.load(f)
+    overall_score = meta.get("overall_score")
+    if overall_score is None:
+        overall_score = meta.get("scores", {}).get("overall")
     return {
         "slug": slug,
         "name": meta.get("name", slug),
         "source_url": meta.get("source_url", ""),
         "extracted_at": meta.get("extracted_at", ""),
         "extractor_version": meta.get("extractor_version", ""),
-        "overall_score": meta.get("scores", {}).get("overall"),
+        "overall_score": overall_score,
         "confidence": meta.get("confidence", "UNKNOWN"),
         "categories": meta.get("categories", meta.get("category", [])),
         "synthetic": meta.get("synthetic", False),

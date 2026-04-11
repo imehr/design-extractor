@@ -55,7 +55,7 @@ export async function GET(
   }
 
   // Also list local React component files and public assets
-  let localFiles: string[] = [];
+  const localFiles: string[] = [];
   try {
     const projectRoot = path.resolve(process.cwd());
     const walkLocal = async (dir: string, prefix = ""): Promise<string[]> => {
