@@ -165,59 +165,40 @@ def build_claude_improvement_prompt(
     inline_feedback: dict[str, Any] | None = None,
     recent_feedback: list[dict[str, Any]] | None = None,
 ) -> str:
-    selected_pages = pages[:3]
+    # Focus on the SINGLE worst page for faster, more reliable fixes
+    worst_page = pages[0] if pages else None
+    if not worst_page:
+        return "No pages need improvement. Reply with: No changes needed."
+
+    tsx_path = worst_page.get("replica_tsx", "")
+    score = worst_page.get("current_score", 0)
+    slug = worst_page.get("slug", "unknown")
+    orig_screenshot = worst_page.get("original_screenshot", "")
+    repl_screenshot = worst_page.get("replica_screenshot", "")
+
     lines = [
-        "You are the design-extractor improvement worker inside an already-approved automated run.",
-        f"Brand: {brand}",
-        f"Current live validation score: {_format_score(current_score)}",
-        f"Target score: {target_score:.1f}%",
+        f"Fix the {slug} replica page to improve its pixel match score from {score}% toward {target_score}%.",
         "",
-        "Read these files before editing:",
-        "- HARNESS.md",
-        f"- {report_path}",
-        f"- {manifest_path}",
+        f"File to edit: {tsx_path}",
+        f"Original screenshot: {orig_screenshot}",
+        f"Replica screenshot: {repl_screenshot}",
+        "",
+        "Steps:",
+        "1. Read the replica TSX file",
+        "2. View both screenshots (original and replica) to see the visual differences",
+        "3. Make targeted edits to close the visual gap — fix layout, spacing, colors, images, missing sections",
+        "4. Do NOT refactor or restructure — make surgical fixes only",
+        "",
+        "Rules:",
+        "- Edit ONLY the listed file and shared brand components under ui/components/brands/",
+        "- Do not modify unrelated files, docs, or other brands",
+        "- Make edits directly — no plans, no questions",
+        "- Reply with a short summary of what you changed",
     ]
 
-    if selected_pages:
-        lines.extend(
-            [
-                "",
-                "Focus on the worst failing pages first. The current manifest entries are:",
-                json.dumps(selected_pages, indent=2),
-            ]
-        )
-
     if inline_feedback:
-        lines.extend(
-            [
-                "",
-                "Inline operator feedback for this run:",
-                json.dumps(inline_feedback, indent=2),
-            ]
-        )
+        lines.extend(["", "Operator feedback:", json.dumps(inline_feedback, indent=2)])
 
-    if recent_feedback:
-        lines.extend(
-            [
-                "",
-                "Recent brand-specific feedback from prior runs:",
-                json.dumps(recent_feedback, indent=2),
-            ]
-        )
-
-    lines.extend(
-        [
-            "",
-            "Rules:",
-            "- Edit only the listed replica files and any brand-specific shared components under ui/components/brands/ that directly affect those pages.",
-            "- Do not modify the controller, docs, or unrelated brands during this repair step.",
-            "- Prefer shared fixes that improve multiple failing pages before page-local tweaks.",
-            "- Preserve the existing design language; improve layout fidelity, typography, spacing, and structural hierarchy first.",
-            "- Do not ask for permission or produce a plan. Make the edits directly.",
-            "",
-            "When you are done, reply with a short plain-text summary of what you changed and which files you touched.",
-        ]
-    )
     return "\n".join(lines)
 
 
