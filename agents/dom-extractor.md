@@ -124,6 +124,37 @@ agent-browser eval "(() => {
 })()"
 ```
 
+### Step 7.5 — Extract CSS background images (targeted)
+
+Many sites use `background-image` CSS property instead of `<img>` tags for photos, especially for team/profile photos, hero backgrounds, and decorative elements. Extract these with size filtering:
+
+```bash
+agent-browser eval "(() => {
+  const bgImages = [];
+  const allElements = document.querySelectorAll('div, figure, section, span, a');
+  for (const el of allElements) {
+    const bg = getComputedStyle(el).backgroundImage;
+    if (bg && bg !== 'none' && bg.includes('url(')) {
+      const url = bg.match(/url\([\"']?([^\"')]+)[\"']?\)/)?.[1];
+      if (url && !url.startsWith('data:') && !url.includes('gradient')) {
+        const r = el.getBoundingClientRect();
+        if (r.width > 50 && r.height > 50) {
+          bgImages.push({
+            url: url,
+            width: Math.round(r.width),
+            height: Math.round(r.height),
+            className: (el.className || '').toString().substring(0, 60)
+          });
+        }
+      }
+    }
+  }
+  return JSON.stringify(bgImages);
+})()"
+```
+
+Download each background image URL to the cache assets directory. These are often team photos, hero images, and card backgrounds that `<img>` extraction misses entirely.
+
 ### Step 8 — Save JSON
 Combine all extracted data into a single JSON file at `{cache_dir}/dom-extraction/{page-slug}.json`.
 

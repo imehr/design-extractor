@@ -12,35 +12,80 @@ const DIRECTORS = [
   {
     name: "Peter Tonagh",
     title: "Chair",
-    bio: "Peter was appointed to the Quantium Board in 2020. Peter was the first independent Non-Executive Chairman and is currently Chair of the Quantium Board.",
+    photo: "/brands/quantium-com-au/images/peter-tonagh.jpg",
   },
   {
     name: "Caryn Katsikogianis",
-    title: "Non-Executive Director",
-    bio: "Caryn was appointed to the Quantium Board in October 2024 and is the Chief People Officer of Woolworths Group.",
+    title: "Non Executive Director",
+    photo: "/brands/quantium-com-au/images/caryn-katsikogianis.jpg",
   },
   {
     name: "Adam Driussi",
     title: "Chief Executive Officer",
-    bio: "Adam co-founded Quantium in 2002 and is the Chief Executive Officer. Adam has overall responsibility for Quantium's strategy and operations.",
+    photo: "/brands/quantium-com-au/images/adam-driussi.jpg",
+  },
+  {
+    name: "Greg Schneider",
+    title: "",
+    photo: "/brands/quantium-com-au/images/greg-schneider.jpg",
+  },
+  {
+    name: "Colin Storrie",
+    title: "",
+    photo: "/brands/quantium-com-au/images/colin-storrie.jpg",
+  },
+  {
+    name: "John Hunt",
+    title: "",
+    photo: "/brands/quantium-com-au/images/john-hunt.png",
+  },
+  {
+    name: "Stephen Harrison",
+    title: "",
+    photo: "/brands/quantium-com-au/images/stephen-harrison.jpg",
   },
 ];
 
 const GROUP_EXECUTIVES = [
   {
     name: "Natalie Jones",
-    title: "Group Executive - People & Culture",
-    bio: "Natalie is a passionate and commercially focused Executive who drives purposeful growth through an effective People and Culture agenda.",
+    title: "",
+    photo: "/brands/quantium-com-au/images/natalie-jones.png",
   },
   {
     name: "Brent Merrin",
-    title: "Chief Financial Officer",
-    bio: "Brent brings extensive experience managing finance and commercial teams. As well as leading our finance function, Brent also leads Quantium's Strategy and Group Services teams.",
+    title: "",
+    photo: "/brands/quantium-com-au/images/brent-merrin.png",
   },
   {
     name: "Ben Chan",
-    title: "Chief AI Officer",
-    bio: "Ben leads Quantium's AI strategy, transformation, and engineering teams across the organisation.",
+    title: "",
+    photo: "/brands/quantium-com-au/images/ben-chan.jpg",
+  },
+  {
+    name: "Kyle Evans",
+    title: "",
+    photo: "/brands/quantium-com-au/images/kyle-evans.jpg",
+  },
+  {
+    name: "Kylie Gleeson",
+    title: "",
+    photo: "/brands/quantium-com-au/images/kylie-gleeson.png",
+  },
+  {
+    name: "Rohan Dixit",
+    title: "",
+    photo: "/brands/quantium-com-au/images/rohan-dixit.jpg",
+  },
+  {
+    name: "Brian Hartzer",
+    title: "",
+    photo: "/brands/quantium-com-au/images/brian-hartzer.jpg",
+  },
+  {
+    name: "Makenna Ralston",
+    title: "",
+    photo: "/brands/quantium-com-au/images/makenna-ralston.jpg",
   },
 ];
 
@@ -113,14 +158,12 @@ export default function AboutUsPage() {
           <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-3">
             {DIRECTORS.map((person) => (
               <div key={person.name} className="group">
-                {/* Placeholder portrait */}
-                <div className="mb-4 aspect-square w-full overflow-hidden bg-[#EFEFEF]">
-                  <div className="flex h-full w-full items-center justify-center text-[48px] font-light text-[#CCC]">
-                    {person.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </div>
+                <div className="mb-4 aspect-[4/5] w-full overflow-hidden rounded-md bg-[#EFEFEF]">
+                  <img
+                    src={person.photo}
+                    alt={person.name}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <h3
                   className="mb-1 text-[20px] font-medium"
@@ -128,12 +171,11 @@ export default function AboutUsPage() {
                 >
                   {person.name}
                 </h3>
-                <p className="mb-2 text-[14px] font-medium text-[#F25648]">
-                  {person.title}
-                </p>
-                <p className="text-[15px] font-light leading-relaxed text-[#555]">
-                  {person.bio}
-                </p>
+                {person.title && (
+                  <p className="text-[14px] font-normal text-[#888]">
+                    {person.title}
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -154,14 +196,12 @@ export default function AboutUsPage() {
           <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-3">
             {GROUP_EXECUTIVES.map((person) => (
               <div key={person.name} className="group">
-                {/* Placeholder portrait */}
-                <div className="mb-4 aspect-square w-full overflow-hidden bg-[#EFEFEF]">
-                  <div className="flex h-full w-full items-center justify-center text-[48px] font-light text-[#CCC]">
-                    {person.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")}
-                  </div>
+                <div className="mb-4 aspect-[4/5] w-full overflow-hidden rounded-md bg-[#EFEFEF]">
+                  <img
+                    src={person.photo}
+                    alt={person.name}
+                    className="h-full w-full object-cover"
+                  />
                 </div>
                 <h3
                   className="mb-1 text-[20px] font-medium"
@@ -169,12 +209,11 @@ export default function AboutUsPage() {
                 >
                   {person.name}
                 </h3>
-                <p className="mb-2 text-[14px] font-medium text-[#F25648]">
-                  {person.title}
-                </p>
-                <p className="text-[15px] font-light leading-relaxed text-[#555]">
-                  {person.bio}
-                </p>
+                {person.title && (
+                  <p className="text-[14px] font-normal text-[#888]">
+                    {person.title}
+                  </p>
+                )}
               </div>
             ))}
           </div>
