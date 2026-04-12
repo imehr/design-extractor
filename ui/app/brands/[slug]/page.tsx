@@ -132,7 +132,8 @@ function extractColors(
   const result: Array<{ hex: string; count: number }> = [];
   for (const entry of computed) {
     if (result.length >= limit) break;
-    const rgb = entry.value.match(/rgba?\([^)]+\)/)?.[0];
+    const val = typeof entry.value === "string" ? entry.value : String(entry.value ?? "");
+    const rgb = val.match(/rgba?\([^)]+\)/)?.[0];
     if (!rgb) continue;
     const hex = rgbToHex(rgb);
     if (!hex || seen.has(hex)) continue;
