@@ -676,6 +676,35 @@ def main():
         issues.append("WARN: No validation report")
         print("  Validation: no report")
 
+    # Check section completeness
+    dom_dir = cache_dir / "dom-extraction"
+    if dom_dir.exists():
+        for dom_file in dom_dir.glob("*.json"):
+            if "measurements" in dom_file.name:
+                continue
+            with open(dom_file) as f:
+                dom = json.load(f)
+            sections = dom.get("sections", [])
+            page_name = dom_file.stem
+            if len(sections) > 0:
+                # Check if corresponding replica exists and has enough content
+                replica_path = Path("ui/app/brands") / args.brand / "replica"
+                if page_name == "homepage":
+                    replica_file = replica_path / "page.tsx"
+                else:
+                    replica_file = replica_path / page_name / "page.tsx"
+                if replica_file.exists():
+                    with open(replica_file) as f:
+                        replica_content = f.read()
+                    # Count section markers (h2, major div sections)
+                    import re
+                    h2_count = len(re.findall(r'<h2|<H2|className.*h2', replica_content))
+                    if h2_count < len(sections) - 2:  # Allow 2 section gap
+                        issues.append(f"WARN: {page_name} replica has {h2_count} sections but DOM has {len(sections)}")
+                        print(f"  Sections ({page_name}): {h2_count}/{len(sections)} INCOMPLETE")
+                    else:
+                        print(f"  Sections ({page_name}): {h2_count}/{len(sections)} OK")
+
     # Check SKILL.md exists and is non-empty
     if skill_path.exists() and skill_path.stat().st_size > 100:
         print(f"  SKILL.md: OK")

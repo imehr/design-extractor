@@ -133,6 +133,17 @@ For each font URL found, resolve relative paths against the stylesheet URL, down
 For each background image URL, download to `{cache_dir}/assets/images/`.
 Verify downloaded files are actual assets (not HTML error pages) using the `file` command.
 
+## Content quality requirements
+
+The extracted text MUST be clean visible content:
+1. Remove all `<script>`, `<style>`, `<noscript>` elements before extracting text
+2. Collapse whitespace (replace multiple spaces/newlines with single space)
+3. Truncate each section's text at 2000 characters (not 500)
+4. Extract images with full src URLs (not empty strings)
+5. For each section, include a `sectionType` field: "hero", "partners", "features", "stats", "cta", "content"
+
+The extraction JSON should have a `sectionCount` field at the top level for validation.
+
 ## Output contract
 
 - `{cache_dir}/dom-extraction/{page-slug}.json` — extracted DOM content

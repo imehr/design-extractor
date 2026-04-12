@@ -218,3 +218,21 @@ The cache_dir is passed to you in the dispatch prompt. It will be something like
 
 - `{cache_dir}/replica/page.tsx` -- React/Next.js TSX replica page component
 - `{cache_dir}/screenshots/iterations/1/*.png` -- replica screenshots at all breakpoints
+
+## Section completeness requirement
+
+Every page replica MUST include ALL sections found in the DOM extraction JSON. Before submitting:
+
+1. Count the number of sections/headings in the DOM extraction JSON
+2. Count the number of sections rendered in your replica
+3. If your replica has fewer sections than the extraction, you are NOT done
+
+Common sections that get missed:
+- Partner/client logo grids
+- "Why choose us" / value proposition cards
+- "How we work" / process sections  
+- Case study / impact / stats sections
+- CTA sections before the footer
+- Testimonial sections
+
+Every H2 in the DOM extraction should have a corresponding section in the replica.
