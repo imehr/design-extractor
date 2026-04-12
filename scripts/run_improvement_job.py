@@ -148,7 +148,7 @@ def main() -> int:
     parser.add_argument(
         "--claude-timeout",
         type=int,
-        default=240,
+        default=600,
         help="Timeout in seconds for each Claude refinement pass",
     )
     parser.add_argument(

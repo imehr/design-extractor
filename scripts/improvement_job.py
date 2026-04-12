@@ -233,12 +233,11 @@ def build_claude_command(prompt: str) -> list[str]:
         "bypassPermissions",
         "--allowedTools",
         "Read",
+        "Write",
         "Edit",
         "Bash",
-        "--tools",
-        "Read",
-        "Edit",
-        "Bash",
+        "Glob",
+        "Grep",
     ]
 
 

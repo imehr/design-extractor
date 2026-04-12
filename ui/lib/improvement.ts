@@ -70,6 +70,8 @@ export async function startImprovementJob(
     "http://localhost:5173",
     "--target",
     String(options.targetScore ?? 80),
+    "--claude-timeout",
+    "600",
   ];
 
   if (options.feedback && Object.keys(options.feedback).length > 0) {
