@@ -1,0 +1,46 @@
+{
+  "url": "https://example.com",
+  "pageSlug": "homepage",
+  "extractedAt": "2026-04-12T00:00:00Z",
+  "measurements": {
+    "heroHeight": null,
+    "headerHeight": null,
+    "h1Left": 256,
+    "contentPaddingLeft": "0px",
+    "firstSectionTop": null,
+    "firstSectionHeight": null,
+    "viewportWidth": 1280,
+    "viewportHeight": 720
+  },
+  "header": {
+    "utilityLinks": [],
+    "navLinks": [],
+    "logoSvg": null
+  },
+  "mainContent": {
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Example Domain"
+      }
+    ],
+    "links": [
+      {
+        "text": "Learn more",
+        "href": "https://iana.org/domains/example"
+      }
+    ],
+    "imgs": [],
+    "text": "Example Domain\n\nThis domain is for use in documentation examples without needing permission. Avoid use in operations.\n\nLearn more"
+  },
+  "footer": {
+    "error": "no footer"
+  },
+  "fonts": [],
+  "backgroundImages": [],
+  "assets": {
+    "images": [],
+    "fonts": [],
+    "backgroundImages": []
+  }
+}

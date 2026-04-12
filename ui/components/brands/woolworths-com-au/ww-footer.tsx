@@ -86,7 +86,7 @@ export function WWFooter() {
   return (
     <footer
       className="w-full"
-      style={{ fontFamily: "'Roboto', -apple-system, system-ui, sans-serif" }}
+      style={{ fontFamily: "var(--font-roboto), -apple-system, system-ui, sans-serif" }}
     >
       {/* Ways to shop + Fulfilment */}
       <div className="w-full bg-[#25251F] py-8">

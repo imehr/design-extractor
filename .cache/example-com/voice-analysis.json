@@ -1,0 +1,31 @@
+{
+  "slug": "example-com",
+  "url": "https://example.com",
+  "extracted_at": "2026-04-12T00:00:00Z",
+  "tone_dimensions": {
+    "formality": 0.8,
+    "authority": 0.6,
+    "warmth": 0.2,
+    "urgency": 0.0,
+    "playfulness": 0.0
+  },
+  "voice_characteristics": {
+    "style": "informational",
+    "register": "neutral-formal",
+    "sentence_length": "short",
+    "vocabulary_level": "standard"
+  },
+  "vocabulary_patterns": {
+    "key_terms": ["domain", "documentation", "examples", "permission", "operations"],
+    "avoided_terms": [],
+    "technical_density": "low"
+  },
+  "cta_style": {
+    "primary_cta": "Learn more",
+    "pattern": "underlined text link, no button styling",
+    "tone": "informational, not promotional"
+  },
+  "language_variant": "US English",
+  "sample_text": "This domain is for use in documentation examples without needing permission. Avoid use in operations.",
+  "notes": "example.com uses terse, factual, documentation-style copy. Zero marketing language."
+}

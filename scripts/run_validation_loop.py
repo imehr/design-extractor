@@ -181,6 +181,14 @@ def score_all_pages(captures: dict) -> dict:
     return scores
 
 
+def missing_capture_pages(captures: dict) -> list[str]:
+    missing: list[str] = []
+    for slug, paths in captures.items():
+        if not paths.get("original") or not paths.get("replica"):
+            missing.append(slug)
+    return missing
+
+
 def build_improvement_manifest(scores: dict, target: float = 80.0) -> dict:
     """Build a manifest listing pages that need improvement, sorted worst-first."""
     pages_needing_work = []
@@ -292,6 +300,11 @@ def main():
     else:
         print(f"Capturing screenshots (base: {args.base_url})...")
         captures = capture_all_pages(args.base_url, pages, skip_originals=args.skip_originals)
+
+    missing_pages = missing_capture_pages(captures)
+    if missing_pages:
+        print(f"\nValidation aborted: missing screenshots for {', '.join(missing_pages)}")
+        return 2
 
     print("\n=== Scoring ===")
     scores = score_all_pages(captures)

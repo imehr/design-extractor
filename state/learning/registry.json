@@ -1,0 +1,72 @@
+{
+  "version": "1.0",
+  "updated_at": "2026-04-12T00:00:00Z",
+  "skills": [
+    {
+      "id": "design-extraction.v1",
+      "name": "design-extraction",
+      "task_family": "design_extraction",
+      "capabilities": ["extraction", "validation", "replication", "dom-measurement"],
+      "freshness": "active",
+      "contract_score": 0.85,
+      "success_count": 3,
+      "last_updated": "2026-04-12",
+      "path": "skills/design-extraction/SKILL.md"
+    },
+    {
+      "id": "visual-diff.v1",
+      "name": "visual-diff",
+      "task_family": "visual_comparison",
+      "capabilities": ["pixel-comparison", "screenshot-analysis", "scoring"],
+      "freshness": "active",
+      "contract_score": 0.80,
+      "success_count": 3,
+      "last_updated": "2026-04-12",
+      "path": "skills/visual-diff/SKILL.md"
+    },
+    {
+      "id": "pattern-detection.v1",
+      "name": "pattern-detection",
+      "task_family": "pattern_analysis",
+      "capabilities": ["spacing-rhythm", "type-scale", "density", "color-temperature"],
+      "freshness": "candidate",
+      "contract_score": 0.60,
+      "success_count": 1,
+      "last_updated": "2026-04-11",
+      "path": "skills/pattern-detection/SKILL.md"
+    },
+    {
+      "id": "shadcn-replication.v1",
+      "name": "shadcn-replication",
+      "task_family": "replica_building",
+      "capabilities": ["react-components", "tailwind-mapping", "shadcn-ui"],
+      "freshness": "candidate",
+      "contract_score": 0.60,
+      "success_count": 1,
+      "last_updated": "2026-04-11",
+      "path": "skills/shadcn-replication/SKILL.md"
+    },
+    {
+      "id": "library-management.v1",
+      "name": "library-management",
+      "task_family": "library_operations",
+      "capabilities": ["index-management", "brand-installation", "artifact-registration"],
+      "freshness": "candidate",
+      "contract_score": 0.55,
+      "success_count": 1,
+      "last_updated": "2026-04-11",
+      "path": "skills/library-management/SKILL.md"
+    },
+    {
+      "id": "design-md-writer.v1",
+      "name": "design-md-writer",
+      "task_family": "documentation",
+      "capabilities": ["design-md", "jinja2-templates", "evidence-tables"],
+      "freshness": "candidate",
+      "contract_score": 0.60,
+      "success_count": 1,
+      "last_updated": "2026-04-11",
+      "path": "skills/design-md-writer/SKILL.md"
+    }
+  ]
+}

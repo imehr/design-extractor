@@ -18,7 +18,7 @@ interface WWHeaderProps {
 
 export function WWHeader({ activePage }: WWHeaderProps) {
   return (
-    <header className="sticky top-0 z-50 w-full" style={{ fontFamily: "'Roboto', -apple-system, system-ui, sans-serif" }}>
+    <header className="sticky top-0 z-50 w-full" style={{ fontFamily: "var(--font-roboto), -apple-system, system-ui, sans-serif" }}>
       {/* Top green bar */}
       <div className="w-full bg-[#178841]">
         <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between px-4">

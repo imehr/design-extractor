@@ -70,15 +70,105 @@
         "max_iterations": 5,
         "score_field": "validation_score",
         "simplicity_field": "improvement_summary_bytes",
-        "sub_nodes": [],
-        "sub_edges": []
+        "adaptive_recovery": [
+          {
+            "id": "retry-fixes-on-low-score",
+            "when_contract_ids": ["fix_plan_complete"],
+            "strategy": "retry_with_feedback",
+            "node_id": "PlanFixes",
+            "max_attempts": 2
+          }
+        ],
+        "sub_nodes": [
+          {
+            "id": "RunValidation",
+            "type": "agent",
+            "label": "Run Validation Harness",
+            "instructions": "Execute run_validation_loop.py for the target brand. Read the resulting report.json and improvement-manifest.json. Output the viewport_avg score and list of pages needing work.",
+            "model": "sonnet",
+            "tools": ["Bash", "Read"],
+            "input_fields": ["brand_slug", "target_score"],
+            "output_fields": ["validation_score", "report_data", "pages_needing_work"],
+            "config": {
+              "contracts": [
+                {"id": "validation_report_exists", "type": "required_fields", "source": "outputs", "fields": ["validation_score", "report_data"]}
+              ]
+            }
+          },
+          {
+            "id": "ScoreCheck",
+            "type": "switch",
+            "label": "Quality Gate",
+            "input_fields": ["validation_score", "target_score"],
+            "output_fields": ["gate_result"],
+            "config": {
+              "switch_conditions": [
+                {"condition": "validation_score >= target_score", "target": "PARENT_OUTPUT"},
+                {"condition": "validation_score < target_score", "target": "PlanFixes"}
+              ]
+            }
+          },
+          {
+            "id": "PlanFixes",
+            "type": "agent",
+            "label": "Plan Improvement Fixes",
+            "instructions": "Read the improvement manifest and validation report. Identify the worst-failing pages. Generate a concrete fix plan that targets layout fidelity, typography, spacing, and structural hierarchy. Output a prioritized list of fixes.",
+            "model": "sonnet",
+            "tools": ["Read"],
+            "input_fields": ["pages_needing_work", "report_data"],
+            "output_fields": ["fix_plan", "priority_pages"],
+            "config": {
+              "contracts": [
+                {"id": "fix_plan_complete", "type": "required_fields", "source": "outputs", "fields": ["fix_plan", "priority_pages"]}
+              ]
+            }
+          },
+          {
+            "id": "ExecuteFixes",
+            "type": "agent",
+            "label": "Execute Replica Fixes",
+            "instructions": "Apply the planned fixes to the replica files. Edit only the listed replica pages and shared brand components. Preserve the existing design language. Improve layout fidelity, typography, spacing, and structural hierarchy.",
+            "model": "sonnet",
+            "tools": ["Read", "Edit", "Bash"],
+            "input_fields": ["fix_plan", "priority_pages"],
+            "output_fields": ["fix_results", "files_modified"],
+            "config": {
+              "contracts": [
+                {"id": "fixes_applied", "type": "required_fields", "source": "outputs", "fields": ["fix_results"]}
+              ]
+            }
+          },
+          {
+            "id": "SyncMetadata",
+            "type": "agent",
+            "label": "Sync Brand Metadata",
+            "instructions": "Sync metadata.json with the latest validation report data. Update overall_score, validation_status, and validated_at timestamp.",
+            "model": "haiku",
+            "tools": ["Read", "Write", "Bash"],
+            "input_fields": ["report_data", "validation_score"],
+            "output_fields": ["metadata_path", "final_score"],
+            "config": {
+              "contracts": [
+                {"id": "metadata_synced", "type": "required_fields", "source": "outputs", "fields": ["metadata_path", "final_score"]}
+              ]
+            }
+          }
+        ],
+        "sub_edges": [
+          {"source": "PARENT_INPUT", "target": "RunValidation"},
+          {"source": "RunValidation", "target": "ScoreCheck"},
+          {"source": "ScoreCheck", "target": "PlanFixes", "condition": "validation_score < target_score"},
+          {"source": "PlanFixes", "target": "ExecuteFixes"},
+          {"source": "ExecuteFixes", "target": "SyncMetadata"},
+          {"source": "SyncMetadata", "target": "PARENT_OUTPUT"}
+        ]
       }
     }
   ],
   "edges": [
     { "source": "ENTRY", "target": "ValidationPlanner" },
     { "source": "ValidationPlanner", "target": "FeedbackSynthesizer" },
-    { "source": "ValidationPlanner", "target": "ImproveLoop" }
+    { "source": "FeedbackSynthesizer", "target": "ImproveLoop" }
   ],
   "state": {
     "shared_variables": {},

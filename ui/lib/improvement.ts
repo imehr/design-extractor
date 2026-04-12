@@ -19,6 +19,8 @@ export interface ImprovementJobState {
   assisted_capture_steps: string[];
   feedback: Record<string, unknown>;
   history: number[];
+  last_claude_summary: string | null;
+  claude_log_path: string | null;
   updated_at: string;
 }
 
@@ -87,7 +89,7 @@ export async function startImprovementJob(
       const raw = await fs.readFile(jobPath, "utf-8");
       return JSON.parse(raw) as ImprovementJobState;
     } catch {
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await new Promise((resolve) => setTimeout(resolve, 250));
     }
   }
 

@@ -1,0 +1,64 @@
+{
+  "slug": "example-com",
+  "url": "https://example.com",
+  "extracted_at": "2026-04-12T00:00:00Z",
+  "colours": {
+    "background": {
+      "primary": "#EEEEEE",
+      "confidence": 1.0,
+      "source": "computed-style body.backgroundColor"
+    },
+    "text": {
+      "primary": "#000000",
+      "confidence": 1.0,
+      "source": "computed-style body.color"
+    },
+    "link": {
+      "default": "#334488",
+      "confidence": 1.0,
+      "source": "computed-style a.color"
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "primary": "system-ui, sans-serif",
+      "confidence": 1.0,
+      "source": "computed-style body.fontFamily"
+    },
+    "fontSize": {
+      "body": "16px",
+      "h1": "24px",
+      "confidence": 1.0
+    },
+    "fontWeight": {
+      "h1": "700",
+      "body": "400"
+    },
+    "lineHeight": {
+      "body": "normal",
+      "h1": "normal"
+    }
+  },
+  "spacing": {
+    "bodyMargin": {
+      "top": "108px",
+      "right": "256px",
+      "bottom": "108px",
+      "left": "256px",
+      "confidence": 1.0,
+      "source": "computed-style body.margin"
+    },
+    "paragraphMargin": "16px 0px",
+    "h1Margin": "16.08px 0px"
+  },
+  "layout": {
+    "containerWidth": "768px",
+    "containerLeft": 256,
+    "viewportWidth": 1280,
+    "viewportHeight": 720
+  },
+  "borders": {},
+  "shadows": {},
+  "radii": {},
+  "notes": "example.com uses zero custom CSS — all styles are browser defaults plus body margin. No external stylesheets, fonts, or assets."
+}

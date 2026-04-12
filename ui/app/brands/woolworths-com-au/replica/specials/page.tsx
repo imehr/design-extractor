@@ -63,7 +63,7 @@ export default function SpecialsPage() {
   return (
     <div
       className="min-h-screen bg-[#EEEEEE]"
-      style={{ fontFamily: "Roboto, -apple-system, system-ui, sans-serif", fontSize: 16, color: "#25251F" }}
+      style={{ fontFamily: "var(--font-roboto), -apple-system, system-ui, sans-serif", fontSize: 16, color: "#25251F" }}
     >
       <WWHeader activePage="Specials" />
 
@@ -74,7 +74,7 @@ export default function SpecialsPage() {
           <div className="mx-auto max-w-[1280px]">
             <h2
               className="text-[32px] font-medium"
-              style={{ fontFamily: "Roboto, -apple-system, system-ui, sans-serif" }}
+              style={{ fontFamily: "var(--font-roboto), -apple-system, system-ui, sans-serif" }}
             >
               All Specials and Offers
             </h2>

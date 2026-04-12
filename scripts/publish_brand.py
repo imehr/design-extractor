@@ -46,7 +46,9 @@ def load_all_dom(cache_dir: Path) -> list[dict]:
     return dom_files
 
 
-def synthesize_design_tokens(measurements: list[dict], dom_data: list[dict], brand_name: str) -> dict:
+def synthesize_design_tokens(
+    measurements: list[dict], dom_data: list[dict], brand_name: str
+) -> dict:
     """Synthesize design-tokens.json from DOM extraction measurements."""
 
     # Collect colors from ALL available fields across all pages
@@ -85,7 +87,11 @@ def synthesize_design_tokens(measurements: list[dict], dom_data: list[dict], bra
                     if isinstance(styles, dict):
                         for prop in ["color", "backgroundColor"]:
                             val = styles.get(prop)
-                            if val and val != "rgba(0, 0, 0, 0)" and val != "transparent":
+                            if (
+                                val
+                                and val != "rgba(0, 0, 0, 0)"
+                                and val != "transparent"
+                            ):
                                 all_colors.setdefault(f"{ui_key}_{variant}_{prop}", val)
 
     # Collect typography
@@ -110,7 +116,9 @@ def synthesize_design_tokens(measurements: list[dict], dom_data: list[dict], bra
                     font_families[role] = family
                 elif isinstance(family, dict):
                     role = family.get("role", family.get("name", f"font-{i}"))
-                    font_families[role] = family.get("value", family.get("family", str(family)))
+                    font_families[role] = family.get(
+                        "value", family.get("family", str(family))
+                    )
 
     # Extract layout
     layout = {}
@@ -140,10 +148,15 @@ def synthesize_design_tokens(measurements: list[dict], dom_data: list[dict], bra
 
     # Convert rgb strings to hex
     def rgb_to_hex(rgb_str):
-        if not rgb_str or not rgb_str.startswith("rgb"):
-            return rgb_str
+        if not rgb_str or not isinstance(rgb_str, str) or not rgb_str.startswith("rgb"):
+            return str(rgb_str) if rgb_str else "#000000"
         try:
-            nums = rgb_str.replace("rgb(", "").replace("rgba(", "").replace(")", "").split(",")
+            nums = (
+                rgb_str.replace("rgb(", "")
+                .replace("rgba(", "")
+                .replace(")", "")
+                .split(",")
+            )
             r, g, b = int(nums[0].strip()), int(nums[1].strip()), int(nums[2].strip())
             return f"#{r:02x}{g:02x}{b:02x}"
         except (ValueError, IndexError):
@@ -151,16 +164,27 @@ def synthesize_design_tokens(measurements: list[dict], dom_data: list[dict], bra
 
     # Build computed colors array — must match Westpac format: {value: "rgb(...)", count: N}
     computed_colors = []
-    role_counts = {"primary": 100, "text": 80, "white": 60, "footerDark": 40, "textDark": 30, "backgroundLight": 20}
+    role_counts = {
+        "primary": 100,
+        "text": 80,
+        "white": 60,
+        "footerDark": 40,
+        "textDark": 30,
+        "backgroundLight": 20,
+    }
     for name, rgb in all_colors.items():
         hex_val = rgb_to_hex(rgb)
-        computed_colors.append({
-            "value": rgb,
-            "count": role_counts.get(name, 10),
-            "confidence": "HIGH" if name in ("primary", "text", "white", "footerDark") else "MEDIUM",
-            "source": "computed-style",
-            "role": name,
-        })
+        computed_colors.append(
+            {
+                "value": rgb,
+                "count": role_counts.get(name, 10),
+                "confidence": "HIGH"
+                if name in ("primary", "text", "white", "footerDark")
+                else "MEDIUM",
+                "source": "computed-style",
+                "role": name,
+            }
+        )
 
     # Build typography
     font_sizes = set()
@@ -199,9 +223,17 @@ def synthesize_design_tokens(measurements: list[dict], dom_data: list[dict], bra
         },
         "typography": {
             "families": families,
-            "sizes": [{"value": s, "count": 10} for s in sorted(list(font_sizes), key=lambda x: int(x.replace("px", "")) if "px" in x else 0)],
+            "sizes": [
+                {"value": s, "count": 10}
+                for s in sorted(
+                    list(font_sizes),
+                    key=lambda x: int(x.replace("px", "")) if "px" in x else 0,
+                )
+            ],
             "weights": [{"value": w, "count": 10} for w in sorted(list(font_weights))],
-            "line_heights": [{"value": lh, "count": 10} for lh in sorted(list(line_heights))],
+            "line_heights": [
+                {"value": lh, "count": 10} for lh in sorted(list(line_heights))
+            ],
             "letter_spacings": [],
             "samples": typography_samples,
         },
@@ -209,13 +241,18 @@ def synthesize_design_tokens(measurements: list[dict], dom_data: list[dict], bra
             "detected_base_unit": f"{base_unit}px",
             "content_padding": f"{content_padding}px",
             "max_width": f"{max_width}px",
-            "scale": [f"{base_unit * i}px" for i in [1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20]],
+            "scale": [
+                f"{base_unit * i}px" for i in [1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20]
+            ],
             "paddings": [{"value": f"{content_padding}px", "count": 20}],
             "margins": [],
             "gaps": [],
         },
         "borders": {
-            "radii": [{"value": v, "count": 5} for v in ["0px", "4px", "8px", "16px", "9999px"]],
+            "radii": [
+                {"value": v, "count": 5}
+                for v in ["0px", "4px", "8px", "16px", "9999px"]
+            ],
         },
         "shadows": [],
         "breakpoints": [768, 1024, 1280],
@@ -232,7 +269,9 @@ def synthesize_design_tokens(measurements: list[dict], dom_data: list[dict], bra
     return tokens
 
 
-def generate_design_md(tokens: dict, brand_name: str, source_url: str, measurements: list, dom_data: list) -> str:
+def generate_design_md(
+    tokens: dict, brand_name: str, source_url: str, measurements: list, dom_data: list
+) -> str:
     """Generate DESIGN.md from design tokens and measurements."""
 
     palette = tokens.get("colours", {}).get("palette", {})
@@ -261,11 +300,11 @@ def generate_design_md(tokens: dict, brand_name: str, source_url: str, measureme
 
     md = f"""# {brand_name} Design System
 
-> Extracted from [{source_url}]({source_url}) on {datetime.now().strftime('%Y-%m-%d')}
+> Extracted from [{source_url}]({source_url}) on {datetime.now().strftime("%Y-%m-%d")}
 
 ## 1. Visual Theme & Atmosphere
 
-{brand_name} presents a clean, modern identity. The design language uses a focused color palette anchored by its primary brand color (`{palette.get(list(palette.keys())[0] if palette else 'primary', '#000')}`). Typography establishes clear hierarchy with {heading_font} for headings paired with {body_font} for body text.
+{brand_name} presents a clean, modern identity. The design language uses a focused color palette anchored by its primary brand color (`{palette.get(list(palette.keys())[0] if palette else "primary", "#000")}`). Typography establishes clear hierarchy with {heading_font} for headings paired with {body_font} for body text.
 
 ## 2. Colour Palette & Roles
 
@@ -290,21 +329,21 @@ def generate_design_md(tokens: dict, brand_name: str, source_url: str, measureme
 ## 3. Typography Rules
 
 ### Display Font: {heading_font}
-- **H1 (Section heading):** {samples.get('sectionHeading', {}).get('fontSize', '48px')} / {samples.get('sectionHeading', {}).get('lineHeight', '56px')} / weight {samples.get('sectionHeading', {}).get('fontWeight', '600')}
-- **H2 (Hero heading):** {samples.get('heroHeading', {}).get('fontSize', '64px')} / {samples.get('heroHeading', {}).get('lineHeight', '80px')} / weight {samples.get('heroHeading', {}).get('fontWeight', '600')}
-- Color: Primary blue `{palette.get('primary', '#1971ED')}`
+- **H1 (Section heading):** {samples.get("sectionHeading", {}).get("fontSize", "48px")} / {samples.get("sectionHeading", {}).get("lineHeight", "56px")} / weight {samples.get("sectionHeading", {}).get("fontWeight", "600")}
+- **H2 (Hero heading):** {samples.get("heroHeading", {}).get("fontSize", "64px")} / {samples.get("heroHeading", {}).get("lineHeight", "80px")} / weight {samples.get("heroHeading", {}).get("fontWeight", "600")}
+- Color: Primary blue `{palette.get("primary", "#1971ED")}`
 
 ### Body Font: {body_font}
-- **Body:** {samples.get('body', {}).get('fontSize', '16px')} / weight 400 / color `{palette.get('text', '#202020')}`
-- **Nav links:** {samples.get('navLink', {}).get('fontSize', '16px')} / weight 400
+- **Body:** {samples.get("body", {}).get("fontSize", "16px")} / weight 400 / color `{palette.get("text", "#202020")}`
+- **Nav links:** {samples.get("navLink", {}).get("fontSize", "16px")} / weight 400
 
 ## 4. Layout Principles
 
-- **Max content width:** {layout.get('max_width', '1200px')}
-- **Content padding:** {layout.get('content_padding', '40px')} (sides)
-- **Header height:** {layout.get('header_height', '94px')}
-- **Hero height:** {layout.get('hero_height', '529px')}
-- **Footer:** Dark background `{layout.get('footer_bg', '')}`
+- **Max content width:** {layout.get("max_width", "1200px")}
+- **Content padding:** {layout.get("content_padding", "40px")} (sides)
+- **Header height:** {layout.get("header_height", "94px")}
+- **Hero height:** {layout.get("hero_height", "529px")}
+- **Footer:** Dark background `{layout.get("footer_bg", "")}`
 
 ## 5. Component Patterns
 
@@ -324,13 +363,13 @@ def generate_design_md(tokens: dict, brand_name: str, source_url: str, measureme
 - Card-based layouts for content groups
 
 ### Footer
-- Dark navy background (`{palette.get('footerDark', '#0E0D26')}`)
+- Dark navy background (`{palette.get("footerDark", "#0E0D26")}`)
 - Multi-column layout: brand info, addresses, link groups
 - Acknowledgement of Country section with indigenous artwork
 
 ## 6. Buttons & Interactive Elements
 
-- **Primary button:** `{palette.get('primary', '#1971ED')}` background, white text, 8px border-radius
+- **Primary button:** `{palette.get("primary", "#1971ED")}` background, white text, 8px border-radius
 - **Padding:** 5px 24px
 - **Font:** {body_font} 16px weight 600
 - **Hover:** Darker shade of primary
@@ -339,7 +378,7 @@ def generate_design_md(tokens: dict, brand_name: str, source_url: str, measureme
 
 ### Do
 - Use {heading_font} for ALL headings, never for body text
-- Maintain {layout.get('content_padding', '40px')} side padding at desktop
+- Maintain {layout.get("content_padding", "40px")} side padding at desktop
 - Use primary blue for interactive elements and section headings
 - Use full-width hero images with bottom-left text positioning
 
@@ -351,7 +390,7 @@ def generate_design_md(tokens: dict, brand_name: str, source_url: str, measureme
 
 ## 8. Responsive Behaviour
 
-- Content max-width: {layout.get('max_width', '1200px')} with {layout.get('content_padding', '40px')} padding
+- Content max-width: {layout.get("max_width", "1200px")} with {layout.get("content_padding", "40px")} padding
 - Below 768px: single column, reduced heading sizes
 - Hero maintains aspect ratio, text stays bottom-left
 
@@ -360,11 +399,11 @@ def generate_design_md(tokens: dict, brand_name: str, source_url: str, measureme
 When replicating this brand:
 1. Use `{heading_font}` for all headings (font-weight: 600)
 2. Use `{body_font}` for all body text
-3. Primary blue: `{palette.get('primary', '#1971ED')}`
-4. Content area: `max-w-[{layout.get('max_width', '1200px').replace('px', '')}px] px-[{layout.get('content_padding', '40px')}]`
+3. Primary blue: `{palette.get("primary", "#1971ED")}`
+4. Content area: `max-w-[{layout.get("max_width", "1200px").replace("px", "")}px] px-[{layout.get("content_padding", "40px")}]`
 5. Hero: `relative w-full` with exact height from measurements, `absolute bottom-0 left-0` for text
-6. Footer: `bg-[{palette.get('footerDark', '#0E0D26')}]` with white text
-7. Buttons: `rounded-lg bg-[{palette.get('primary', '#1971ED')}] text-white px-6`
+6. Footer: `bg-[{palette.get("footerDark", "#0E0D26")}]` with white text
+7. Buttons: `rounded-lg bg-[{palette.get("primary", "#1971ED")}] text-white px-6`
 """
     return md
 
@@ -407,11 +446,11 @@ Extracted from {source_url}.
 
 - **Heading font:** {heading_font} (weight 600)
 - **Body font:** {body_font}
-- **Primary color:** `{palette.get('primary', '#1971ED')}`
-- **Dark/footer:** `{palette.get('footerDark', '#0E0D26')}`
-- **Body text:** `{palette.get('text', '#202020')}`
-- **Max width:** {tokens.get('layout', {}).get('max_width', '1200px')}
-- **Content padding:** {tokens.get('layout', {}).get('content_padding', '40px')}
+- **Primary color:** `{palette.get("primary", "#1971ED")}`
+- **Dark/footer:** `{palette.get("footerDark", "#0E0D26")}`
+- **Body text:** `{palette.get("text", "#202020")}`
+- **Max width:** {tokens.get("layout", {}).get("max_width", "1200px")}
+- **Content padding:** {tokens.get("layout", {}).get("content_padding", "40px")}
 - **Button radius:** 8px
 - **Hero pattern:** Full-width background image, text bottom-left
 
@@ -445,12 +484,12 @@ def generate_css_variables(tokens: dict) -> str:
 
     for i, f in enumerate(families):
         role = "heading" if i == 0 else "body" if i == 1 else f"font-{i}"
-        lines.append(f'  --font-{role}: {f["value"]};')
+        lines.append(f"  --font-{role}: {f['value']};")
 
-    lines.append(f'  --max-width: {layout.get("max_width", "1200px")};')
-    lines.append(f'  --content-padding: {layout.get("content_padding", "40px")};')
-    lines.append(f'  --header-height: {layout.get("header_height", "94px")};')
-    lines.append(f'  --border-radius-btn: 8px;')
+    lines.append(f"  --max-width: {layout.get('max_width', '1200px')};")
+    lines.append(f"  --content-padding: {layout.get('content_padding', '40px')};")
+    lines.append(f"  --header-height: {layout.get('header_height', '94px')};")
+    lines.append(f"  --border-radius-btn: 8px;")
     lines.append("}")
     return "\n".join(lines)
 
@@ -458,7 +497,9 @@ def generate_css_variables(tokens: dict) -> str:
 def main():
     parser = argparse.ArgumentParser(description="Publish brand artifacts")
     parser.add_argument("--brand", required=True, help="Brand slug")
-    parser.add_argument("--skip-existing", action="store_true", help="Skip if artifacts already exist")
+    parser.add_argument(
+        "--skip-existing", action="store_true", help="Skip if artifacts already exist"
+    )
     args = parser.parse_args()
 
     cache_dir = Path.home() / ".claude" / "design-library" / "cache" / args.brand
@@ -478,31 +519,48 @@ def main():
             metadata = json.load(f)
 
     brand_name = metadata.get("name", args.brand.replace("-", " ").title())
-    source_url = metadata.get("source_url", f"https://{args.brand.replace('-com-', '.com.').replace('-au', '.au')}")
+    source_url = metadata.get(
+        "source_url",
+        f"https://{args.brand.replace('-com-', '.com.').replace('-au', '.au')}",
+    )
 
     # Load extraction data
     measurements = load_all_measurements(cache_dir)
     dom_data = load_all_dom(cache_dir)
 
-    if not measurements:
-        print(f"Error: No measurement files found in {cache_dir / 'dom-extraction'}")
-        sys.exit(1)
+    tokens_path = brands_dir / "design-tokens.json"
 
     print(f"Publishing {brand_name} ({args.brand})")
-    print(f"  Measurements: {len(measurements)} files")
-    print(f"  DOM extractions: {len(dom_data)} files")
+
+    if not measurements:
+        if tokens_path.exists():
+            print(f"  Measurements: 0 (using existing design-tokens.json)")
+            with open(tokens_path) as f:
+                tokens = json.load(f)
+        else:
+            print(
+                f"Error: No measurement files found and no existing design-tokens.json"
+            )
+            sys.exit(1)
+    else:
+        print(f"  Measurements: {len(measurements)} files")
+        print(f"  DOM extractions: {len(dom_data)} files")
 
     # 1. Generate design-tokens.json
-    tokens_path = brands_dir / "design-tokens.json"
-    if args.skip_existing and tokens_path.exists():
-        print("  design-tokens.json: skipped (exists)")
-        with open(tokens_path) as f:
-            tokens = json.load(f)
+    if measurements:
+        if args.skip_existing and tokens_path.exists():
+            print("  design-tokens.json: skipped (exists)")
+            with open(tokens_path) as f:
+                tokens = json.load(f)
+        else:
+            tokens = synthesize_design_tokens(measurements, dom_data, brand_name)
+            with open(tokens_path, "w") as f:
+                json.dump(tokens, f, indent=2)
+            print(f"  design-tokens.json: generated ({len(json.dumps(tokens))} bytes)")
     else:
-        tokens = synthesize_design_tokens(measurements, dom_data, brand_name)
-        with open(tokens_path, "w") as f:
-            json.dump(tokens, f, indent=2)
-        print(f"  design-tokens.json: generated ({len(json.dumps(tokens))} bytes)")
+        print(
+            f"  design-tokens.json: kept (existing, {tokens_path.stat().st_size} bytes)"
+        )
 
     # 2. Generate design-tokens.css
     css_path = brands_dir / "design-tokens.css"
@@ -517,10 +575,14 @@ def main():
     if args.skip_existing and design_path.exists():
         print("  DESIGN.md: skipped (exists)")
     else:
-        design_md = generate_design_md(tokens, brand_name, source_url, measurements, dom_data)
+        design_md = generate_design_md(
+            tokens, brand_name, source_url, measurements, dom_data
+        )
         with open(design_path, "w") as f:
             f.write(design_md)
-        print(f"  DESIGN.md: generated ({len(design_md)} bytes, {design_md.count(chr(10))} lines)")
+        print(
+            f"  DESIGN.md: generated ({len(design_md)} bytes, {design_md.count(chr(10))} lines)"
+        )
 
     # 4. Generate SKILL.md
     skill_dir = brands_dir / "skill"
@@ -573,7 +635,9 @@ def main():
         issues.append("FAIL: No colors in design-tokens.json")
     elif color_count < 5:
         issues.append(f"WARN: Only {color_count} colors (expected 5+)")
-    print(f"  Colors: {color_count} {'OK' if color_count >= 5 else 'LOW' if color_count > 0 else 'MISSING'}")
+    print(
+        f"  Colors: {color_count} {'OK' if color_count >= 5 else 'LOW' if color_count > 0 else 'MISSING'}"
+    )
 
     # Check font families
     font_count = len(tokens.get("typography", {}).get("families", []))
@@ -589,14 +653,18 @@ def main():
             issues.append("WARN: DESIGN.md may have wrong brand color description")
         if len(content) < 1000:
             issues.append(f"WARN: DESIGN.md is short ({len(content)} bytes)")
-        print(f"  DESIGN.md: {len(content)} bytes {'OK' if len(content) >= 2000 else 'SHORT'}")
+        print(
+            f"  DESIGN.md: {len(content)} bytes {'OK' if len(content) >= 2000 else 'SHORT'}"
+        )
 
     # Check assets are accessible (os.walk follows symlinks)
     assets_dir = brands_dir / "assets"
     if not assets_dir.exists():
         issues.append("FAIL: No assets directory in brand")
     else:
-        asset_count = sum(len(files) for _, _, files in os.walk(str(assets_dir), followlinks=True))
+        asset_count = sum(
+            len(files) for _, _, files in os.walk(str(assets_dir), followlinks=True)
+        )
         if asset_count == 0:
             issues.append("FAIL: Assets directory is empty")
         print(f"  Assets: {asset_count} files {'OK' if asset_count >= 10 else 'LOW'}")

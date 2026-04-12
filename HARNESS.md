@@ -125,6 +125,62 @@ Claude Code plugin commands and agent markdown files govern:
 - Do not auto-promote learned skills without validation evidence.
 - Prefer reusable helpers with tests over inline route logic.
 
+## Agent DAG Reference
+
+The extraction pipeline runs through 5 phases with 13 agents:
+
+### Phase A: Extract
+1. recon-agent (sonnet) — page discovery, screenshot capture
+2. dom-extractor (sonnet) — live DOM measurement via agent-browser eval
+3. asset-extractor (sonnet) — download fonts, images, SVGs
+4. voice-analyst (sonnet) — brand voice profile from copy analysis
+5. pattern-analyst (sonnet) — 9 measurable + 6 interpretive signals
+
+### Phase B: Build
+6. replica-builder (sonnet) — React/shadcn replicas from DOM measurements
+
+### Phase C: Validate
+7. visual-critic (opus) — vision-capable structural comparison
+
+### Phase D: Improve (loop)
+8. refinement-agent (sonnet) — patch replicas from critique
+9. validation-monitor (opus) — autonomous orchestrator, loops until target
+
+### Phase E: Publish
+10. documentarian (sonnet) — DESIGN.md from Jinja2 template
+11. skill-packager (sonnet) — per-brand SKILL.md with triggers
+12. librarian (haiku) — index.json update, apply_design.py
+
+## Skill Registry
+
+The skill registry lives at `state/learning/registry.json`. Skills are classified:
+- **active**: proven through validation, used in production extractions
+- **candidate**: operational but not yet validated at promotion threshold (0.8)
+
+Skills promote from candidate to active only after:
+1. Harness validation passes (pytest + typecheck)
+2. The affected extraction's validation score improves on next run
+
+Managed via `scripts/skill_manager.py`.
+
+## Feedback Pipeline
+
+1. User provides feedback (CLI or UI)
+2. Feedback logged to `state/learning/feedback-log.jsonl`
+3. Classified to affected agent/skill pair
+4. Patch applied to relevant .md file
+5. Change logged to `state/learning/changelog.json`
+6. Pytest verifies no regressions
+7. On next validation run, score improvement triggers skill promotion
+
+## Monitoring Surfaces
+
+- `/monitoring` — Dashboard with Agent DAG, Skills Progress, Changelog, Feedback History
+- `/api/monitoring/skills` — Skill registry data
+- `/api/monitoring/changelog` — Structured change log
+- `/api/monitoring/feedback` — Feedback ledger
+- `/api/monitoring/experiments` — Experiment ledger (keep/discard per iteration)
+
 ## Validation Checklist
 
 - `run_validation_loop.py` defaults to the real UI port

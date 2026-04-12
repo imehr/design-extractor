@@ -12,11 +12,16 @@ from pathlib import Path
 
 from improvement_job import (
     append_feedback_entry,
+    build_claude_command,
+    build_claude_improvement_prompt,
     build_assisted_capture_steps,
     detect_block_reason,
+    detect_validation_failure,
     derive_effective_score,
     load_json,
     make_job_state,
+    now_iso,
+    read_recent_feedback_entries,
     sync_metadata_with_report,
     update_job_state,
 )
@@ -45,14 +50,116 @@ def run_validation(
     return subprocess.run(cmd, capture_output=True, text=True, cwd=repo_root)
 
 
+def run_claude_improver(
+    *,
+    repo_root: Path,
+    brand: str,
+    target: float,
+    current_score: float | None,
+    report_path: Path,
+    manifest_path: Path,
+    pages: list[dict[str, object]],
+    feedback: dict[str, object],
+    timeout_s: int,
+    log_path: Path,
+) -> dict[str, object]:
+    recent_feedback = read_recent_feedback_entries(
+        repo_root / "state" / "learning" / "feedback-log.jsonl",
+        brand,
+    )
+    prompt = build_claude_improvement_prompt(
+        brand=brand,
+        target_score=target,
+        current_score=current_score,
+        report_path=report_path,
+        manifest_path=manifest_path,
+        pages=pages,
+        inline_feedback=feedback,
+        recent_feedback=recent_feedback,
+    )
+    cmd = build_claude_command(prompt)
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            cwd=repo_root,
+            timeout=timeout_s,
+        )
+    except FileNotFoundError:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text("Claude CLI was not found on PATH.\n")
+        return {
+            "ok": False,
+            "status": "needs_operator_review",
+            "detail": "Claude CLI was not found on PATH.",
+            "summary": None,
+            "log_path": str(log_path),
+        }
+    except subprocess.TimeoutExpired:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text("Claude improvement step timed out.\n")
+        return {
+            "ok": False,
+            "status": "needs_operator_review",
+            "detail": f"Claude improvement timed out after {timeout_s} seconds.",
+            "summary": None,
+            "log_path": str(log_path),
+        }
+
+    output_text = "\n".join(
+        part for part in (result.stdout, result.stderr) if part
+    ).strip()
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(output_text + ("\n" if output_text else ""))
+
+    if result.returncode != 0:
+        return {
+            "ok": False,
+            "status": "needs_operator_review",
+            "detail": output_text
+            or f"Claude improvement failed with exit code {result.returncode}.",
+            "summary": None,
+            "log_path": str(log_path),
+        }
+
+    return {
+        "ok": True,
+        "status": "running",
+        "detail": None,
+        "summary": output_text or "Claude applied a refinement pass.",
+        "log_path": str(log_path),
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run an improvement job for a brand.")
     parser.add_argument("--brand", required=True, help="Brand slug")
-    parser.add_argument("--base-url", default="http://localhost:5173", help="UI base URL")
-    parser.add_argument("--target", type=float, default=80.0, help="Target validation score")
-    parser.add_argument("--max-iterations", type=int, default=3, help="Maximum validation iterations")
+    parser.add_argument(
+        "--base-url", default="http://localhost:5173", help="UI base URL"
+    )
+    parser.add_argument(
+        "--target", type=float, default=80.0, help="Target validation score"
+    )
+    parser.add_argument(
+        "--max-iterations", type=int, default=5, help="Maximum validation iterations"
+    )
+    parser.add_argument(
+        "--claude-timeout",
+        type=int,
+        default=240,
+        help="Timeout in seconds for each Claude refinement pass",
+    )
+    parser.add_argument(
+        "--skip-claude",
+        action="store_true",
+        help="Run validation iterations without invoking Claude for repairs",
+    )
     parser.add_argument("--job-id", default=None, help="Optional precomputed job id")
-    parser.add_argument("--feedback-json", default=None, help="Optional JSON feedback payload")
+    parser.add_argument(
+        "--feedback-json", default=None, help="Optional JSON feedback payload"
+    )
     args = parser.parse_args()
 
     repo_root = Path(__file__).resolve().parent.parent
@@ -109,30 +216,119 @@ def main() -> int:
             )
             return 0
 
+        validation_failure = detect_validation_failure(output_text)
+        if result.returncode != 0 and validation_failure:
+            update_job_state(
+                job_path,
+                state,
+                status="failed",
+                blocked_reason=validation_failure,
+            )
+            return 1
+
         report = load_json(report_path, default={}) or {}
         manifest = load_json(manifest_path, default={}) or {}
-        metadata = sync_metadata_with_report(metadata_path, report_path) if report_path.exists() and metadata_path.exists() else load_json(metadata_path, default={}) or {}
+        if not report and not manifest and result.returncode != 0:
+            update_job_state(
+                job_path,
+                state,
+                status="failed",
+                blocked_reason={
+                    "code": "validation_failed",
+                    "detail": output_text.strip()
+                    or "Validation failed before producing artifacts.",
+                },
+            )
+            return 1
+        metadata = (
+            sync_metadata_with_report(metadata_path, report_path)
+            if report_path.exists() and metadata_path.exists()
+            else load_json(metadata_path, default={}) or {}
+        )
 
         score = derive_effective_score(metadata, report)
         if score is not None:
             history.append(score)
+
+        score_before = history[-2] if len(history) >= 2 else None
+        kept = score_before is None or score is None or score >= score_before
+        experiments_path = repo_root / "state" / "learning" / "experiments.jsonl"
+        append_feedback_entry(
+            experiments_path,
+            {
+                "brand": args.brand,
+                "job_id": job_id,
+                "iteration": iteration,
+                "score_before": score_before,
+                "score_after": score,
+                "kept": kept,
+                "timestamp": now_iso(),
+            },
+        )
+
+        score_direction = "same"
+        if score_before is not None and score is not None:
+            if score > score_before:
+                score_direction = "increased"
+            elif score < score_before:
+                score_direction = "decreased"
 
         state["history"] = history
         update_job_state(
             job_path,
             state,
             current_score=score,
+            score_direction=score_direction,
             pages_needing_work=manifest.get("pages_needing_work", []),
             manifest_path=str(manifest_path),
             report_path=str(report_path),
         )
 
-        if not manifest.get("pages_needing_work"):
+        pages_needing_work = manifest.get("pages_needing_work", [])
+        meets_target = score is not None and score * 100 >= args.target
+
+        if not pages_needing_work or meets_target:
             update_job_state(job_path, state, status="completed")
             return 0
 
         if len(history) >= 2 and abs(history[-1] - history[-2]) < 0.001:
             update_job_state(job_path, state, status="stalled")
+            return 0
+
+        if iteration >= args.max_iterations:
+            break
+
+        if args.skip_claude:
+            continue
+
+        claude_result = run_claude_improver(
+            repo_root=repo_root,
+            brand=args.brand,
+            target=args.target,
+            current_score=score,
+            report_path=report_path,
+            manifest_path=manifest_path,
+            pages=pages_needing_work,
+            feedback=feedback,
+            timeout_s=args.claude_timeout,
+            log_path=jobs_dir / f"{job_id}-claude-iter-{iteration}.log",
+        )
+        update_job_state(
+            job_path,
+            state,
+            status=str(claude_result["status"]),
+            last_claude_summary=claude_result.get("summary"),
+            claude_log_path=claude_result.get("log_path"),
+        )
+        if not claude_result["ok"]:
+            update_job_state(
+                job_path,
+                state,
+                blocked_reason={
+                    "code": "claude_improver_failed",
+                    "detail": str(claude_result["detail"]),
+                },
+            )
             return 0
 
     update_job_state(job_path, state, status="max_iterations_reached")

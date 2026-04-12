@@ -1,0 +1,137 @@
+{
+  "url": "https://quantium.com/",
+  "redirectedFrom": "https://quantium.com.au",
+  "title": "Quantium | AI transformation and data analytics",
+  "extractedAt": "2026-04-12",
+  "measurements": {
+    "heroHeight": 3869.203125,
+    "headerHeight": 174,
+    "h1Left": 100,
+    "contentPaddingLeft": "0px",
+    "firstSectionTop": 174,
+    "firstSectionHeight": 3869.203125,
+    "viewportWidth": 1280,
+    "viewportHeight": 720
+  },
+  "header": {
+    "utilityLinks": [
+      {"text": "Industries", "href": "https://quantium.com/#"},
+      {"text": "Solutions", "href": "https://quantium.com/#"},
+      {"text": "GenAI", "href": "https://quantium.com/genai/"},
+      {"text": "About us", "href": "https://quantium.com/#"},
+      {"text": "Careers", "href": "https://quantium.com/#"},
+      {"text": "Perspectives", "href": "https://quantium.com/perspectives/"}
+    ],
+    "navLinks": [
+      {"text": "Industries", "href": "https://quantium.com/#"},
+      {"text": "Solutions", "href": "https://quantium.com/#"},
+      {"text": "GenAI", "href": "https://quantium.com/genai/"},
+      {"text": "About us", "href": "https://quantium.com/#"},
+      {"text": "Careers", "href": "https://quantium.com/#"},
+      {"text": "Perspectives", "href": "https://quantium.com/perspectives/"}
+    ],
+    "subNav": {
+      "aboutUs": [
+        {"text": "About Quantium", "href": "https://quantium.com/about-us/"},
+        {"text": "Our locations", "href": "https://quantium.com/our-locations/"},
+        {"text": "Our purpose and values", "href": "https://quantium.com/about-us-values/"},
+        {"text": "Corporate responsibility", "href": "https://quantium.com/corporate-responsibility/"},
+        {"text": "FAQs", "href": "https://quantium.com/faqs/"}
+      ],
+      "careers": [
+        {"text": "Careers at Quantium", "href": "https://quantium.com/careers/"},
+        {"text": "See open roles", "href": "https://quantium.com/careers/#block_jobopening"},
+        {"text": "Graduate Academy", "href": "https://quantium.com/graduate-academy/"}
+      ]
+    },
+    "logoSvg": null
+  },
+  "headings": [
+    {"level": "H1", "text": "Enterprise AI\nfor complex business challenges"},
+    {"level": "H2", "text": "Trusted partners to leading organisations"},
+    {"level": "H2", "text": "Why clients choose us"},
+    {"level": "H3", "text": "Commercial outcomes first"},
+    {"level": "H3", "text": "Two decades deploying AI at scale"},
+    {"level": "H3", "text": "Proven approaches across industries"},
+    {"level": "H2", "text": "How we work"},
+    {"level": "H3", "text": "Built for business impact"},
+    {"level": "H3", "text": "Systems embedded in your operations"},
+    {"level": "H3", "text": "Capability built to last"},
+    {"level": "H2", "text": "What we deliver"},
+    {"level": "H3", "text": "Customer intelligence"},
+    {"level": "H3", "text": "Smarter operations"},
+    {"level": "H3", "text": "GenAI in production"},
+    {"level": "H3", "text": "Risk management"},
+    {"level": "H2", "text": "Impact we've delivered"},
+    {"level": "H3", "text": "Real-time fraud prevention that protects customers and reduces losses"},
+    {"level": "H3", "text": "Personalised health strategies that reduce costs and improve outcomes"},
+    {"level": "H3", "text": "Market intelligence that transforms investment decisions"},
+    {"level": "H1", "text": "Complex challenges\nneed experienced\npartners"},
+    {"level": "H3", "text": "Your AI can do more than your organisation knows how to ask for"},
+    {"level": "H3", "text": "Stop building for stability"},
+    {"level": "H3", "text": "What the AI failure headlines aren't telling you"},
+    {"level": "H3", "text": "AI strategy shifts from models to deployments"},
+    {"level": "H3", "text": "Why AI agents will reshape work, and the 5 human skills that matter most"}
+  ],
+  "mainContent": {
+    "links": [
+      {"text": "Talk to us", "href": "https://quantium.com/talk-to-us/"},
+      {"text": "Read more", "href": "https://quantium.com/insights/"}
+    ],
+    "images": [
+      {"src": "https://quantium.com/wp-content/uploads/2025/12/logo-Woolworths_Group.svg", "alt": "", "w": 171, "h": 48},
+      {"src": "https://quantium.com/wp-content/uploads/2025/12/logo-Commonwealth_Bank.svg", "alt": "", "w": 171, "h": 48},
+      {"src": "https://quantium.com/wp-content/uploads/2025/12/logo-Telstra.svg", "alt": "", "w": 171, "h": 48},
+      {"src": "https://quantium.com/wp-content/uploads/2025/12/logo-Discovery.svg", "alt": "", "w": 171, "h": 48},
+      {"src": "https://quantium.com/wp-content/uploads/2025/12/logo-Vitality.svg", "alt": "", "w": 171, "h": 48},
+      {"src": "https://quantium.com/wp-content/uploads/2026/01/Gates-foundaition.png", "alt": "", "w": 171, "h": 48},
+      {"src": "https://quantium.com/wp-content/uploads/2025/12/logo-nhs.svg", "alt": "", "w": 171, "h": 48},
+      {"src": "https://quantium.com/wp-content/uploads/2025/12/logo-Walmart.svg", "alt": "", "w": 171, "h": 48},
+      {"src": "https://quantium.com/wp-content/uploads/2025/12/logo-ASDA.svg", "alt": "", "w": 171, "h": 48},
+      {"src": "https://quantium.com/wp-content/uploads/2025/12/logo-quantium.png", "alt": "", "w": 233, "h": 55},
+      {"src": "https://quantium.com/wp-content/uploads/2025/12/img-discovery-health.png", "alt": "", "w": 160, "h": 55},
+      {"src": "https://quantium.com/wp-content/uploads/2025/12/logo-iress.png", "alt": "", "w": 96, "h": 55}
+    ]
+  },
+  "footer": {
+    "links": [
+      {"text": "FMCG / CPG", "href": "https://quantium.com/fmcg-cpg/"},
+      {"text": "Retail", "href": "https://quantium.com/retail/"},
+      {"text": "Banking and wealth", "href": "https://quantium.com/banking-and-wealth/"},
+      {"text": "Consumer services", "href": "https://quantium.com/consumer-services/"},
+      {"text": "Insurance", "href": "https://quantium.com/insurance/"},
+      {"text": "Health", "href": "https://quantium.com/health/"},
+      {"text": "Public sector", "href": "https://quantium.com/public-sector/"},
+      {"text": "About us", "href": "https://quantium.com/about-us/"},
+      {"text": "Our locations", "href": "https://quantium.com/our-locations/"},
+      {"text": "Careers", "href": "https://quantium.com/careers/"},
+      {"text": "Perspectives", "href": "https://quantium.com/perspectives/"},
+      {"text": "Corporate responsibility", "href": "https://quantium.com/corporate-responsibility/"},
+      {"text": "CommBank iQ", "href": "https://quantium.com/commbank-iq/"},
+      {"text": "Quantium Telstra", "href": "https://quantium.com/quantium-telstra/"},
+      {"text": "Privacy policy", "href": "https://quantium.com/privacy/"},
+      {"text": "Speak up policy", "href": "https://quantium.com/speak-up-policy"},
+      {"text": "Terms of use", "href": "https://quantium.com/terms-of-use/"},
+      {"text": "Modern slavery policy", "href": "https://quantium.com/modern-slavery-policy/"},
+      {"text": "Information security policy", "href": "https://quantium.com/information-security-policy/"},
+      {"text": "Carbon reduction plan", "href": "https://quantium.com/carbon-reduction-plan/"}
+    ],
+    "text": "Industries\nFMCG / CPG\nRetail\nBanking and wealth\nConsumer services\nInsurance\nHealth\nPublic sector\nSolutions\nQ.Checkout\nQ.Promotions\nQ.Shelf\nQ.Supply\nQ.Panel\nQ.Refinery\nQ.Audience\nQ.Checkup\nQ.Dose\nQ.Quail\nAbout us\nOur locations\nCareers\nPerspectives\nCorporate responsibility\nCommBank iQ\nQuantium Telstra\nPrivacy policy | Speak up policy | Terms of use\nModern slavery policy | Information security policy | Carbon reduction plan\nCopyright © 2026 Quantium",
+    "socialSvgs": [],
+    "mediaContact": "jtait@respublica.com.au"
+  },
+  "fonts": [
+    {"family": "quantium_prolight", "src": "url(\"fonts/quantium_pro_light-webfont.woff2\") format(\"woff2\"), url(\"fonts/quantium_pro_light-webfont.woff\") format(\"woff\"), url(\"fonts/quantium_pro_light-webfont.ttf\") format(\"truetype\")", "stylesheet": "https://quantium.com/wp-content/themes/_quantium-sv/style.css?ver=1.2"},
+    {"family": "quantium_promedium", "src": "url(\"fonts/quantium_pro_medium-webfont.woff2\") format(\"woff2\"), url(\"fonts/quantium_pro_medium-webfont.woff\") format(\"woff\"), url(\"fonts/quantium_pro_medium-webfont.ttf\") format(\"truetype\")", "stylesheet": "https://quantium.com/wp-content/themes/_quantium-sv/style.css?ver=1.2"}
+  ],
+  "backgroundImages": [
+    {"class": "slick-slide slick-current slick-active", "bg": "url(\"https://quantium.com/wp-content/uploads/2026/02/Quantium2026-1030--scaled.jpg\")"},
+    {"class": "slick-slide slick-current slick-active", "bg": "url(\"https://quantium.com/wp-content/uploads/2026/02/Quantium2026-C2-7668-.jpg\")"},
+    {"class": "slick-slide slick-current slick-active", "bg": "url(\"https://quantium.com/wp-content/uploads/2026/02/Quantium2026-8651-.jpg\")"},
+    {"class": "loop-bg", "bg": "url(\"https://quantium.com/wp-content/uploads/2026/03/Perspective-336x240-Lines.png\")"},
+    {"class": "loop-bg", "bg": "url(\"https://quantium.com/wp-content/uploads/2026/02/336x240-tile-image3.png\")"},
+    {"class": "loop-bg", "bg": "url(\"https://quantium.com/wp-content/uploads/2025/10/AI-strategy-shifts-from-models-to-deployment-1.png\")"},
+    {"class": "loop-bg", "bg": "url(\"https://quantium.com/wp-content/uploads/2025/08/What-the-AI-failure-headlines-are-not-telling-you.png\")"},
+    {"class": "loop-bg", "bg": "url(\"https://quantium.com/wp-content/uploads/2025/09/5-human-skills.png\")"}
+  ]
+}

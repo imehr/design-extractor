@@ -16,12 +16,16 @@ import {
   Layers,
   Palette,
   Type,
-  Image,
+  Image as ImageIcon,
   Code2,
   MonitorPlay,
   FolderOpen,
   ChevronRight,
   RefreshCw,
+  XCircle,
+  History,
+  Upload,
+  X,
 } from "lucide-react";
 
 /* ─── types ─── */
@@ -93,6 +97,8 @@ interface ImprovementJobState {
   pages_needing_work: Array<{ slug?: string; current_score?: number }>;
   blocked_reason: { code: string; detail: string } | null;
   assisted_capture_steps: string[];
+  last_claude_summary: string | null;
+  claude_log_path: string | null;
   updated_at: string;
 }
 
@@ -351,6 +357,10 @@ export default function BrandPage({
   const [improveJob, setImproveJob] = useState<ImprovementJobState | null>(null);
   const [improveError, setImproveError] = useState<string | null>(null);
   const [startingImprove, setStartingImprove] = useState(false);
+  const [qualityTarget, setQualityTarget] = useState(80);
+  const [jobHistory, setJobHistory] = useState<Array<Record<string, unknown>>>([]);
+  const [captureFiles, setCaptureFiles] = useState<File[]>([]);
+  const [captureUploading, setCaptureUploading] = useState(false);
 
   useEffect(() => {
     fetch(`/api/brands/${slug}`)
@@ -360,6 +370,16 @@ export default function BrandPage({
       })
       .then((data: BrandDetail) => setBrand(data))
       .catch((e) => setError(e.message));
+  }, [slug]);
+
+  useEffect(() => {
+    fetch(`/api/brands/${slug}/jobs`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data: Array<Record<string, unknown>>) => setJobHistory(data))
+      .catch(() => {});
   }, [slug]);
 
   useEffect(() => {
@@ -381,8 +401,14 @@ export default function BrandPage({
               })
               .then((fresh: BrandDetail) => setBrand(fresh))
               .catch(() => {
-                // Leave the current brand detail in place if the refresh fails.
               });
+            fetch(`/api/brands/${slug}/jobs`)
+              .then((r) => {
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                return r.json();
+              })
+              .then((fresh: Array<Record<string, unknown>>) => setJobHistory(fresh))
+              .catch(() => {});
           }
         })
         .catch((e) => setImproveError(e.message));
@@ -405,7 +431,7 @@ export default function BrandPage({
       const response = await fetch(`/api/brands/${slug}/improve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ targetScore: 80 }),
+        body: JSON.stringify({ targetScore: qualityTarget }),
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
@@ -414,6 +440,18 @@ export default function BrandPage({
       setImproveError(e instanceof Error ? e.message : "Failed to start improvement job");
     } finally {
       setStartingImprove(false);
+    }
+  }
+
+  async function handleCancel() {
+    if (!improveJob) return;
+    try {
+      await fetch(`/api/brands/${slug}/jobs/${improveJob.job_id}`, {
+        method: "DELETE",
+      });
+      setImproveJob((prev) => prev ? { ...prev, status: "cancelled" } : null);
+    } catch (e) {
+      setImproveError(e instanceof Error ? e.message : "Failed to cancel job");
     }
   }
 
@@ -461,9 +499,9 @@ export default function BrandPage({
       : null;
   const displayScore =
     validationViewportAvg !== null ? validationViewportAvg / 100 : brand.overall_score;
-  const qualityTarget = improveJob?.target_score ?? 80;
+  const effectiveTarget = improveJob?.target_score ?? 80;
   const meetsQualityTarget =
-    displayScore !== null && displayScore * 100 >= qualityTarget;
+    displayScore !== null && displayScore * 100 >= effectiveTarget;
 
   const fileGroups = groupFilesByDir(brand.files);
   const localFileGroups = groupFilesByDir(brand.localFiles ?? []);
@@ -613,10 +651,10 @@ export default function BrandPage({
             {/* Quick stats */}
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               {[
-                { label: "Base Unit", value: baseUnit || "4px" },
-                { label: "Max Width", value: "1280px" },
-                { label: "Card Radius", value: "16px" },
-                { label: "Motion", value: "200ms ease" },
+                { label: "Base Unit", value: baseUnit || "—" },
+                { label: "Max Width", value: breakpointList.length > 0 ? `${Math.max(...breakpointList)}px` : "—" },
+                { label: "Card Radius", value: borderRadii.length > 0 ? borderRadii[0].value : "—" },
+                { label: "Motion", value: transitionList.length > 0 ? transitionList[0].value : "—" },
               ].map((s) => (
                 <div key={s.label} className="rounded-xl bg-[#f5f5f7] p-5">
                   <p className="text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">{s.label}</p>
@@ -1063,7 +1101,7 @@ export default function BrandPage({
         {/* ── ASSETS ── */}
         <TabsContent value="assets">
           {assetFiles.length === 0 ? (
-            <EmptyState icon={<Image className="size-8" />} message="No assets found." />
+            <EmptyState icon={<ImageIcon className="size-8" />} message="No assets found." />
           ) : (
             <div className="space-y-6">
               {svgAssets.length > 0 && (
@@ -1218,10 +1256,26 @@ export default function BrandPage({
               </p>
               <p className="mt-1 text-[13px] text-[#86868b]/60">
                 Live viewport validation score across {
-                  Object.keys(validationReport.pixel_comparison_viewport || {}).length || 5
+                  Object.keys(validationReport.pixel_comparison_viewport || {}).length
                 } pages
               </p>
               <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-[#86868b]">Target:</label>
+                  <input
+                    type="number"
+                    min={50}
+                    max={95}
+                    value={qualityTarget}
+                    onChange={(e) => {
+                      const v = parseInt(e.target.value, 10);
+                      if (!isNaN(v) && v >= 50 && v <= 95) setQualityTarget(v);
+                    }}
+                    className="h-8 w-16 rounded-lg border border-input bg-transparent px-2 text-center text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    disabled={improveJob?.status === "running"}
+                  />
+                  <span className="text-xs text-[#86868b]">%</span>
+                </div>
                 <Button onClick={handleImprove} disabled={startingImprove || improveJob?.status === "running"}>
                   {startingImprove || improveJob?.status === "running" ? (
                     <>
@@ -1231,9 +1285,19 @@ export default function BrandPage({
                     "Improve Quality"
                   )}
                 </Button>
-                <span className="text-xs text-[#86868b]">
-                  Target: {qualityTarget}% · live report overrides stale metadata
-                </span>
+                {improveJob?.status === "running" && (
+                  <Button variant="outline" onClick={handleCancel}>
+                    <XCircle className="size-4" /> Cancel
+                  </Button>
+                )}
+                {(improveJob?.status === "running" || improveJob?.status === "completed" || improveJob?.status === "failed" || improveJob?.status === "stalled") && (
+                  <a
+                    href={`/monitoring?job=${slug}`}
+                    className="inline-flex items-center gap-1 rounded-lg border border-[#d2d2d7] px-3 py-1.5 text-xs font-medium text-[#0071e3] hover:bg-[#f5f5f7]"
+                  >
+                    Watch in Monitoring &rarr;
+                  </a>
+                )}
               </div>
               {improveError && (
                 <p className="mt-3 text-sm text-red-600">{improveError}</p>
@@ -1283,6 +1347,89 @@ export default function BrandPage({
                         ))}
                       </ol>
                     )}
+                    {improveJob.blocked_reason?.code === "anti_bot_block" && (
+                      <div className="mt-4 rounded-xl border border-amber-200 bg-white p-4">
+                        <p className="mb-2 text-sm font-semibold text-[#1d1d1f]">Upload screenshots</p>
+                        <p className="mb-3 text-xs text-[#86868b]">
+                          Select PNG, JPG, JPEG, or WebP screenshots of the original site pages.
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {captureFiles.map((file, i) => (
+                            <div key={`${file.name}-${i}`} className="flex items-center gap-1.5 rounded-lg bg-[#f5f5f7] px-3 py-1.5 text-xs">
+                              <span className="max-w-32 truncate font-mono text-[#1d1d1f]">{file.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => setCaptureFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                                className="text-[#86868b] hover:text-[#1d1d1f]"
+                              >
+                                <X className="size-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-3 flex items-center gap-3">
+                          <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-[#d2d2d7] bg-white px-3 text-xs font-medium text-[#1d1d1f] hover:bg-[#f5f5f7]">
+                            <input
+                              type="file"
+                              accept=".png,.jpg,.jpeg,.webp"
+                              multiple
+                              className="hidden"
+                              onChange={(e) => {
+                                const added = Array.from(e.target.files ?? []);
+                                setCaptureFiles((prev) => [...prev, ...added]);
+                                e.target.value = "";
+                              }}
+                            />
+                            Choose files
+                          </label>
+                          <Button
+                            size="sm"
+                            disabled={captureFiles.length === 0 || captureUploading}
+                            onClick={async () => {
+                              setCaptureUploading(true);
+                              try {
+                                const fd = new FormData();
+                                captureFiles.forEach((f) => fd.append("files", f));
+                                const res = await fetch(`/api/brands/${slug}/assisted-capture`, {
+                                  method: "POST",
+                                  body: fd,
+                                });
+                                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                                const data = await res.json();
+                                setCaptureFiles([]);
+                                alert(`Imported ${data.count} file(s). You can now re-run improvement.`);
+                              } catch (err) {
+                                alert(err instanceof Error ? err.message : "Upload failed");
+                              } finally {
+                                setCaptureUploading(false);
+                              }
+                            }}
+                          >
+                            {captureUploading ? (
+                              <><RefreshCw className="size-3 animate-spin" /> Uploading...</>
+                            ) : (
+                              <><Upload className="size-3" /> Upload {captureFiles.length > 0 ? `(${captureFiles.length})` : ""}</>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {(improveJob.last_claude_summary || improveJob.claude_log_path) && (
+                  <div className="mt-4 rounded-xl border border-[#d2d2d7]/40 bg-[#f5f5f7] p-4 text-left">
+                    <p className="text-sm font-semibold text-[#1d1d1f]">Latest Claude refinement</p>
+                    {improveJob.last_claude_summary && (
+                      <pre className="mt-2 whitespace-pre-wrap font-mono text-xs leading-5 text-[#424245]">
+                        {improveJob.last_claude_summary}
+                      </pre>
+                    )}
+                    {improveJob.claude_log_path && (
+                      <p className="mt-2 font-mono text-[11px] text-[#6e6e73]">
+                        Log: {improveJob.claude_log_path}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -1301,7 +1448,6 @@ export default function BrandPage({
                     const score = data?.close ?? 0;
                     const name = slug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
                     const preview = slug === "homepage" ? `/brands/${brand.slug}/replica` : `/brands/${brand.slug}/replica/${slug}`;
-                    // Try multiple screenshot path patterns
                     const origImg = `/api/brands/${brand.slug}/file/screenshots/harness/orig-${slug}.png`;
                     const replImg = `/api/brands/${brand.slug}/file/screenshots/harness/repl-${slug}.png`;
                     return (
@@ -1333,7 +1479,7 @@ export default function BrandPage({
                             </div>
                           </div>
                           <div>
-                            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Preview (1280x720)</p>
+                            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Replica screenshot (cached validation capture)</p>
                             <div className="overflow-hidden rounded-lg border bg-[#f5f5f7]">
                               <img
                                 src={replImg}
@@ -1341,6 +1487,9 @@ export default function BrandPage({
                                 className="w-full"
                               />
                             </div>
+                            <p className="mt-2 text-[11px] leading-5 text-[#86868b]">
+                              This image is a saved validation screenshot. Use <span className="font-medium text-[#1d1d1f]">Open preview</span> for the live route.
+                            </p>
                           </div>
                         </div>
                       </div>

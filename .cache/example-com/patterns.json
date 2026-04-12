@@ -1,0 +1,28 @@
+{
+  "slug": "example-com",
+  "url": "https://example.com",
+  "extracted_at": "2026-04-12T00:00:00Z",
+  "measurable_signals": {
+    "spacing_rhythm": "16px (single paragraph margin)",
+    "type_scale_ratio": 1.5,
+    "density": "ultra-low",
+    "contrast_energy": "low",
+    "radius_personality": "none",
+    "motion_temperament": "none"
+  },
+  "interpreted_signals": {
+    "airiness": "very high — vast whitespace, minimal content",
+    "formality": "neutral — informational, documentation-style",
+    "warmth": "cool — no colour, no imagery, pure text",
+    "playfulness": "none",
+    "premium_feel": "none — intentionally bare",
+    "visual_complexity": "minimal"
+  },
+  "layout_pattern": "single-column centered body",
+  "hero_pattern": "none",
+  "nav_pattern": "none",
+  "footer_pattern": "none",
+  "card_pattern": "none",
+  "components_detected": ["h1", "p", "a"],
+  "notes": "example.com is a single-column page with no structural components beyond a heading, paragraph, and link. Layout is achieved entirely through body margin."
+}

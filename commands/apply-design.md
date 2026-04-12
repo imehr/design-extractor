@@ -6,20 +6,27 @@ argument-hint: <slug>
 
 # /design-extractor:apply
 
-**Status:** Phase 1 stub. Real implementation lands alongside Phase 3 (`librarian` agent + `scripts/apply_design.py`).
+**Status:** Implemented. Token/DESIGN.md copying via `scripts/apply_design.py`. Skill installation is Phase 3.
 
-## Behaviour (planned)
+## Usage
+
+```bash
+python3 scripts/apply_design.py --brand <slug> --target-dir <path>
+```
+
+## Behaviour
 
 Given a brand slug like `linear-app` or `nimbus`:
 
 1. Verify the brand exists at `~/.claude/design-library/brands/<slug>/`.
-2. Copy `~/.claude/design-library/brands/<slug>/skill/` into `<current-project>/.claude/skills/brand-<slug>/`.
-3. Rewrite any absolute paths in the copied SKILL.md to be relative to the project root.
-4. Confirm the install with a one-line success message including the trigger phrases that will now activate the skill.
-5. Refuse to overwrite an existing skill of the same name without `--force`.
+2. Copy `design-tokens.css`, `DESIGN.md`, and `design-tokens.json` into the target project root.
+3. Print each file that was copied.
+4. Exit 1 if the brand directory is missing or no installable artifacts exist.
 
 The user-supplied slug is: $ARGUMENTS
 
-## Stub behaviour
+## Planned (Phase 3)
 
-For Phase 1, just echo the planned destination path and note that the install action lands in Phase 3.
+- Copy `skill/` into `<current-project>/.claude/skills/brand-<slug>/`.
+- Rewrite absolute paths in SKILL.md to be relative to the project root.
+- `--force` flag to overwrite existing skill of the same name.

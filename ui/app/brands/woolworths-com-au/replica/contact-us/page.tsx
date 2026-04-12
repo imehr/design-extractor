@@ -51,7 +51,7 @@ export default function ContactUsPage() {
   return (
     <div
       className="min-h-screen bg-[#EEEEEE]"
-      style={{ fontFamily: "Roboto, -apple-system, system-ui, sans-serif", fontSize: 16, color: "#25251F" }}
+      style={{ fontFamily: "var(--font-roboto), -apple-system, system-ui, sans-serif", fontSize: 16, color: "#25251F" }}
     >
       <WWHeader activePage="Help" />
 

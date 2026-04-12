@@ -91,6 +91,7 @@ The Validation tab now also:
 - derives the displayed score from the live validation report
 - exposes an `Improve Quality` button
 - shows improvement job state (running, stalled, completed, assisted capture required)
+- records the latest Claude refinement summary and log path for operator review
 - surfaces assisted-capture steps when anti-bot protection blocks automated browsing
 
 #### 9. Raw Files

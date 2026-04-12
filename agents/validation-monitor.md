@@ -1,7 +1,7 @@
 ---
 name: validation-monitor
 description: Autonomous orchestrator that runs the validation harness, reads improvement manifests, dispatches parallel fix agents for failing pages, and loops until all pages hit the target score. Only notifies the user when done or stuck.
-tools: Bash, Read, Write, Glob, Grep, Agent, Monitor
+tools: Bash, Read, Write, Glob, Grep
 model: opus
 ---
 
@@ -129,7 +129,7 @@ For each failing page, dispatch a subagent in parallel. Each agent receives:
 - The DOM measurements from step 3
 - The current score and gap
 
-Agent prompt template:
+Fix subagent prompt template:
 
 ```
 Fix the replica for page "{slug}" to match the original screenshot more closely.
@@ -166,33 +166,29 @@ agent-browser screenshot /tmp/replica-homepage.png --session repl
 # agent-browser screenshot "http://localhost:3000/..." /tmp/out.png
 ```
 
-## Monitor integration
-
-Set up two monitors at the start of the session:
+## Monitoring
 
 ### Watch dev server for compilation errors
 
-```
-Monitor({
-  description: "Next.js compilation errors",
-  persistent: true,
-  command: "tail -f /Users/mehran/Documents/github/design-extractor/ui/.next/server/app-paths-manifest.json 2>/dev/null || echo 'NO_BUILD'; while true; do curl -sf http://localhost:3000 > /dev/null || echo 'DEV_SERVER_DOWN'; sleep 10; done"
-})
+Before each iteration, verify the dev server is healthy:
+
+```bash
+curl -sf http://localhost:3000 > /dev/null && echo "DEV_SERVER_OK" || echo "DEV_SERVER_DOWN"
 ```
 
-If the dev server goes down or compilation breaks, stop dispatching fixes and address the build error first.
+If the dev server is down, stop dispatching fixes and address the build error first.
 
-### Watch harness output for score changes
+### Check harness output for score changes
 
+Run the harness and filter for key output lines:
+
+```bash
+python3 /Users/mehran/Documents/github/design-extractor/scripts/run_validation_loop.py \
+  --brand {slug} --base-url http://localhost:3000 --target 80 --skip-originals \
+  2>&1 | grep --line-buffered -E '(PASS|FAIL|AVERAGE|Manifest)'
 ```
-Monitor({
-  description: "Harness score changes",
-  persistent: false,
-  command: "python3 /Users/mehran/Documents/github/design-extractor/scripts/run_validation_loop.py --brand {slug} --base-url http://localhost:3000 --target 80 --skip-originals 2>&1 | grep --line-buffered -E '(PASS|FAIL|AVERAGE|Manifest)'"
-})
-```
 
-This runs the harness as a monitored process. Score lines arrive as notifications. When you see the AVERAGE line, read the manifest to decide next steps.
+Score lines arrive as output. When you see the AVERAGE line, read the manifest to decide next steps.
 
 ## When to notify the user
 

@@ -45,19 +45,20 @@ mkdir -p {UI_DIR}/app/brands/{slug}/replica
 
 ## Phase A — Multi-page DOM extraction
 
-### Step 1: Identify key pages (4-5 minimum)
+### Step 1: Discover pages (recon-agent)
 
-Navigate to the homepage with agent-browser. Extract all internal links. Classify into page types:
-- Homepage (required)
-- Product/service listing (required)
-- Product/service detail
-- Contact/support (required)
-- About/info
-- Any page with forms, tables, or unique layouts
+Dispatch `agents/recon-agent.md` to browse the target site and discover key pages:
+- Navigates to the homepage with agent-browser
+- Extracts all internal links
+- Classifies into page types (homepage, listing, detail, contact, about)
+- Captures reference screenshots
+- Produces `{cache_dir}/page-manifest.json` with the page list
 
-### Step 2: Extract DOM from each page
+The recon-agent is scoped to **page discovery only** — it does not extract styles or tokens.
 
-For each page, dispatch `agents/dom-extractor.md` which uses agent-browser eval to extract:
+### Step 2: Extract DOM from each page (dom-extractor)
+
+For each page in the manifest, dispatch `agents/dom-extractor.md` which uses agent-browser eval to perform the actual live DOM extraction:
 - Header/nav: utility links, nav links, logo SVG
 - Main content: headings, links, images, text
 - Footer: links, social SVGs, legal text
@@ -65,13 +66,16 @@ For each page, dispatch `agents/dom-extractor.md` which uses agent-browser eval 
 - Background images: CSS background-image URLs
 - Computed styles: key measurements (heights, font sizes, colors, padding)
 
+**`dom-extractor` is the primary extraction agent.** It handles the actual DOM measurement and style extraction via agent-browser eval — this is not done by recon-agent, token-extractor, or asset-extractor.
+
 Output: `{cache_dir}/dom-extraction/{page-slug}.json` + reference screenshot per page
 
 After extracting DOM, run DOM measurement to capture exact hero heights, content padding, and section positions for each page. Use agent-browser eval to measure bounding rects of key sections (hero, nav, content blocks, footer). Store in `{cache_dir}/dom-extraction/{page-slug}-measurements.json`.
 
-### Step 3: Download ALL assets
+### Step 3: Download ALL assets (asset-extractor)
 
-For each unique asset found across all pages:
+Dispatch `agents/asset-extractor.md` to download assets found by dom-extractor:
+- Reads `{cache_dir}/dom-extraction/*.json` for asset URLs
 - Images: download to `{UI_DIR}/public/brands/{slug}/`
 - Fonts: resolve relative URLs against stylesheet URL, download to `{UI_DIR}/public/brands/{slug}/fonts/`
 - Social SVGs: extract from footer DOM, save to `{UI_DIR}/public/brands/{slug}/social/`
@@ -79,6 +83,8 @@ For each unique asset found across all pages:
 - Logo SVG: extract inline from header DOM
 
 **Verify every download**: run `file` command to confirm it's an actual asset, not an HTML error page.
+
+The asset-extractor is scoped to **asset download and management** — it is a post-extraction step that reads what dom-extractor found.
 
 ### Step 4: Register fonts
 
@@ -158,6 +164,8 @@ The monitor will:
 3. Dispatch parallel subagents to fix each page's React components
 4. Re-run the harness
 5. Loop until scores reach target or plateau
+
+If the site is blocked by anti-bot protection, the improvement job will be blocked with `anti_bot_block`. If blocked, run `python3 scripts/ingest_assisted_capture.py --brand <slug> --screenshots-dir <dir>` to import manual captures, then re-run the improvement flow.
 
 ## Phase E — Publish artifacts
 

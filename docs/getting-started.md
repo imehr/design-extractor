@@ -101,8 +101,9 @@ Launch the library browser UI:
 This starts a Next.js dev server at `http://localhost:5173`. The UI reads brand data from `~/.claude/design-library/` and presents a card grid with category filtering, search, and per-brand detail pages. See [ui-guide.md](./ui-guide.md) for a walkthrough.
 
 The UI now also includes:
-- a `/docs` page explaining the architecture and self-improvement loop
+- a `/docs` page with a step-by-step operator guide
 - an `Improve Quality` action on the Validation tab
+- live job monitoring for Claude-backed refinement passes
 - assisted-capture guidance when source sites block automated browsing
 
 ## Installing a brand into a project
@@ -129,7 +130,14 @@ If you see `Browser was not found`, run `python3 -m playwright install --with-de
 
 ### Bot detection / Cloudflare challenges
 
-Some sites block headless Chromium. The `recon-agent` uses stealth mode by default (modifies navigator properties, disables automation signals). If a site still blocks extraction, the agent retries with Firefox engine. If that also fails, extraction reports `gate_R1=fail` and proceeds with whatever data was captured. See [troubleshooting.md](./troubleshooting.md) for the full degradation table.
+Some sites block headless Chromium. The `recon-agent` uses stealth mode by default (modifies navigator properties, disables automation signals). If a site still blocks extraction, the harness should not tell you to give up on the brand. The correct flow is:
+
+1. Retry once with a headed browser.
+2. If the block persists, mark the run as assisted-capture-required.
+3. Import screenshots and page metadata from a normal browser session.
+4. Re-run the improvement flow so replica refinement and validation can continue.
+
+Woolworths is the current stress case for this path. See [troubleshooting.md](./troubleshooting.md) for the full degradation table.
 
 ### Screenshots are blank or partial
 

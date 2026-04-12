@@ -135,3 +135,15 @@ These checks run during Phase 1 (skeleton plugin) and Phase 3 (publication).
 - `~/.claude/plugins/local/masfactory/engine/nodes/agent_node.py` — proves the `claude --print -p` constraint
 - `~/.claude/plugins/local/brand-extractor/agents/extraction-agent.md` — the 2-agent shape we are NOT copying
 - `~/.claude/plans/sequential-percolating-puffin.md` — the implementation plan
+
+---
+
+## Post-v0.1 Extraction Architecture Update
+
+After the first three extractions (Westpac, Woolworths Group, Woolworths Supermarket), the Phase A agent roles were reassigned:
+
+- `dom-extractor` became the primary extraction agent (agent-browser eval for live DOM measurement)
+- `recon-agent` scoped to page discovery only
+- `token-extractor` scoped to formal token synthesis from extracted data
+- `asset-extractor` scoped to asset download and management
+- `extract_tokens.py` retained as a utility but not the primary extraction path

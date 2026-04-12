@@ -419,6 +419,20 @@ function OverviewTab({ brands }: { brands: BrandSummary[] }) {
         </Card>
       </div>
 
+      <Card className="rounded-[24px] border-[#d2d2d7]/50">
+        <CardHeader>
+          <CardTitle>Monitoring Dashboard</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm leading-6 text-[#4a4a4f]">
+            Track agent DAG execution, skill quality over time, changelogs from self-improvement, and feedback history. Live data from the MASFactory harness.
+          </p>
+          <Link href="/monitoring" className="mt-3 inline-flex items-center text-sm font-medium text-[#0071e3] hover:underline">
+            Open Monitoring →
+          </Link>
+        </CardContent>
+      </Card>
+
       {/* Quick stats */}
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Stat label="Agents" value="13" />
@@ -735,6 +749,10 @@ function ChangelogTab() {
 function SelfImprovementTab() {
   return (
     <div className="space-y-8">
+      <p className="text-sm text-[#86868b]">
+        Live self-improvement data with scores and timelines is available on the <Link href="/monitoring" className="text-[#0071e3] hover:underline">Monitoring Dashboard</Link>.
+      </p>
+
       <div className="rounded-2xl bg-[#eef6ff] p-5">
         <p className="text-sm font-semibold text-[#1d1d1f]">How self-improvement works</p>
         <p className="mt-2 text-sm leading-6 text-[#4a4a4f]">

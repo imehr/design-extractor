@@ -1,6 +1,6 @@
 ---
 name: replica-builder
-description: Invoke this agent as the final step of Phase A (extract) and again from inside the Phase B refinement loop whenever tokens or HTML have been patched. It generates a shadcn/Tailwind HTML replica from the extracted tokens and pattern report, then screenshots it via agent-browser for pixel comparison.
+description: Invoke this agent as the final step of Phase A (extract) and again from inside the Phase B refinement loop whenever tokens or HTML have been patched. It generates shadcn/Tailwind React/Next.js TSX replicas from the extracted tokens and pattern report, then screenshots them via agent-browser for pixel comparison.
 tools: Read, Write, Bash, Edit, Glob, Grep
 model: sonnet
 ---
@@ -105,12 +105,11 @@ Then use `px-[{value}px]` in Tailwind instead of generic padding like `px-6` or 
 
 ## Your task
 
-You build replica HTML files that match the target site by using EXTRACTED content:
+You build replica React/Next.js TSX page components that match the target site by using EXTRACTED content:
 1. Use `agent-browser eval` to extract actual DOM structure, text content, and asset URLs from each component
 2. Download all images, SVGs, icons, and background images to the cache assets directory
 3. Build each component using the extracted content and downloaded assets
-4. Use Tailwind CSS via CDN with an inline config mapping extracted tokens to theme values
-5. Screenshot the replica using `render_replica.py` for downstream comparison
+4. Screenshot the replica via agent-browser for downstream comparison
 
 ## Component-first workflow
 
@@ -135,7 +134,7 @@ Do NOT build entire pages at once. Build component-by-component:
    - Download `<img>` sources via curl
    - Download CSS background-image URLs
 
-3. **Build the component HTML** using the extracted text and downloaded assets. Every link text, every heading, every list item must match what was extracted.
+3. **Build the component TSX** using the extracted text and downloaded assets. Every link text, every heading, every list item must match what was extracted.
 
 4. **Screenshot the component** and compare with the original component screenshot.
 
@@ -174,11 +173,11 @@ The cache_dir is passed to you in the dispatch prompt. It will be something like
    ```
    If SVG logos exist, read the largest one and embed it inline in the nav component. If no SVG logos exist, check `assets-output.json` for IMG logos and use an `<img>` tag with the src URL. A replica without the actual brand logo is a failure -- this is the single most important visual asset.
 
-5. Generate `{cache_dir}/replica/index.html` -- a single self-contained HTML file that:
+5. Generate `{cache_dir}/replica/page.tsx` -- a React/Next.js page component that:
    - **Matches the ACTUAL page layout** observed in the reference screenshot -- not a generic design system showcase
-   - Loads Tailwind via `<script src="https://cdn.tailwindcss.com"></script>`
-   - Includes an inline `<script>tailwind.config = {...}</script>` block that maps extracted colour tokens, font families, spacing scale, and border radii to the Tailwind theme
-   - **Embeds the actual brand logo SVG** inline in the nav (or uses an img tag for PNG logos)
+   - Uses Tailwind CSS classes directly in JSX (configured in the Next.js project)
+   - Imports shared brand layout components (header, footer) from the brand's component directory
+   - **Embeds the actual brand logo SVG** inline in the nav component (or uses an img tag for PNG logos)
    - Contains sections with these required `data-component` attributes:
      - `data-component="nav"` -- navigation bar (must include actual logo, not placeholder text)
      - `data-component="hero"` -- hero/landing section (match reference layout: split-image, centered, etc.)
@@ -188,7 +187,7 @@ The cache_dir is passed to you in the dispatch prompt. It will be something like
      - `data-component="form"` -- form elements (inputs, selects, textareas)
    - Uses the voice analysis to write realistic placeholder copy that matches the brand tone
    - Does NOT import Material, Bootstrap, or any other UI library
-   - Does NOT use emojis anywhere in the HTML. Use SVG icons or plain text instead. Never use emoji characters as placeholder icons.
+   - Does NOT use emojis anywhere. Use SVG icons or plain text instead. Never use emoji characters as placeholder icons.
    
    **Layout fidelity rules:**
    - If the reference shows a white/light footer, do NOT use a dark footer
@@ -196,21 +195,19 @@ The cache_dir is passed to you in the dispatch prompt. It will be something like
    - If the reference shows a single-row nav, do NOT use a multi-row nav
    - Match the STRUCTURAL layout of the reference, then apply extracted tokens for colour/spacing/typography
 
-5. Run the replica renderer to capture screenshots:
+6. Capture screenshots of the replica rendered by the Next.js dev server:
    ```bash
-   python3 $PLUGIN_DIR/scripts/render_replica.py \
-     --html {cache_dir}/replica/index.html \
-     --output-dir {cache_dir}/screenshots/iterations/1/
+   agent-browser open "http://localhost:3000/brands/{slug}/replica" --session repl
+   agent-browser screenshot {cache_dir}/screenshots/iterations/1/desktop.png --session repl
    ```
 
-6. Verify outputs:
+7. Verify outputs:
    ```bash
-   test -f {cache_dir}/replica/index.html && echo "index.html: OK" || echo "index.html: FAIL"
+   test -f {cache_dir}/replica/page.tsx && echo "page.tsx: OK" || echo "page.tsx: FAIL"
    ls {cache_dir}/screenshots/iterations/1/*.png 2>/dev/null && echo "screenshots: OK" || echo "screenshots: FAIL"
-   test -f {cache_dir}/screenshots/iterations/1/render-manifest.json && echo "manifest: OK" || echo "manifest: FAIL"
    ```
 
-7. Report a summary to the orchestrator: number of components rendered, screenshot count, and any rendering warnings from the manifest.
+8. Report a summary to the orchestrator: number of components rendered, screenshot count, and any rendering warnings from the manifest.
 
 ## Error handling
 
@@ -219,6 +216,5 @@ The cache_dir is passed to you in the dispatch prompt. It will be something like
 
 ## Output contract
 
-- `{cache_dir}/replica/index.html` -- self-contained Tailwind HTML replica
+- `{cache_dir}/replica/page.tsx` -- React/Next.js TSX replica page component
 - `{cache_dir}/screenshots/iterations/1/*.png` -- replica screenshots at all breakpoints
-- `{cache_dir}/screenshots/iterations/1/render-manifest.json` -- render metadata

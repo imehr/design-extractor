@@ -48,9 +48,25 @@
   font-display: swap;
 }
 
-/* Woolworths Supermarket (woolworths.com.au) */
-@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+/* Quantium (quantium.com) */
+@font-face {
+  font-family: 'QuantiumPro';
+  src: url('/brands/quantium-com-au/fonts/quantium_pro_light-webfont.woff2') format('woff2'),
+       url('/brands/quantium-com-au/fonts/quantium_pro_light-webfont.woff') format('woff');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'QuantiumPro';
+  src: url('/brands/quantium-com-au/fonts/quantium_pro_medium-webfont.woff2') format('woff2'),
+       url('/brands/quantium-com-au/fonts/quantium_pro_medium-webfont.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
 
+/* Woolworths Supermarket (woolworths.com.au) */
 @font-face {
   font-family: 'Glider';
   src: local('Glider');

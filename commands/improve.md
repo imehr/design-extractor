@@ -18,8 +18,9 @@ The user-supplied slug is: $ARGUMENTS
    python3 $PLUGIN_DIR/scripts/run_improvement_job.py --brand "$ARGUMENTS" --base-url http://localhost:5173 --target 80
    ```
 3. Read the resulting job state from `~/.claude/design-library/cache/<slug>/jobs/`.
-4. If the job reports `assisted_capture_required`, tell the user exactly that and surface the assisted-capture steps.
-5. If the job stalls, inspect `validation/report.json`, `validation/improvement-manifest.json`, `HARNESS.md`, and the relevant brand replica files before proposing the next fix.
+4. The controller should validate first, then invoke Claude against the worst failing replica files, then re-validate until target/plateau/operator-review.
+5. If the job reports `assisted_capture_required`, tell the user exactly that and surface the assisted-capture steps.
+6. If the job stalls or needs operator review, inspect `validation/report.json`, `validation/improvement-manifest.json`, `HARNESS.md`, and the relevant brand replica files before proposing the next fix.
 
 ## Rules
 

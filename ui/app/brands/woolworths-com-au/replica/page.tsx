@@ -84,7 +84,7 @@ export default function WoolworthsHomePage() {
     <div
       className="min-h-screen bg-[#EEEEEE]"
       style={{
-        fontFamily: "'Roboto', -apple-system, system-ui, sans-serif",
+        fontFamily: "var(--font-roboto), -apple-system, system-ui, sans-serif",
         fontSize: 16,
         lineHeight: "26px",
         color: "#25251F",

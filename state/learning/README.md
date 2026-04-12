@@ -17,3 +17,5 @@ The extraction and validation pipeline needs a stable, repo-local place to store
 - feedback that should influence future runs
 - evidence for skill promotion
 - learning notes that map user feedback to harness changes
+
+The improvement runner also reads recent brand-specific feedback entries from this directory and injects them into the next Claude refinement pass.
