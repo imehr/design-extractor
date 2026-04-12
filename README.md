@@ -1,8 +1,8 @@
 # design-extractor
 
-Extract a complete, validated design system from any URL — patterns and relationships, not just colours. Generates a per-brand `DESIGN.md`, an installable per-brand `SKILL.md`, and an iteratively-refined HTML replica that matches reference screenshots at >=0.85 similarity.
+Extract a complete, validated design system from any URL — patterns and relationships, not just colours. Generates a per-brand `DESIGN.md`, an installable per-brand `SKILL.md`, and a validated replica that can be improved from the local webapp.
 
-> **Status:** v0.1.0 — Phase 1 skeleton. End-to-end extraction lands in Phase 4. See `blueprints/scaffolding-notes.md` for the architecture and `tests/fixtures/baseline-report.md` for the Phase 0 stress test results.
+> **Status:** v0.3.0 — 3 brands extracted (Westpac 85%, Woolworths Group 68%, Woolworths Supermarket 86%). End-to-end pipeline: DOM extraction → React/shadcn replicas → pixel validation → design tokens + DESIGN.md + SKILL.md auto-generated. Self-improving: every extraction bug feeds back into agent/skill code.
 
 ## What it does
 
@@ -32,31 +32,26 @@ python3 -m playwright install chromium
 
 ## Quickstart
 
-Once Phase 4 lands:
-
 ```bash
-# In Claude Code
 /design-extractor:extract https://linear.app
-# ... watches the iteration loop converge to >=0.85 similarity
 /design-extractor:browse
-# ... opens http://localhost:5173 with your library
-```
-
-For now (Phase 1), the only working command is:
-
-```bash
-/design-extractor:browse-library     # opens the static Nimbus sample brand
 ```
 
 ## Improvement workflow
 
-The local webapp now exposes a Validation-tab `Improve Quality` action that starts a filesystem-backed improvement job. In Claude Code, the matching command is:
+The local webapp exposes a Validation-tab `Improve Quality` action that starts a filesystem-backed improvement job. In Claude Code, the matching command is:
 
 ```bash
 /design-extractor:improve <slug>
 ```
 
-When anti-bot protection blocks automated source capture, the system should switch to assisted-capture mode instead of asking you to abandon the run.
+Each improvement iteration now:
+- runs validation
+- reads the live improvement manifest
+- invokes Claude on the worst failing replica files
+- re-validates until the score reaches target, plateaus, or needs operator help
+
+When anti-bot protection blocks automated source capture, the system switches to assisted-capture mode instead of asking you to abandon the run.
 
 To feed operator or review feedback back into the harness itself:
 
@@ -81,13 +76,30 @@ Phase B — Refine (loop, max 5 iters)
   pixel diff -> visual-critic -> refinement-agent -> re-render -> re-score
   STOP when overall_score >= 0.85 AND blocking_failures == []
 
-Phase C — Publish
-  documentarian  -> DESIGN.md
-  skill-packager -> per-brand SKILL.md
-  librarian      -> ~/.claude/design-library/index.json
+Phase C — Validate (harness loop)
+  run_validation_loop.py -> screenshot comparison -> improvement manifest
+  validation-monitor     -> dispatch fix agents per failing page -> re-score
+  STOP when avg >= 80% or plateau
+
+Phase D — Publish (automated)
+  publish_brand.py -> design-tokens.json + DESIGN.md + SKILL.md + metadata
+  quality checklist -> validate colors, fonts, assets, description accuracy
+  librarian        -> ~/.claude/design-library/index.json
 ```
 
-11 native Claude Code subagents, 6 skills, hand-rolled orchestration in `commands/extract-design.md`. No runtime framework dependency.
+### Extracted Brands
+
+| Brand | Pages | Avg Score | Status |
+|-------|-------|-----------|--------|
+| Westpac | 5 | 85% | 7/8 gates |
+| Woolworths Group | 5 | 68% | 7/8 gates |
+| Woolworths Supermarket | 5 | 86% | 3/5 pages pass |
+
+Claude Code still handles the brand-specific reasoning and editing work, but the control plane is now explicit:
+- `scripts/run_improvement_job.py` owns retries, status files, and Claude refinement dispatch
+- `scripts/run_validation_loop.py` owns validation artifacts and report generation
+- `HARNESS.md` and `blueprints/generated/design-extractor-runtime.json` define the MASFactory-aligned harness contract
+- the local UI at `http://localhost:5173` is the monitoring and operator surface
 
 ## Documentation
 
