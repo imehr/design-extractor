@@ -33,8 +33,8 @@ const AGENTS = [
   { name: "asset-extractor",    phase: "Extract",  role: "Download logos, favicons, SVGs, fonts, and key brand images from the recon HTML.",                                                       outputs: "assets-output.json, assets/",              model: "sonnet",  updated: "2026-04-11" },
   { name: "voice-analyst",      phase: "Extract",  role: "Analyse visible copy, tone, vocabulary, and CTA patterns to build the brand voice profile.",                                             outputs: "voice-analysis.json",                      model: "sonnet",  updated: "2026-04-11" },
   { name: "pattern-analyst",    phase: "Extract",  role: "Compute measurable pattern signals (spacing rhythm, type scale, density) and interpretive signals (airiness, formality).",                outputs: "patterns.json, patterns-llm.json",         model: "sonnet",  updated: "2026-04-11" },
-  { name: "dom-extractor",      phase: "Extract",  role: "Measure exact live DOM geometry via agent-browser eval. Captures hero height, padding, font sizes, and background colors.",               outputs: "dom-extraction/*.json",                    model: "sonnet",  updated: "2026-04-12" },
-  { name: "replica-builder",    phase: "Build",    role: "Generate React/shadcn replicas from extracted tokens, DOM measurements, and hero layout pattern detection.",                               outputs: "ui/app/brands/<slug>/replica/*",           model: "sonnet",  updated: "2026-04-12" },
+  { name: "dom-extractor",      phase: "Extract",  role: "Extract DOM content, measurements, and images (including CSS background-image URLs) via agent-browser eval. Captures hero height, padding, font sizes, colors, and section structure with sectionCount for completeness validation.",  outputs: "dom-extraction/*.json",                    model: "sonnet",  updated: "2026-04-13" },
+  { name: "replica-builder",    phase: "Build",    role: "Generate React/shadcn replicas from extracted tokens and DOM measurements. Requires section completeness: every H2 in DOM extraction must have a corresponding replica section. Detects hero layout patterns (bg-overlay vs split-column).",  outputs: "ui/app/brands/<slug>/replica/*",           model: "sonnet",  updated: "2026-04-13" },
   { name: "visual-critic",      phase: "Validate", role: "Vision-capable structural comparison of replica vs reference screenshots. Produces concrete fix guidance.",                                outputs: "critique JSON, issue lists",               model: "opus",    updated: "2026-04-11" },
   { name: "refinement-agent",   phase: "Improve",  role: "Patch replica tokens and HTML/Tailwind based on visual-critic feedback, then hand back for re-scoring.",                                  outputs: "updated replica pages/components",         model: "sonnet",  updated: "2026-04-11" },
   { name: "validation-monitor", phase: "Improve",  role: "Autonomous orchestrator: run harness, read manifests, dispatch parallel fix agents, loop until target score.",                             outputs: "manifest-driven orchestration plan",       model: "opus",    updated: "2026-04-12" },
@@ -72,6 +72,14 @@ const SELF_IMPROVEMENT: Record<string, { feedback: string; changed: string; file
   "Woolworths Supermarket (2026-04-12)": [
     { feedback: "Bot detection blocks headless",          changed: "Use --headed flag for Akamai bypass",                                                files: "Documented in pipeline" },
     { feedback: "Assets in wrong directory",              changed: "Copy to cache + symlink to brands dir",                                              files: "scripts/publish_brand.py" },
+  ],
+  "Quantium (2026-04-13)": [
+    { feedback: "Team photos missing (gray placeholders)", changed: "Added CSS background-image extraction (Step 7.5) — sites use bg-image for photos",  files: "agents/dom-extractor.md" },
+    { feedback: "Replica only rendered hero section",      changed: "Added section completeness requirement — every H2 must have a replica section",      files: "agents/replica-builder.md" },
+    { feedback: "Section count not validated on publish",  changed: "Quality checklist compares H2 count in replica vs DOM extraction sections",          files: "scripts/publish_brand.py" },
+    { feedback: "extractColors crash on non-string value", changed: "Coerce entry.value to string before .match()",                                      files: "ui/app/brands/[slug]/page.tsx" },
+    { feedback: "rgb_to_hex crash on list input",          changed: "Check isinstance(rgb_str, str) before .startswith()",                               files: "scripts/publish_brand.py" },
+    { feedback: "About-us had 3 directors, original 15",   changed: "Expanded to 7 directors + 8 executives with real downloaded CSS bg-image photos",   files: "about-us/page.tsx, dom-extractor.md" },
   ],
 };
 

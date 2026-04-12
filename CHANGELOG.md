@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-04-13
+
+### Added
+- **Quantium extraction** (quantium-com-au) — 5 pages, 42 assets, custom QuantiumPro fonts (woff2/woff/ttf), monochrome design with coral accent. Partner logos include Anthropic, OpenAI, Google Cloud, AWS.
+- **CSS background-image extraction** — `agents/dom-extractor.md` Step 7.5 extracts images from CSS `background-image` property, not just `<img>` tags. Fixes missing team photos, hero backgrounds, and card images that use CSS backgrounds.
+- **Section completeness requirement** — `agents/replica-builder.md` now requires every H2 in DOM extraction to have a corresponding replica section. Lists commonly missed sections (partner logos, value props, stats, CTAs).
+- **Section completeness validation** — `scripts/publish_brand.py` quality checklist now compares H2 count in each replica vs section count in DOM extraction, flagging incomplete pages.
+
+### Fixed
+- **extractColors TypeError** — `entry.value.match()` crashed on non-string values. Now coerces to string before matching.
+- **rgb_to_hex crash on lists** — `publish_brand.py` handles non-string color values (lists, numbers) without crashing.
+- **Incomplete replicas** — Quantium homepage rebuilt from 1 section (hero only) to all 8 sections. About-us page expanded from 3 placeholder directors to 7 directors + 8 executives with real downloaded photos.
+- **Team photos invisible to extraction** — Photos rendered via CSS `background-image` were completely missed by `<img>` tag extraction. Now captured via Step 7.5.
+
+### Improved — Agents & Skills
+- **`agents/dom-extractor.md`** — Added CSS background-image extraction (Step 7.5), content quality requirements (strip scripts, 2000-char limit, sectionType/sectionCount fields).
+- **`agents/replica-builder.md`** — Added section completeness requirement with checklist of commonly missed sections.
+
 ## [0.3.0] - 2026-04-12
 
 ### Added
