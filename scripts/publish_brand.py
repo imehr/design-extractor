@@ -49,13 +49,44 @@ def load_all_dom(cache_dir: Path) -> list[dict]:
 def synthesize_design_tokens(measurements: list[dict], dom_data: list[dict], brand_name: str) -> dict:
     """Synthesize design-tokens.json from DOM extraction measurements."""
 
-    # Collect colors across all pages
+    # Collect colors from ALL available fields across all pages
     all_colors = {}
     for m in measurements:
-        colors = m.get("colors", {})
-        for name, value in colors.items():
-            if value and value != "rgba(0, 0, 0, 0)":
-                all_colors[name] = value
+        # Method 1: dedicated colors dict
+        colors = m.get("colors", m.get("colours", {}))
+        if isinstance(colors, dict):
+            for name, value in colors.items():
+                if value and value != "rgba(0, 0, 0, 0)":
+                    all_colors[name] = value
+
+        # Method 2: uniqueTextColors / uniqueBackgroundColors arrays
+        for tc in m.get("uniqueTextColors", []):
+            if tc and tc != "rgba(0, 0, 0, 0)":
+                all_colors.setdefault(f"text_{tc}", tc)
+        for bc in m.get("uniqueBackgroundColors", []):
+            if bc and bc != "rgba(0, 0, 0, 0)":
+                all_colors.setdefault(f"bg_{bc}", bc)
+
+        # Method 3: extract from section-level fields (h1.color, body.backgroundColor, footer.backgroundColor, etc.)
+        for section_key in ["h1", "body", "footer", "header", "hero", "nav"]:
+            section = m.get(section_key, {})
+            if isinstance(section, dict):
+                for prop in ["color", "backgroundColor"]:
+                    val = section.get(prop)
+                    if val and val != "rgba(0, 0, 0, 0)" and val != "transparent":
+                        role = f"{section_key}_{prop.replace('olor', '').replace('backgC', 'bg').replace('c', 'text', 1) if prop == 'color' else section_key + '_bg'}"
+                        all_colors.setdefault(role, val)
+
+        # Method 4: links and buttons
+        for ui_key in ["links", "buttons"]:
+            ui = m.get(ui_key, {})
+            if isinstance(ui, dict):
+                for variant, styles in ui.items():
+                    if isinstance(styles, dict):
+                        for prop in ["color", "backgroundColor"]:
+                            val = styles.get(prop)
+                            if val and val != "rgba(0, 0, 0, 0)" and val != "transparent":
+                                all_colors.setdefault(f"{ui_key}_{variant}_{prop}", val)
 
     # Collect typography
     typography_samples = {}
@@ -234,7 +265,7 @@ def generate_design_md(tokens: dict, brand_name: str, source_url: str, measureme
 
 ## 1. Visual Theme & Atmosphere
 
-{brand_name} presents a clean, modern corporate identity built around trust, accessibility, and Australian heritage. The design language is structured yet approachable, with generous whitespace and a restrained color palette anchored by a distinctive blue. Typography plays a major role in establishing hierarchy, with a custom display typeface ({heading_font}) paired with a versatile body font ({body_font}).
+{brand_name} presents a clean, modern identity. The design language uses a focused color palette anchored by its primary brand color (`{palette.get(list(palette.keys())[0] if palette else 'primary', '#000')}`). Typography establishes clear hierarchy with {heading_font} for headings paired with {body_font} for body text.
 
 ## 2. Colour Palette & Roles
 
@@ -531,6 +562,64 @@ def main():
         if src.exists() and not dst.exists():
             os.symlink(str(src), str(dst))
             print(f"  {subdir}: symlinked")
+
+    # 7. PUBLISH QUALITY CHECKLIST — catch missing data before it reaches the UI
+    print("\n=== Publish Quality Checklist ===")
+    issues = []
+
+    # Check colors
+    color_count = len(tokens.get("colours", {}).get("computed", []))
+    if color_count == 0:
+        issues.append("FAIL: No colors in design-tokens.json")
+    elif color_count < 5:
+        issues.append(f"WARN: Only {color_count} colors (expected 5+)")
+    print(f"  Colors: {color_count} {'OK' if color_count >= 5 else 'LOW' if color_count > 0 else 'MISSING'}")
+
+    # Check font families
+    font_count = len(tokens.get("typography", {}).get("families", []))
+    if font_count == 0:
+        issues.append("FAIL: No font families in design-tokens.json")
+    print(f"  Fonts: {font_count} {'OK' if font_count > 0 else 'MISSING'}")
+
+    # Check DESIGN.md has real content (not generic template)
+    if design_path.exists():
+        with open(design_path) as f:
+            content = f.read()
+        if "distinctive blue" in content.lower() and "green" not in content.lower():
+            issues.append("WARN: DESIGN.md may have wrong brand color description")
+        if len(content) < 1000:
+            issues.append(f"WARN: DESIGN.md is short ({len(content)} bytes)")
+        print(f"  DESIGN.md: {len(content)} bytes {'OK' if len(content) >= 2000 else 'SHORT'}")
+
+    # Check assets are accessible (os.walk follows symlinks)
+    assets_dir = brands_dir / "assets"
+    if not assets_dir.exists():
+        issues.append("FAIL: No assets directory in brand")
+    else:
+        asset_count = sum(len(files) for _, _, files in os.walk(str(assets_dir), followlinks=True))
+        if asset_count == 0:
+            issues.append("FAIL: Assets directory is empty")
+        print(f"  Assets: {asset_count} files {'OK' if asset_count >= 10 else 'LOW'}")
+
+    # Check validation report exists
+    if report_path.exists():
+        print(f"  Validation: {avg_score}% avg {'OK' if avg_score >= 70 else 'LOW'}")
+    else:
+        issues.append("WARN: No validation report")
+        print("  Validation: no report")
+
+    # Check SKILL.md exists and is non-empty
+    if skill_path.exists() and skill_path.stat().st_size > 100:
+        print(f"  SKILL.md: OK")
+    else:
+        issues.append("FAIL: SKILL.md missing or empty")
+
+    if issues:
+        print(f"\n  {len(issues)} issues found:")
+        for issue in issues:
+            print(f"    - {issue}")
+    else:
+        print("\n  All checks passed!")
 
     print(f"\nDone. Brand directory: {brands_dir}")
     return 0
