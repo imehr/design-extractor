@@ -2,10 +2,6 @@
 
 import { QtHeader } from "@/components/brands/quantium-com-au/qt-header";
 import { QtFooter } from "@/components/brands/quantium-com-au/qt-footer";
-import { Separator } from "@/components/ui/separator";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 
 const QUANTIUM_FONT = "'QuantiumPro', Inter, sans-serif";
@@ -37,85 +33,69 @@ export default function CareersPage() {
 
       {/* ── Hero banner ── */}
       <section className="relative w-full overflow-hidden">
-        <div className="relative h-[400px] w-full">
+        <div className="relative h-[420px] w-full">
           <img
-            src="/brands/quantium-com-au/images/careers-tile-1.jpg"
+            src="/brands/quantium-com-au/images/hero-bg-3.jpg"
             alt="Careers hero"
             className="absolute inset-0 h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/80 to-transparent" />
-          <div className="relative z-10 flex h-full items-center pl-[100px]">
-            <div className="max-w-[500px]">
-              <p className="mb-3 text-[14px] font-medium uppercase tracking-[0.15em] text-[#F25648]">
-                Find your kind
-              </p>
-              <h1
-                className="text-[56px] font-normal leading-[1.08] tracking-tight"
-                style={{ fontFamily: QUANTIUM_FONT, color: "#000006" }}
-              >
-                Challenge your
-                <br />
-                imagination at
-                <br />
-                Quantium.
-              </h1>
-            </div>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative z-10 flex h-full items-center justify-center">
+            <h1
+              className="text-center text-[90px] font-bold uppercase leading-[0.9]"
+              style={{
+                fontFamily: QUANTIUM_FONT,
+                color: "transparent",
+                WebkitTextStroke: "2px white",
+              }}
+            >
+              FIND
+              <br />
+              YOUR
+              <br />
+              KIND
+            </h1>
           </div>
         </div>
       </section>
 
-      {/* ── Sub-hero text ── */}
-      <section className="w-full py-16">
+      {/* ── Thumbnail navigation strip ── */}
+      <div className="w-full border-b border-[#E5E5E5] py-3">
+        <div className="mx-auto flex max-w-[1280px] items-center justify-center gap-2 px-[100px]">
+          {HERO_TILES.map((tile, idx) => (
+            <div
+              key={tile.label}
+              className={`h-[48px] w-[72px] cursor-pointer overflow-hidden rounded-sm ${
+                idx === 0
+                  ? "ring-2 ring-[#F25648]"
+                  : "opacity-60 hover:opacity-100"
+              }`}
+            >
+              <img
+                src={tile.image}
+                alt={tile.label}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Sub-hero text + Global leader section ── */}
+      <section className="w-full pt-14 pb-16">
         <div className="mx-auto max-w-[1280px] px-[100px]">
+          <span className="mb-4 inline-block h-3 w-3 rounded-full bg-[#F25648]" />
           <h2
             className="mb-4 text-[36px] font-normal tracking-tight"
             style={{ fontFamily: QUANTIUM_FONT, color: "#000006" }}
           >
             Challenge your imagination at Quantium.
           </h2>
-          <p className="max-w-[700px] text-[17px] font-light leading-relaxed text-[#444]">
+          <p className="mb-14 max-w-[700px] text-[17px] font-light leading-relaxed text-[#444]">
             We offer opportunities to go deeper with data to solve the most
             challenging problems facing business and society today.
           </p>
-        </div>
-      </section>
-
-      {/* ── Impact tiles grid ── */}
-      <section className="w-full pb-16">
-        <div className="mx-auto max-w-[1280px] px-[100px]">
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-3">
-            {HERO_TILES.map((tile) => (
-              <Card
-                key={tile.label}
-                className="group cursor-pointer overflow-hidden border-0 bg-[#EFEFEF] shadow-none"
-              >
-                <div className="aspect-square overflow-hidden">
-                  <img
-                    src={tile.image}
-                    alt={tile.label}
-                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                  />
-                </div>
-                <div className="p-5">
-                  <p
-                    className="text-[16px] font-medium"
-                    style={{ fontFamily: QUANTIUM_FONT, color: "#000006" }}
-                  >
-                    {tile.label}
-                  </p>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <Separator className="mx-auto max-w-[1280px] bg-[#E5E5E5]" />
-
-      {/* ── Global leader section ── */}
-      <section className="w-full py-20">
-        <div className="mx-auto max-w-[1280px] px-[100px]">
-          <div className="grid grid-cols-1 gap-16 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
             <div>
               <h2
                 className="mb-6 text-[32px] font-normal leading-[1.2] tracking-tight"
@@ -140,11 +120,11 @@ export default function CareersPage() {
                 See open roles
               </Link>
             </div>
-            <div className="flex items-center justify-center">
+            <div className="relative flex items-center justify-center">
               <img
-                src="/brands/quantium-com-au/images/careers-modal1.png"
+                src="/brands/quantium-com-au/images/natalie-jones.png"
                 alt="Quantium team member"
-                className="h-auto w-full max-w-[400px] object-contain"
+                className="h-auto w-full rounded-sm object-cover"
               />
             </div>
           </div>
@@ -152,14 +132,14 @@ export default function CareersPage() {
       </section>
 
       {/* ── Make an impact section ── */}
-      <section className="w-full bg-[#ECE8E4] py-20">
+      <section className="w-full bg-[#ECE8E4] py-16">
         <div className="mx-auto max-w-[1280px] px-[100px]">
-          <div className="grid grid-cols-1 gap-16 md:grid-cols-2">
-            <div className="flex items-center justify-center">
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
+            <div className="relative flex items-center justify-center">
               <img
-                src="/brands/quantium-com-au/images/careers-modal2.png"
+                src="/brands/quantium-com-au/images/makenna-ralston.jpg"
                 alt="Quantium team member at work"
-                className="h-auto w-full max-w-[400px] object-contain"
+                className="h-auto w-full rounded-sm object-cover"
               />
             </div>
             <div className="flex flex-col justify-center">
@@ -187,9 +167,9 @@ export default function CareersPage() {
       </section>
 
       {/* ── Grads section ── */}
-      <section className="w-full py-20">
+      <section className="w-full py-16">
         <div className="mx-auto max-w-[1280px] px-[100px]">
-          <div className="grid grid-cols-1 gap-16 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
             <div>
               <h2
                 className="mb-6 text-[32px] font-normal leading-[1.2] tracking-tight"
@@ -210,11 +190,11 @@ export default function CareersPage() {
                 Learn more about Grad Academy
               </Link>
             </div>
-            <div className="flex items-center justify-center">
+            <div className="relative flex items-center justify-center">
               <img
-                src="/brands/quantium-com-au/images/careers-modal3.png"
+                src="/brands/quantium-com-au/images/rohan-dixit.jpg"
                 alt="Quantium graduate"
-                className="h-auto w-full max-w-[400px] object-contain"
+                className="h-auto w-full rounded-sm object-cover"
               />
             </div>
           </div>

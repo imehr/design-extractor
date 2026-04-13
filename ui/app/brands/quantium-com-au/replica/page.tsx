@@ -159,19 +159,19 @@ export default function QuantiumHomePage() {
       {/* ===== Section 2: Trusted partners ===== */}
       <section className="w-full bg-white py-16">
         <div className="mx-auto max-w-[1200px] px-[100px]">
-          <h2
-            className="mb-12 text-center text-[36px] font-medium tracking-tight text-[#000006]"
-            style={{ fontFamily: QUANTIUM_FONT }}
+          <p
+            className="mb-10 text-center text-[16px] font-normal text-[#666]"
+            style={{ fontFamily: ROBOTO_FONT }}
           >
             Trusted partners to leading organisations
-          </h2>
-          <div className="grid grid-cols-4 items-center justify-items-center gap-y-10 gap-x-12 md:grid-cols-8">
+          </p>
+          <div className="flex items-center justify-between gap-x-8">
             {PARTNER_LOGOS.map((logo) => (
               <img
                 key={logo.alt}
                 src={logo.src}
                 alt={logo.alt}
-                className="h-[36px] w-auto max-w-[100px] object-contain opacity-50 grayscale transition-all hover:opacity-100 hover:grayscale-0"
+                className="h-[32px] w-auto object-contain opacity-50 grayscale transition-all hover:opacity-100 hover:grayscale-0"
               />
             ))}
           </div>
@@ -230,7 +230,7 @@ export default function QuantiumHomePage() {
             {HOW_WE_WORK.map((item) => (
               <div
                 key={item.title}
-                className="border-t-2 border-[#000006] pt-8"
+                className="border-t border-[#000006] pt-8"
               >
                 <h3
                   className="mb-4 text-[20px] font-medium leading-snug text-[#000006]"
@@ -251,44 +251,55 @@ export default function QuantiumHomePage() {
       </section>
 
       {/* ===== Section 5: What we deliver ===== */}
-      <section className="relative w-full overflow-hidden">
-        {/* Background photo with dark overlay */}
-        <div className="absolute inset-0">
-          <img
-            src="/brands/quantium-com-au/images/hero-bg-2.jpg"
-            alt=""
-            className="h-full w-full object-cover"
-          />
-          <div className="absolute inset-0 bg-[#000006]/80" />
-        </div>
+      <section className="w-full bg-white">
+        <div className="grid grid-cols-1 md:grid-cols-2">
+          {/* Left: photo */}
+          <div className="relative min-h-[480px] overflow-hidden">
+            <img
+              src="/brands/quantium-com-au/images/hero-bg-2.jpg"
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          </div>
 
-        <div className="relative mx-auto max-w-[1200px] px-[100px] py-24">
-          <h2
-            className="mb-16 text-[42px] font-medium leading-tight tracking-tight text-white"
-            style={{ fontFamily: QUANTIUM_FONT }}
-          >
-            What we deliver
-          </h2>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-            {WHAT_WE_DELIVER.map((item) => (
-              <div
-                key={item.title}
-                className="group cursor-pointer border-t border-white/30 pt-6 transition-colors"
-              >
-                <h3
-                  className="mb-3 text-[20px] font-medium leading-snug text-white transition-colors group-hover:text-[#F25648]"
-                  style={{ fontFamily: QUANTIUM_FONT }}
+          {/* Right: list */}
+          <div className="flex flex-col justify-center py-20 pl-16 pr-[100px]">
+            <h2
+              className="mb-10 text-[42px] font-medium leading-tight tracking-tight text-[#000006]"
+              style={{ fontFamily: QUANTIUM_FONT }}
+            >
+              What we deliver
+            </h2>
+            <div className="flex flex-col">
+              {WHAT_WE_DELIVER.map((item) => (
+                <Link
+                  key={item.title}
+                  href="#"
+                  className="group flex items-center justify-between border-t border-[#E5E5E5] py-5 transition-colors hover:text-[#F25648]"
                 >
-                  {item.title}
-                </h3>
-                <p
-                  className="text-[15px] font-light leading-relaxed text-white/70"
-                  style={{ fontFamily: ROBOTO_FONT }}
-                >
-                  {item.description}
-                </p>
-              </div>
-            ))}
+                  <span
+                    className="text-[18px] font-medium text-[#000006] transition-colors group-hover:text-[#F25648]"
+                    style={{ fontFamily: QUANTIUM_FONT }}
+                  >
+                    {item.title}
+                  </span>
+                  <svg
+                    className="size-5 shrink-0 text-[#000006] transition-colors group-hover:text-[#F25648]"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </Link>
+              ))}
+              <div className="border-t border-[#E5E5E5]" />
+            </div>
           </div>
         </div>
       </section>
@@ -306,26 +317,26 @@ export default function QuantiumHomePage() {
             {IMPACT_CASES.map((item) => (
               <div
                 key={item.title}
-                className="group cursor-pointer overflow-hidden rounded-lg border border-white/10 bg-white/5 transition-colors hover:border-white/20 hover:bg-white/10"
+                className="group cursor-pointer overflow-hidden rounded-lg bg-white transition-colors"
               >
                 {/* Image / logo area */}
-                <div className="flex h-[180px] items-center justify-center bg-white/5 p-8">
+                <div className="flex h-[160px] items-center justify-center bg-[#F5F5F5] p-8">
                   <img
                     src={item.image}
                     alt=""
-                    className="h-[48px] w-auto object-contain brightness-0 invert"
+                    className="h-[40px] w-auto object-contain"
                   />
                 </div>
                 {/* Text */}
                 <div className="p-6">
                   <h3
-                    className="text-[17px] font-light leading-snug text-white/90"
+                    className="text-[16px] font-normal leading-snug text-[#000006]"
                     style={{ fontFamily: QUANTIUM_FONT }}
                   >
                     {item.title}
                   </h3>
                   <div
-                    className="mt-4 flex items-center gap-2 text-[14px] font-medium text-[#F25648] opacity-0 transition-opacity group-hover:opacity-100"
+                    className="mt-4 flex items-center gap-2 text-[14px] font-medium text-[#F25648]"
                     style={{ fontFamily: ROBOTO_FONT }}
                   >
                     Read more
@@ -339,7 +350,7 @@ export default function QuantiumHomePage() {
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        d="M13 7l5 5m0 0l-5 5m5-5H6"
+                        d="M9 5l7 7-7 7"
                       />
                     </svg>
                   </div>

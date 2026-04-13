@@ -31,6 +31,46 @@ Schema: `{components: [{component, similarity, passed, threshold}], overall_simi
 Read `{cache_dir}/iteration_scores.json` (output of `score_replica.py`).
 Schema: `{overall_score, overall_passed, blocking_failures, dimensions: {<comp>: {pixel_score, llm_score, blended_score, threshold, passed}}}`.
 
+### Step 1b -- Run component-level comparison (preferred)
+
+When the replica is served at a known URL, run the component-level comparison
+script instead of (or in addition to) the full-page pixel comparison. This
+produces per-section issues and pixel scores that are far more actionable than
+a single overall number.
+
+```bash
+python3 scripts/compare_components.py \
+  --brand {brand_slug} \
+  --page homepage \
+  --base-url {replica_url} \
+  --original-url {original_url} \
+  --output {cache_dir}/component-comparison.json
+```
+
+Read the output `{cache_dir}/component-comparison.json`.
+Schema:
+```json
+{
+  "sections": [
+    {
+      "heading": "Section title",
+      "original": {"height": 378, "bg": "rgb(255,255,255)", "images": 9},
+      "replica":  {"height": 200, "bg": "rgb(255,255,255)", "images": 8},
+      "issues": ["Height mismatch: ...", "Missing 1 image"],
+      "pixel_match": 65.2
+    }
+  ],
+  "summary": {
+    "average_pixel_match": 72.1,
+    "total_issues": 5,
+    "sections_missing_in_replica": 1
+  }
+}
+```
+
+Use these per-section issues directly when building critique objects in Step 5.
+Sections with `pixel_match < 80` or any issues should be treated as failing.
+
 ### Step 2 -- Full-page visual comparison
 
 Read and visually compare these two images:
@@ -51,11 +91,20 @@ A replica without the real logo cannot pass brand impression regardless of other
 Collect every component where `passed` is `false` in either scoring file.
 Components: `nav`, `hero`, `button-set`, `card`, `footer`, `form`.
 
+Also include any section from `component-comparison.json` where `pixel_match < 80`
+or `issues` is non-empty. Map section headings to the closest component name
+(e.g. a section headed "Navigation" maps to `nav`).
+
 ### Step 4 -- Compare component screenshots
 
 For each failing component, read both images:
 - `{cache_dir}/screenshots/reference/<component>.png`
 - `{cache_dir}/screenshots/iterations/{iteration}/replica-<component>.png`
+
+If component-level screenshots from `compare_components.py` exist at
+`{cache_dir}/screenshots/component-compare/homepage/original/<slug>.png` and
+`{cache_dir}/screenshots/component-compare/homepage/replica/<slug>.png`,
+prefer those as they are tightly cropped to each section.
 
 Focus exclusively on differences. Categorise each issue as one of:
 `colour`, `spacing`, `typography`, `layout`, `shadow`, `border`, `opacity`, `image`, `other`.

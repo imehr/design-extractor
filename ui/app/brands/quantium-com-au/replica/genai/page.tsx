@@ -70,53 +70,43 @@ export default function GenAIPage() {
     >
       <QtHeader activePage="GenAI" />
 
-      {/* ── Hero - dark bg ── */}
-      <section className="relative w-full bg-[#0B0D12]">
-        <div className="grid min-h-[480px] grid-cols-1 md:grid-cols-[1fr_1fr]">
-          {/* Left: text */}
-          <div className="flex flex-col justify-center py-16 pl-[100px] pr-10">
-            <h1
-              className="mb-5 text-[48px] font-normal leading-[1.12] tracking-tight text-white"
-              style={{ fontFamily: QUANTIUM_FONT }}
-            >
-              Making GenAI work
-              <br />
-              for your business
-            </h1>
-            <p className="mb-8 max-w-[480px] text-[17px] font-light leading-relaxed text-white/70">
-              We build GenAI systems that work in production and develop your
-              organisation&apos;s capability to deploy them at scale. We partner with
-              all major AI platforms and bring 23 years of AI experience in your
-              industry.
-            </p>
-            <div>
-              <Link
-                href="#"
-                className="inline-flex h-[46px] items-center justify-center rounded-full bg-white px-8 text-[15px] font-medium text-[#0B0D12] hover:bg-white/90"
-              >
-                Talk to us
-              </Link>
-            </div>
+      {/* ── Hero image (full-width) ── */}
+      <section className="relative w-full">
+        <div className="relative h-[440px] w-full overflow-hidden">
+          <img
+            src="/brands/quantium-com-au/images/hero-bg-2.jpg"
+            alt="Team working on GenAI solutions"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        </div>
+      </section>
 
-            {/* Partner logos row */}
-            <div className="mt-10 flex flex-wrap items-center gap-6">
-              {PARTNER_LOGOS.map((logo) => (
-                <img
-                  key={logo.alt}
-                  src={logo.src}
-                  alt={logo.alt}
-                  className="h-[24px] w-auto object-contain brightness-0 invert opacity-60"
-                />
-              ))}
-            </div>
-          </div>
-          {/* Right: image */}
-          <div className="relative overflow-hidden">
-            <img
-              src="/brands/quantium-com-au/images/hero-bg-2.jpg"
-              alt="Team working on GenAI solutions"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+      {/* ── Hero text (below image, white bg) ── */}
+      <section className="w-full bg-white pb-10 pt-14">
+        <div className="mx-auto max-w-[1280px] px-[100px]">
+          <h1
+            className="mb-6 text-[44px] font-normal leading-[1.12] tracking-tight"
+            style={{ fontFamily: QUANTIUM_FONT, color: "#000006" }}
+          >
+            Making GenAI work for your business
+          </h1>
+          <p className="mb-10 max-w-[720px] text-[17px] font-light leading-[1.7] text-[#444]">
+            We build GenAI systems that work in production and develop your
+            organisation&apos;s capability to deploy them at scale. We partner with
+            all major AI platforms and bring 23 years of AI experience in your
+            industry.
+          </p>
+
+          {/* Partner logos row */}
+          <div className="flex items-center gap-8">
+            {PARTNER_LOGOS.map((logo) => (
+              <img
+                key={logo.alt}
+                src={logo.src}
+                alt={logo.alt}
+                className="h-[20px] w-auto object-contain opacity-40"
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -170,9 +160,9 @@ export default function GenAIPage() {
             </div>
             <div className="flex items-center justify-center">
               <img
-                src="/brands/quantium-com-au/images/hero-bg-3.jpg"
+                src="/brands/quantium-com-au/images/hero-bg-1.jpg"
                 alt="Quantium team working"
-                className="h-auto w-full rounded-lg object-cover"
+                className="h-auto w-full object-cover"
               />
             </div>
           </div>
@@ -279,7 +269,7 @@ export default function GenAIPage() {
           {/* Right: image */}
           <div className="relative overflow-hidden">
             <img
-              src="/brands/quantium-com-au/images/hero-bg-1.jpg"
+              src="/brands/quantium-com-au/images/hero-bg-3.jpg"
               alt="Quantium office collaboration"
               className="absolute inset-0 h-full w-full object-cover"
             />
