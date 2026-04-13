@@ -488,11 +488,34 @@ export default function BrandPage({
   const breakpointList = (tokens?.breakpoints ?? []) as number[];
   const transitionList = (tokens?.transitions ?? []) as { value: string; count: number }[];
 
-  const assetFiles = brand.files.filter((f) => f.startsWith("assets/"));
-  const svgAssets = assetFiles.filter((f) => f.endsWith(".svg"));
-  const imgAssets = assetFiles.filter((f) => !f.endsWith(".svg"));
+  // Combine assets from brand dir AND public dir (localFiles)
+  const brandAssets = brand.files.filter((f: string) => f.startsWith("assets/"));
+  const publicAssets = (brand.localFiles ?? []).filter(
+    (f: string) => f.startsWith("public/brands/") && !f.includes("/screenshots/") && !f.includes("/fonts/")
+      && /\.(svg|png|jpg|jpeg|webp|gif|ico)$/i.test(f)
+  );
+  // Merge and deduplicate by filename
+  const seenNames = new Set<string>();
+  const allImageFiles: Array<{path: string; src: string; name: string}> = [];
+  for (const f of brandAssets) {
+    const name = f.split("/").pop() || f;
+    if (seenNames.has(name)) continue;
+    seenNames.add(name);
+    allImageFiles.push({path: f, src: `/api/brands/${brand.slug}/file/${f}`, name});
+  }
+  for (const f of publicAssets) {
+    const name = f.split("/").pop() || f;
+    if (seenNames.has(name)) continue;
+    seenNames.add(name);
+    // public/brands/slug/foo.png -> /brands/slug/foo.png
+    const publicPath = f.replace(/^public\//, "/");
+    allImageFiles.push({path: f, src: publicPath, name});
+  }
+  const assetFiles = allImageFiles;
+  const svgAssets = allImageFiles.filter((f) => f.name.endsWith(".svg"));
+  const imgAssets = allImageFiles.filter((f) => /\.(png|jpg|jpeg|webp|gif)$/i.test(f.name));
 
-  const logoFile = svgAssets.find((f) => f.includes("logo"));
+  const logoFile = svgAssets.find((f) => f.name.includes("logo"));
   const validationReport = (brand.validation_report ?? {}) as Record<string, unknown>;
   const validationViewportAvg =
     typeof validationReport.viewport_avg === "number"
@@ -522,7 +545,7 @@ export default function BrandPage({
             <div className="flex h-12 shrink-0 items-center rounded-lg border bg-white px-3 py-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={`/api/brands/${brand.slug}/file/${logoFile}`}
+                src={logoFile?.src ?? ""}
                 alt={`${titleCase(brand.slug)} logo`}
                 className="h-8 w-auto"
               />
@@ -1110,12 +1133,12 @@ export default function BrandPage({
                   <h3 className="mb-3 text-sm font-medium">SVG Assets</h3>
                   <div className="flex flex-wrap gap-4">
                     {svgAssets.map((file) => (
-                      <div key={file} className="flex flex-col gap-1.5">
+                      <div key={file.path} className="flex flex-col gap-1.5">
                         <div className="flex h-20 w-40 items-center justify-center rounded-lg border bg-white p-3">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={`/api/brands/${brand.slug}/file/${file}`}
-                            alt={file}
+                            src={file.src}
+                            alt={file.name}
                             className="max-h-full max-w-full object-contain"
                             onError={(e) => {
                               (e.currentTarget as HTMLImageElement).style.display = "none";
@@ -1123,16 +1146,8 @@ export default function BrandPage({
                           />
                         </div>
                         <span className="max-w-40 break-all font-mono text-[10px] text-muted-foreground">
-                          {file.replace("assets/", "")}
+                          {file.name}
                         </span>
-                        <a
-                          href={`/api/brands/${brand.slug}/file/${file}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[10px] text-primary hover:underline"
-                        >
-                          Open
-                        </a>
                       </div>
                     ))}
                   </div>
@@ -1141,42 +1156,26 @@ export default function BrandPage({
 
               {imgAssets.length > 0 && (
                 <div>
-                  <h3 className="mb-3 text-sm font-medium">Other Assets</h3>
-                  <div className="flex flex-wrap gap-4">
-                    {imgAssets.map((file) => {
-                      const ext = file.split(".").pop()?.toLowerCase() ?? "";
-                      const isImg = ["png", "jpg", "jpeg", "gif", "webp", "ico"].includes(ext);
-                      return (
-                        <div key={file} className="flex flex-col gap-1.5">
-                          <div className="flex h-20 w-24 items-center justify-center rounded-lg border bg-white p-3">
-                            {isImg ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={`/api/brands/${brand.slug}/file/${file}`}
-                                alt={file}
-                                className="max-h-full max-w-full object-contain"
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                                }}
-                              />
-                            ) : (
-                              <FileText className="size-6 text-muted-foreground" />
-                            )}
-                          </div>
-                          <span className="max-w-24 break-all font-mono text-[10px] text-muted-foreground">
-                            {file.replace("assets/", "")}
-                          </span>
-                          <a
-                            href={`/api/brands/${brand.slug}/file/${file}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-[10px] text-primary hover:underline"
-                          >
-                            Open
-                          </a>
+                  <h3 className="mb-3 text-sm font-medium">Images ({imgAssets.length})</h3>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {imgAssets.map((file) => (
+                      <div key={file.path} className="flex flex-col gap-1.5">
+                        <div className="flex h-28 items-center justify-center rounded-lg border bg-white p-2">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={file.src}
+                            alt={file.name}
+                            className="max-h-full max-w-full object-contain"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                            }}
+                          />
                         </div>
-                      );
-                    })}
+                        <span className="break-all font-mono text-[10px] text-muted-foreground">
+                          {file.name}
+                        </span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -1470,8 +1469,8 @@ export default function BrandPage({
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Original (1280x720)</p>
-                            <div className="overflow-hidden rounded-lg border bg-[#f5f5f7]">
+                            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Original (full page)</p>
+                            <div className="max-h-[600px] overflow-y-auto rounded-lg border bg-[#f5f5f7]">
                               <img
                                 src={origImg}
                                 alt={`Original ${name}`}
@@ -1480,8 +1479,8 @@ export default function BrandPage({
                             </div>
                           </div>
                           <div>
-                            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Replica screenshot (cached validation capture)</p>
-                            <div className="overflow-hidden rounded-lg border bg-[#f5f5f7]">
+                            <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Replica (full page)</p>
+                            <div className="max-h-[600px] overflow-y-auto rounded-lg border bg-[#f5f5f7]">
                               <img
                                 src={replImg}
                                 alt={`Preview ${name}`}

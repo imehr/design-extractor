@@ -54,13 +54,16 @@ def load_pages(brand_slug: str) -> dict:
     sys.exit(1)
 
 
-def run_agent_browser(url: str, output_path: str, session: str = "harness", wait_secs: int = 3) -> bool:
+def run_agent_browser(url: str, output_path: str, session: str = "harness", wait_secs: int = 3, full_page: bool = False, headed: bool = False) -> bool:
     """Capture a screenshot using agent-browser (open + wait + screenshot)."""
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     try:
         # Step 1: Navigate to URL
+        open_cmd = ["agent-browser", "open", url, "--session", session]
+        if headed:
+            open_cmd.append("--headed")
         nav = subprocess.run(
-            ["agent-browser", "open", url, "--session", session],
+            open_cmd,
             capture_output=True,
             text=True,
             timeout=30,
@@ -72,9 +75,12 @@ def run_agent_browser(url: str, output_path: str, session: str = "harness", wait
         # Step 2: Wait for page to settle
         time.sleep(wait_secs)
 
-        # Step 3: Take screenshot
+        # Step 3: Take screenshot (full page for display, viewport for comparison)
+        shot_cmd = ["agent-browser", "screenshot", output_path, "--session", session]
+        if full_page:
+            shot_cmd.append("--full")
         shot = subprocess.run(
-            ["agent-browser", "screenshot", output_path, "--session", session],
+            shot_cmd,
             capture_output=True,
             text=True,
             timeout=15,
@@ -137,8 +143,11 @@ def compare_screenshots(orig_path: str, repl_path: str) -> dict:
         return {"exact": 0.0, "close": 0.0, "error": str(e), "status": "error"}
 
 
-def capture_all_pages(base_url: str, pages: dict, skip_originals: bool = False) -> dict:
-    """Capture original and replica screenshots for all pages."""
+def capture_all_pages(base_url: str, pages: dict, skip_originals: bool = False, headed: bool = False) -> dict:
+    """Capture original and replica screenshots for all pages.
+    Both original and replica are captured as full-page screenshots
+    so the UI displays the complete implementation, not just the viewport.
+    """
     results = {}
 
     for slug, config in pages.items():
@@ -146,19 +155,19 @@ def capture_all_pages(base_url: str, pages: dict, skip_originals: bool = False) 
         orig_path = str(SCREENSHOT_DIR / f"orig-{slug}.png")
         repl_path = str(SCREENSHOT_DIR / f"repl-{slug}.png")
 
-        # Capture original (can skip if already fresh)
+        # Capture original (full page)
         if skip_originals and Path(orig_path).exists():
             print(f"  Original: skipped (exists)")
             orig_ok = True
         else:
             print(f"  Capturing original: {config['original_url']}")
-            orig_ok = run_agent_browser(config["original_url"], orig_path, session="orig", wait_secs=5)
+            orig_ok = run_agent_browser(config["original_url"], orig_path, session="orig", wait_secs=5, full_page=True, headed=headed)
             print(f"  Original: {'ok' if orig_ok else 'FAILED'}")
 
-        # Capture replica
+        # Capture replica (full page)
         replica_url = f"{base_url}{config['replica_route']}"
         print(f"  Capturing replica: {replica_url}")
-        repl_ok = run_agent_browser(replica_url, repl_path, session="repl", wait_secs=3)
+        repl_ok = run_agent_browser(replica_url, repl_path, session="repl", wait_secs=3, full_page=True)
         print(f"  Replica: {'ok' if repl_ok else 'FAILED'}")
 
         results[slug] = {
@@ -272,6 +281,7 @@ def main():
     parser.add_argument("--base-url", default="http://localhost:5173", help="Dev server base URL")
     parser.add_argument("--target", type=float, default=80.0, help="Target score percentage")
     parser.add_argument("--skip-originals", action="store_true", help="Skip re-capturing originals if they exist")
+    parser.add_argument("--headed", action="store_true", help="Use headed browser for sites with bot detection")
     parser.add_argument("--score-only", action="store_true", help="Only re-score existing screenshots")
     args = parser.parse_args()
 
@@ -299,7 +309,7 @@ def main():
             }
     else:
         print(f"Capturing screenshots (base: {args.base_url})...")
-        captures = capture_all_pages(args.base_url, pages, skip_originals=args.skip_originals)
+        captures = capture_all_pages(args.base_url, pages, skip_originals=args.skip_originals, headed=args.headed)
 
     missing_pages = missing_capture_pages(captures)
     if missing_pages:
