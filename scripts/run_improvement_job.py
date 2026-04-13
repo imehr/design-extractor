@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 import uuid
@@ -25,6 +26,37 @@ from improvement_job import (
     sync_metadata_with_report,
     update_job_state,
 )
+
+
+def _read_brand_best_score(metadata_path: Path) -> float | None:
+    """Read the brand's current best score from metadata.json."""
+    meta = load_json(metadata_path, default={}) or {}
+    score = meta.get("overall_score")
+    if isinstance(score, (int, float)):
+        return round(float(score), 3)
+    return None
+
+
+def _snapshot_replica(brand_dir: Path, snapshot_dir: Path) -> bool:
+    """Copy the replica directory to a snapshot location. Returns True on success."""
+    replica_dir = brand_dir / "replica"
+    if not replica_dir.exists():
+        return False
+    if snapshot_dir.exists():
+        shutil.rmtree(snapshot_dir)
+    shutil.copytree(replica_dir, snapshot_dir)
+    return True
+
+
+def _restore_replica(brand_dir: Path, snapshot_dir: Path) -> bool:
+    """Restore replica files from a snapshot. Returns True on success."""
+    replica_dir = brand_dir / "replica"
+    if not snapshot_dir.exists():
+        return False
+    if replica_dir.exists():
+        shutil.rmtree(replica_dir)
+    shutil.copytree(snapshot_dir, replica_dir)
+    return True
 
 
 def run_validation(
@@ -192,9 +224,18 @@ def main() -> int:
     report_path = brand_dir / "validation" / "report.json"
     metadata_path = brand_dir / "metadata.json"
     manifest_path = brand_cache / "validation" / "improvement-manifest.json"
+    snapshot_dir = brand_cache / ".snapshot"
+
+    # Seed history from the brand's current best score so new jobs
+    # compare against the best-known state rather than starting blind.
+    brand_best_score = _read_brand_best_score(metadata_path)
     history: list[float] = []
+    if brand_best_score is not None:
+        history.append(brand_best_score)
 
     for iteration in range(1, args.max_iterations + 1):
+        # Snapshot replica before validation so we can roll back if score drops.
+        _snapshot_replica(brand_dir, snapshot_dir)
         update_job_state(job_path, state, current_iteration=iteration)
         result = run_validation(
             repo_root=repo_root,
@@ -250,8 +291,36 @@ def main() -> int:
         if score is not None:
             history.append(score)
 
-        score_before = history[-2] if len(history) >= 2 else None
-        kept = score_before is None or score is None or score >= score_before
+        # Compare against brand best, not just the previous iteration.
+        # brand_best_score was seeded from metadata and is updated only
+        # when a candidate strictly exceeds it.
+        if score is not None and brand_best_score is not None:
+            if score > brand_best_score:
+                kept = True
+                status_label = "improved"
+            elif score == brand_best_score:
+                kept = False
+                status_label = "flat"
+            else:
+                kept = False
+                status_label = "regressed"
+        elif score is not None and brand_best_score is None:
+            # First-ever score for this brand.
+            kept = True
+            status_label = "improved"
+        else:
+            kept = False
+            status_label = "unknown"
+
+        # If score did not improve, restore the snapshot so we don't
+        # degrade the replica files.
+        if not kept and snapshot_dir.exists():
+            _restore_replica(brand_dir, snapshot_dir)
+
+        # Update brand_best_score when we have a strict improvement.
+        if kept and score is not None:
+            brand_best_score = score
+
         experiments_path = repo_root / "state" / "learning" / "experiments.jsonl"
         append_feedback_entry(
             experiments_path,
@@ -259,18 +328,19 @@ def main() -> int:
                 "brand": args.brand,
                 "job_id": job_id,
                 "iteration": iteration,
-                "score_before": score_before,
+                "score_before": brand_best_score if not kept else (history[-2] if len(history) >= 2 else None),
                 "score_after": score,
                 "kept": kept,
+                "status": status_label,
                 "timestamp": now_iso(),
             },
         )
 
         score_direction = "same"
-        if score_before is not None and score is not None:
-            if score > score_before:
+        if len(history) >= 2:
+            if history[-1] > history[-2]:
                 score_direction = "increased"
-            elif score < score_before:
+            elif history[-1] < history[-2]:
                 score_direction = "decreased"
 
         state["history"] = history

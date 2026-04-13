@@ -517,12 +517,14 @@ export default function BrandPage({
 
   const logoFile = svgAssets.find((f) => f.name.includes("logo"));
   const validationReport = (brand.validation_report ?? {}) as Record<string, unknown>;
-  const validationViewportAvg =
-    typeof validationReport.viewport_avg === "number"
-      ? validationReport.viewport_avg
-      : null;
+  const validationDesktopAvg =
+    typeof validationReport.desktop_avg === "number"
+      ? validationReport.desktop_avg
+      : typeof validationReport.viewport_avg === "number"
+        ? validationReport.viewport_avg
+        : null;
   const displayScore =
-    validationViewportAvg !== null ? validationViewportAvg / 100 : brand.overall_score;
+    validationDesktopAvg !== null ? validationDesktopAvg / 100 : brand.overall_score;
   const effectiveTarget = improveJob?.target_score ?? 80;
   const meetsQualityTarget =
     displayScore !== null && displayScore * 100 >= effectiveTarget;
@@ -1509,7 +1511,7 @@ export default function BrandPage({
                   const domCount = brand.files.filter((f: string) => f.includes("dom-extraction") && f.endsWith(".json")).length;
                   const assetCount = brand.files.filter((f: string) => f.startsWith("assets/")).length;
                   const replicaCount = (brand.localFiles ?? []).filter((f: string) => f.includes("replica/") && f.endsWith("page.tsx")).length;
-                  const vp = (brand.validation_report as Record<string, unknown>)?.viewport_avg as number | undefined;
+                  const vp = ((brand.validation_report as Record<string, unknown>)?.desktop_avg ?? (brand.validation_report as Record<string, unknown>)?.viewport_avg) as number | undefined;
                   return [
                     { gate: "Pages extracted", status: domCount >= 4, detail: `${domCount} pages` },
                     { gate: "Assets downloaded", status: assetCount >= 10, detail: `${assetCount} files` },

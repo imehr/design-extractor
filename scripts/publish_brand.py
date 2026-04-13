@@ -601,7 +601,7 @@ def main():
     if report_path.exists():
         with open(report_path) as f:
             report = json.load(f)
-        avg_score = report.get("viewport_avg", 0)
+        avg_score = report.get("desktop_avg") or report.get("viewport_avg", 0)
         if avg_score:
             metadata["overall_score"] = round(avg_score / 100, 3)  # Store as 0-1
             metadata["validation_status"] = report.get("overall_status", "in_progress")

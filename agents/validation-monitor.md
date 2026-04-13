@@ -40,7 +40,7 @@ while iteration < 15:
 
   # 3. Check exit conditions
   if len(manifest.pages_needing_work) == 0:
-    notify_user("All pages at or above target. Average: {report.viewport_avg}%")
+    notify_user("All pages at or above target. Average: {report.desktop_avg}%")
     break
 
   if iteration >= 15:

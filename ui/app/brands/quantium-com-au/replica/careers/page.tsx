@@ -33,7 +33,7 @@ export default function CareersPage() {
 
       {/* ── Hero banner ── */}
       <section className="relative w-full overflow-hidden">
-        <div className="relative h-[420px] w-full">
+        <div className="relative h-[540px] w-full">
           <img
             src="/brands/quantium-com-au/images/hero-bg-3.jpg"
             alt="Careers hero"
@@ -42,11 +42,11 @@ export default function CareersPage() {
           <div className="absolute inset-0 bg-black/40" />
           <div className="relative z-10 flex h-full items-center justify-center">
             <h1
-              className="text-center text-[90px] font-bold uppercase leading-[0.9]"
+              className="text-center text-[100px] font-bold uppercase leading-[0.85]"
               style={{
                 fontFamily: QUANTIUM_FONT,
                 color: "transparent",
-                WebkitTextStroke: "2px white",
+                WebkitTextStroke: "2.5px white",
               }}
             >
               FIND
@@ -86,29 +86,29 @@ export default function CareersPage() {
         <div className="mx-auto max-w-[1280px] px-[100px]">
           <span className="mb-4 inline-block h-3 w-3 rounded-full bg-[#F25648]" />
           <h2
-            className="mb-4 text-[36px] font-normal tracking-tight"
+            className="mb-4 text-[48px] font-medium leading-[52px]"
             style={{ fontFamily: QUANTIUM_FONT, color: "#000006" }}
           >
             Challenge your imagination at Quantium.
           </h2>
-          <p className="mb-14 max-w-[700px] text-[17px] font-light leading-relaxed text-[#444]">
+          <p className="mb-10 max-w-[700px] text-[16px] font-normal leading-[1.2] text-[#000006]">
             We offer opportunities to go deeper with data to solve the most
             challenging problems facing business and society today.
           </p>
-          <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
             <div>
               <h2
-                className="mb-6 text-[32px] font-normal leading-[1.2] tracking-tight"
+                className="mb-6 text-[42px] font-normal leading-[42px]"
                 style={{ fontFamily: QUANTIUM_FONT, color: "#000006" }}
               >
                 Quantium is a global leader in data science and AI
               </h2>
-              <p className="mb-6 text-[16px] font-light leading-relaxed text-[#444]">
+              <p className="mb-6 text-[16px] font-normal leading-[1.2] text-[#000006]">
                 With a global team of over 1,200, we help organisations maximise
                 the potential of their data. Our data and AI-powered solutions
                 tackle some of the world&apos;s most complex business challenges.
               </p>
-              <p className="mb-8 text-[16px] font-light leading-relaxed text-[#444]">
+              <p className="mb-8 text-[16px] font-normal leading-[1.2] text-[#000006]">
                 We develop leading-edge AI capabilities and embed them across the
                 world&apos;s most significant organisations, helping to create
                 transformative and lasting value.
@@ -120,11 +120,11 @@ export default function CareersPage() {
                 See open roles
               </Link>
             </div>
-            <div className="relative flex items-center justify-center">
+            <div className="relative h-[480px] overflow-hidden rounded-sm">
               <img
                 src="/brands/quantium-com-au/images/natalie-jones.png"
                 alt="Quantium team member"
-                className="h-auto w-full rounded-sm object-cover"
+                className="h-full w-full object-cover"
               />
             </div>
           </div>
@@ -134,22 +134,22 @@ export default function CareersPage() {
       {/* ── Make an impact section ── */}
       <section className="w-full bg-[#ECE8E4] py-16">
         <div className="mx-auto max-w-[1280px] px-[100px]">
-          <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
-            <div className="relative flex items-center justify-center">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+            <div className="relative h-[480px] overflow-hidden rounded-sm">
               <img
                 src="/brands/quantium-com-au/images/makenna-ralston.jpg"
                 alt="Quantium team member at work"
-                className="h-auto w-full rounded-sm object-cover"
+                className="h-full w-full object-cover"
               />
             </div>
             <div className="flex flex-col justify-center">
               <h2
-                className="mb-6 text-[32px] font-normal leading-[1.2] tracking-tight"
+                className="mb-6 text-[42px] font-normal leading-[42px]"
                 style={{ fontFamily: QUANTIUM_FONT, color: "#000006" }}
               >
                 Make an impact at Quantium
               </h2>
-              <p className="mb-8 text-[16px] font-light leading-relaxed text-[#444]">
+              <p className="mb-8 text-[16px] font-normal leading-[1.2] text-[#000006]">
                 Quantium&apos;s teams work with globally recognised organisations
                 to tackle complex challenges. Our engineers, data scientists,
                 strategists, and domain experts collaborate on projects that
@@ -169,15 +169,15 @@ export default function CareersPage() {
       {/* ── Grads section ── */}
       <section className="w-full py-16">
         <div className="mx-auto max-w-[1280px] px-[100px]">
-          <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
             <div>
               <h2
-                className="mb-6 text-[32px] font-normal leading-[1.2] tracking-tight"
+                className="mb-6 text-[42px] font-normal leading-[42px]"
                 style={{ fontFamily: QUANTIUM_FONT, color: "#000006" }}
               >
                 Grads, right this way!
               </h2>
-              <p className="mb-8 text-[16px] font-light leading-relaxed text-[#444]">
+              <p className="mb-8 text-[16px] font-normal leading-[1.2] text-[#000006]">
                 Quantium&apos;s Graduate Academy develops the brightest
                 minds into well-rounded data science professionals. You&apos;ll
                 work on real projects alongside some of the most experienced
@@ -190,11 +190,11 @@ export default function CareersPage() {
                 Learn more about Grad Academy
               </Link>
             </div>
-            <div className="relative flex items-center justify-center">
+            <div className="relative h-[480px] overflow-hidden rounded-sm">
               <img
                 src="/brands/quantium-com-au/images/rohan-dixit.jpg"
                 alt="Quantium graduate"
-                className="h-auto w-full rounded-sm object-cover"
+                className="h-full w-full object-cover"
               />
             </div>
           </div>

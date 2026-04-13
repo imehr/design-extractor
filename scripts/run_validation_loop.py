@@ -72,6 +72,13 @@ def run_agent_browser(url: str, output_path: str, session: str = "harness", wait
             print(f"  agent-browser open error: {nav.stderr.strip()}")
             return False
 
+        # Step 1b: Set explicit viewport size so scores are deterministic.
+        subprocess.run(
+            ["agent-browser", "eval", "--session", session,
+             "page.setViewportSize({width: 1280, height: 720})"],
+            capture_output=True, text=True, timeout=10,
+        )
+
         # Step 2: Wait for page to settle
         time.sleep(wait_secs)
 
@@ -250,14 +257,14 @@ def update_validation_report(scores: dict) -> None:
     avg = round(
         sum(s.get("close", 0.0) for s in scores.values()) / len(scores), 1
     ) if scores else 0.0
-    report["viewport_avg"] = avg
+    report["desktop_avg"] = avg
 
     # Update the screenshot_comparison gate
     if "gates" not in report:
         report["gates"] = {}
     report["gates"]["screenshot_comparison"] = {
         "pass": avg >= 70.0,
-        "value": f"viewport avg {avg}%",
+        "value": f"desktop avg {avg}%",
         "per_page": {slug: f"{s.get('close', 0.0)}%" for slug, s in scores.items()},
     }
 

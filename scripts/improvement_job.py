@@ -33,9 +33,10 @@ def derive_effective_score(
     report: dict[str, Any] | None,
 ) -> float | None:
     if report:
-        viewport_avg = report.get("viewport_avg")
-        if isinstance(viewport_avg, (int, float)):
-            return round(float(viewport_avg) / 100.0, 3)
+        # Prefer desktop_avg (explicit viewport); fall back to legacy viewport_avg.
+        desktop_avg = report.get("desktop_avg") or report.get("viewport_avg")
+        if isinstance(desktop_avg, (int, float)):
+            return round(float(desktop_avg) / 100.0, 3)
     if metadata:
         score = metadata.get("overall_score")
         if isinstance(score, (int, float)):
@@ -47,9 +48,10 @@ def sync_metadata_with_report(metadata_path: Path, report_path: Path) -> dict[st
     metadata = load_json(metadata_path, default={}) or {}
     report = load_json(report_path, default={}) or {}
 
-    viewport_avg = report.get("viewport_avg")
-    if isinstance(viewport_avg, (int, float)):
-        metadata["overall_score"] = round(float(viewport_avg) / 100.0, 3)
+    # Prefer desktop_avg (explicit viewport); fall back to legacy viewport_avg.
+    desktop_avg = report.get("desktop_avg") or report.get("viewport_avg")
+    if isinstance(desktop_avg, (int, float)):
+        metadata["overall_score"] = round(float(desktop_avg) / 100.0, 3)
 
     overall_status = report.get("overall_status")
     if overall_status:
@@ -57,8 +59,8 @@ def sync_metadata_with_report(metadata_path: Path, report_path: Path) -> dict[st
 
     scores = metadata.get("scores")
     if isinstance(scores, dict):
-        if isinstance(viewport_avg, (int, float)):
-            scores["overall_avg_match"] = round(float(viewport_avg), 1)
+        if isinstance(desktop_avg, (int, float)):
+            scores["overall_avg_match"] = round(float(desktop_avg), 1)
         if overall_status:
             scores["status"] = overall_status
         scores["validated_at"] = report.get("timestamp", now_iso())

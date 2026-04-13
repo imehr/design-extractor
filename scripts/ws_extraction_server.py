@@ -356,7 +356,7 @@ class ExtractionJob:
         if report_path.exists():
             try:
                 report = json.loads(report_path.read_text())
-                raw = report.get("viewport_avg")
+                raw = report.get("desktop_avg") or report.get("viewport_avg")
                 if isinstance(raw, (int, float)):
                     score = round(raw / 100, 3)
                 await self._emit(

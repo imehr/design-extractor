@@ -47,7 +47,7 @@ def test_sync_metadata_with_report_uses_live_validation_score(tmp_path):
     report_path.write_text(
         json.dumps(
             {
-                "viewport_avg": 67.8,
+                "desktop_avg": 67.8,
                 "overall_status": "7/8 GATES PASS",
             }
         )
