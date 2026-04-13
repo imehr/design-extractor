@@ -274,6 +274,27 @@ def update_validation_report(scores: dict) -> None:
         json.dump(report, f, indent=2)
     print(f"\nReport updated: {REPORT_PATH}")
 
+    # Sync score to metadata.json and library index.json
+    score_01 = round(avg / 100, 3)
+    meta_path = BRANDS_DIR / "metadata.json"
+    if meta_path.exists():
+        with open(meta_path) as f:
+            meta = json.load(f)
+        meta["overall_score"] = score_01
+        meta["validation_status"] = report["overall_status"]
+        with open(meta_path, "w") as f:
+            json.dump(meta, f, indent=2)
+
+    idx_path = Path.home() / ".claude" / "design-library" / "index.json"
+    if idx_path.exists():
+        with open(idx_path) as f:
+            idx = json.load(f)
+        for b in idx.get("brands", []):
+            if b.get("slug") == CACHE_DIR.name:
+                b["overall_score"] = score_01
+        with open(idx_path, "w") as f:
+            json.dump(idx, f, indent=2)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Validation Harness")
