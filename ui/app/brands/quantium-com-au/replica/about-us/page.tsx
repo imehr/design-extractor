@@ -174,14 +174,14 @@ export default function AboutUsPage() {
           </h2>
           <Separator className="mb-12 bg-[#E5E5E5]" />
 
-          <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-x-[264px] gap-y-[44px] sm:grid-cols-2" style={{ maxWidth: 976 }}>
             {DIRECTORS.map((person) => (
               <div key={person.name} className="group">
-                <div className="relative mb-4 w-full overflow-hidden" style={{ aspectRatio: "4/5" }}>
+                <div className="relative mb-4 w-full overflow-hidden rounded" style={{ aspectRatio: "9/10" }}>
                   <img
                     src={person.photo}
                     alt={person.name}
-                    className="absolute inset-0 h-full w-full object-cover object-top"
+                    className="absolute inset-0 h-full w-full object-cover object-center"
                   />
                 </div>
                 <h3
@@ -212,14 +212,14 @@ export default function AboutUsPage() {
           </h2>
           <Separator className="mb-12 bg-[#E5E5E5]" />
 
-          <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-x-[264px] gap-y-[44px] sm:grid-cols-2" style={{ maxWidth: 976 }}>
             {GROUP_EXECUTIVES.map((person) => (
               <div key={person.name} className="group">
-                <div className="relative mb-4 w-full overflow-hidden" style={{ aspectRatio: "4/5" }}>
+                <div className="relative mb-4 w-full overflow-hidden rounded" style={{ aspectRatio: "9/10" }}>
                   <img
                     src={person.photo}
                     alt={person.name}
-                    className="absolute inset-0 h-full w-full object-cover object-top"
+                    className="absolute inset-0 h-full w-full object-cover object-center"
                   />
                 </div>
                 <h3
