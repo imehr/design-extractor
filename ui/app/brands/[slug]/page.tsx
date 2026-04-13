@@ -1470,7 +1470,7 @@ export default function BrandPage({
                         <div className="grid grid-cols-2 gap-4">
                           <div>
                             <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Original (full page)</p>
-                            <div className="max-h-[600px] overflow-y-auto rounded-lg border bg-[#f5f5f7]">
+                            <div className="h-[500px] overflow-y-scroll rounded-lg border bg-[#f5f5f7]">
                               <img
                                 src={origImg}
                                 alt={`Original ${name}`}
@@ -1480,7 +1480,7 @@ export default function BrandPage({
                           </div>
                           <div>
                             <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.06em] text-[#86868b]">Replica (full page)</p>
-                            <div className="max-h-[600px] overflow-y-auto rounded-lg border bg-[#f5f5f7]">
+                            <div className="h-[500px] overflow-y-scroll rounded-lg border bg-[#f5f5f7]">
                               <img
                                 src={replImg}
                                 alt={`Preview ${name}`}
