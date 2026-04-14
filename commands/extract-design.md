@@ -10,6 +10,22 @@ Extract a complete design system from a URL and publish it to the local design l
 
 The user-supplied URL is: $ARGUMENTS
 
+## Run the orchestrator
+
+The entire pipeline is a single Python script. Run it:
+
+```bash
+python3 scripts/extract_brand.py --url $ARGUMENTS
+```
+
+This handles everything: URL verification, page identification, DOM extraction, asset download, replica building (via Claude), validation, publishing, and library registration. Each step validates its outputs before proceeding.
+
+Add `--headed` if the site has bot detection (e.g., Woolworths, Akamai-protected sites).
+
+If the script fails at the replica building step, it will print which files are missing. Fix them manually, then re-run with `--skip-existing` to continue from where it stopped.
+
+## What the script does (for reference)
+
 ## Core principles (learned from production use)
 
 1. **Extract, don't imagine** — every text string, link, icon, and image comes from the actual DOM, never fabricated from screenshots
