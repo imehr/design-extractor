@@ -28,6 +28,7 @@ import shutil
 import subprocess
 import sys
 import time
+import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
@@ -592,6 +593,36 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
 
 # ── Phase 4: Download Assets ─────────────────────────────────────────────
 
+def _browser_fetch_fallback(url: str, dest: str, session: str = "dl", headed: bool = False) -> bool:
+    """Download a file via the browser's fetch API (bypasses 403/cookie restrictions)."""
+    import base64
+    try:
+        # Open a page on the same origin first (if not already open)
+        from urllib.parse import urlparse
+        origin = f"{urlparse(url).scheme}://{urlparse(url).netloc}"
+        run_cmd(agent_browser_cmd(["open", origin], session=session, headed=headed), timeout=20)
+        time.sleep(1)
+
+        js = f"""(async () => {{
+            const resp = await fetch("{url}");
+            if (!resp.ok) return "ERROR:" + resp.status;
+            const blob = await resp.blob();
+            const reader = new FileReader();
+            return new Promise(r => {{ reader.onload = () => r(reader.result); reader.readAsDataURL(blob); }});
+        }})()"""
+
+        result = run_cmd(agent_browser_cmd(["eval", js], session=session), timeout=15)
+        data_url = (result.stdout or "").strip().strip('"')
+        if data_url and "base64," in data_url:
+            b64 = data_url.split("base64,")[1]
+            with open(dest, "wb") as f:
+                f.write(base64.b64decode(b64))
+            return Path(dest).exists() and Path(dest).stat().st_size > 100
+    except Exception:
+        pass
+    return False
+
+
 def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
     """Download images, fonts, SVGs, and CSS background images from DOM extraction data."""
     step("Phase 4", "Downloading assets")
@@ -637,7 +668,19 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
                 downloaded += 1
                 continue
 
-            urllib.request.urlretrieve(url_str, str(dest))
+            try:
+                urllib.request.urlretrieve(url_str, str(dest))
+            except urllib.error.HTTPError as http_err:
+                if http_err.code == 403:
+                    # Fallback: download via browser fetch (bypasses 403)
+                    _browser_fetch_fallback(url_str, str(dest), session=f"dl-{slug}", headed=headed)
+                else:
+                    raise
+
+            if not dest.exists() or dest.stat().st_size < 100:
+                if dest.exists():
+                    dest.unlink()
+                continue
 
             # Verify the download is an actual asset, not an HTML error page
             result = run_cmd(["file", "--brief", str(dest)], timeout=5)
@@ -659,10 +702,7 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
             agent_browser_cmd(["open", first_page_url], session=session, headed=headed),
             timeout=30,
         )
-        run_cmd(
-            agent_browser_cmd(["wait", "--load", "networkidle"], session=session),
-            timeout=20,
-        )
+        time.sleep(3)
 
         js_fonts = """JSON.stringify((() => {
             const fonts = [];
