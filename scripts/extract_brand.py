@@ -950,7 +950,18 @@ def register_in_library(slug: str, url: str, title: str) -> None:
             metadata = json.load(f)
 
     # Ensure required fields
-    metadata.setdefault("name", title or slug.replace("-", " ").title())
+    # Clean brand name: strip page title suffixes like "| Circle K" or "- Executive Search"
+    raw_name = title or slug.replace("-", " ").title()
+    # Take the shortest meaningful part (usually after | or - or :)
+    for sep in [" | ", " - ", ": ", " — "]:
+        if sep in raw_name:
+            parts = raw_name.split(sep)
+            # Pick the shortest non-trivial part as the brand name
+            candidates = [p.strip() for p in parts if len(p.strip()) > 2]
+            if candidates:
+                raw_name = min(candidates, key=len)
+                break
+    metadata.setdefault("name", raw_name.strip('"').strip("'"))
     metadata.setdefault("slug", slug)
     metadata.setdefault("source_url", url)
     metadata.setdefault("extracted_at", datetime.now(timezone.utc).strftime("%Y-%m-%d"))
