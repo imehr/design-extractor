@@ -73,9 +73,9 @@ export async function GET(
       return result;
     };
     const localDirs = [
-      { dir: path.join(projectRoot, "components", "brands"), prefix: "components/brands" },
+      { dir: path.join(projectRoot, "components", "brands", slug), prefix: `components/brands/${slug}` },
       { dir: path.join(projectRoot, "app", "brands", slug, "replica"), prefix: `app/brands/${slug}/replica` },
-      { dir: path.join(projectRoot, "public", "brands"), prefix: "public/brands" },
+      { dir: path.join(projectRoot, "public", "brands", slug), prefix: `public/brands/${slug}` },
     ];
     for (const { dir, prefix } of localDirs) {
       try {
