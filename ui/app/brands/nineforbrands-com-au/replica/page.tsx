@@ -15,25 +15,28 @@ const ADVERTISE_CARDS = [
     description:
       "Our portfolio of content brands offers the breadth and depth to make powerful connections with your audience at scale.",
     href: "#",
+    image: "/brands/nineforbrands-com-au/brands-card.png",
   },
   {
     title: "Our Audience",
     description:
       "As Australia\u2019s largest locally owned media company we can help you connect with who matters most to your business. From broad reach audiences to niche and targeted customer segments.",
     href: "#",
+    image: "/brands/nineforbrands-com-au/audience-card.png",
   },
   {
     title: "Ad Specs",
     description:
       "Whether you\u2019re advertising in broadcast, digital, print and magazines or audio, see our ad specs across our brands.",
     href: "#",
+    image: "/brands/nineforbrands-com-au/adspecs-card.jpg",
   },
 ];
 
 const BOTTOM_CARDS = [
-  { title: "Latest News", href: "#" },
-  { title: "Case Studies", href: "#" },
-  { title: "Media Releases", href: "#" },
+  { title: "Latest News", href: "#", image: "/brands/nineforbrands-com-au/latest-news.png" },
+  { title: "Case Studies", href: "#", image: "/brands/nineforbrands-com-au/case-study.png" },
+  { title: "Media Releases", href: "#", image: "/brands/nineforbrands-com-au/media-release.png" },
 ];
 
 const BRAND_LOGOS = [
@@ -53,14 +56,22 @@ export default function NineHomePage() {
         <NineHeader variant="dark" />
       </div>
 
-      {/* Hero Section */}
+      {/* Hero Section - video background */}
       <section
-        className="relative flex min-h-[600px] items-center justify-center px-6 pt-32 pb-20"
-        style={{
-          background: "linear-gradient(135deg, #070720 0%, #0493DE 100%)",
-        }}
+        className="relative flex min-h-[600px] items-center justify-center overflow-hidden px-6 pt-32 pb-20"
       >
-        <div className="mx-auto max-w-[900px] text-center">
+        {/* Video background */}
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 h-full w-full object-cover"
+        >
+          <source src="/brands/nineforbrands-com-au/hero-video.mp4" type="video/mp4" />
+        </video>
+        <div className="absolute inset-0 bg-black/50" />
+        <div className="relative z-10 mx-auto max-w-[900px] text-center">
           <h1
             className="mb-8 text-[36px] leading-[1.2] font-[800] text-white md:text-[48px]"
           >
@@ -115,8 +126,12 @@ export default function NineHomePage() {
               <Link
                 key={card.title}
                 href={card.href}
-                className="group block rounded-lg border border-gray-200 p-6 transition-shadow hover:shadow-lg"
+                className="group block overflow-hidden rounded-lg border border-gray-200 transition-shadow hover:shadow-lg"
               >
+                {card.image && (
+                  <img src={card.image} alt={card.title} className="h-48 w-full object-cover" />
+                )}
+                <div className="p-6">
                 <h3
                   className="mb-3 text-[22px] font-bold"
                   style={{ color: "#0493DE" }}
@@ -133,6 +148,7 @@ export default function NineHomePage() {
                   Learn more
                   <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
                 </span>
+                </div>
               </Link>
             ))}
           </div>
@@ -143,8 +159,12 @@ export default function NineHomePage() {
               <Link
                 key={card.title}
                 href={card.href}
-                className="group flex items-center justify-between rounded-lg border border-gray-200 p-6 transition-shadow hover:shadow-lg"
+                className="group overflow-hidden rounded-lg border border-gray-200 transition-shadow hover:shadow-lg"
               >
+                {card.image && (
+                  <img src={card.image} alt={card.title} className="h-48 w-full object-cover" />
+                )}
+                <div className="flex items-center justify-between p-6">
                 <h3
                   className="text-[20px] font-bold"
                   style={{ color: "#333" }}
@@ -155,6 +175,7 @@ export default function NineHomePage() {
                   className="size-5 transition-transform group-hover:translate-x-1"
                   style={{ color: "#0493DE" }}
                 />
+                </div>
               </Link>
             ))}
           </div>
