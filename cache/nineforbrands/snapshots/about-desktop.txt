@@ -1,0 +1,197 @@
+- document:
+  - banner:
+    - link "Subscribe Subscription Envelope Icon" [ref=e1]:
+      - /url: /subscribe/
+      - text: Subscribe
+      - img "Subscription Envelope Icon"
+    - link "" [ref=e2]:
+      - /url: https://www.linkedin.com/company/nine-entertainment-co./
+    - img "Sidebar Menu Icon"
+    - link "Ninetrade Mobile Site Logo" [ref=e3]:
+      - /url: https://www.nineforbrands.com.au
+      - img "Ninetrade Mobile Site Logo"
+    - link "Subscribe Subscription Envelope Icon" [ref=e4] [nth=1]:
+      - /url: /subscribe/
+      - text: Subscribe
+      - img "Subscription Envelope Icon"
+    - link "" [ref=e5] [nth=1]:
+      - /url: https://www.linkedin.com/company/nine-entertainment-co./
+    - img "Sidebar Menu Icon"
+    - link "Ninetrade Site Logo" [ref=e6]:
+      - /url: https://www.nineforbrands.com.au
+      - img "Ninetrade Site Logo"
+    - navigation:
+      - list:
+        - listitem:
+          - link "About Us" [ref=e7]:
+            - /url: https://www.nineforbrands.com.au/about/
+        - listitem:
+          - link "Brands" [ref=e8]:
+            - /url: https://www.nineforbrands.com.au/brands/
+        - listitem:
+          - link "Advertise" [ref=e9]:
+            - /url: https://www.nineforbrands.com.au/solutions/
+        - listitem:
+          - link "Research" [ref=e10]:
+            - /url: https://www.nineforbrands.com.au/research/
+        - listitem:
+          - link "News" [ref=e11]:
+            - /url: https://www.nineforbrands.com.au/media-releases/
+        - listitem:
+          - link "Investors" [ref=e12]:
+            - /url: https://www.nineforbrands.com.au/investors/
+        - listitem:
+          - link "Careers at Nine" [ref=e13]:
+            - /url: http://ninecareers.com.au
+        - listitem:
+          - link "Olympics and Paralympics" [ref=e14]:
+            - /url: https://www.nineforbrands.com.au/milano-cortina-winter-olympics-paralympics/
+        - listitem:
+          - link "Nine in 2026" [ref=e15]:
+            - /url: https://www.nineforbrands.com.au/ninein2026/
+  - main:
+    - heading "About Us" [ref=e16] [level=2]
+    - figure:
+      - img "Nine_White_RGB"
+    - heading "Board of Directors" [ref=e17] [level=1]
+    - link "Peter Tonagh" [ref=e18]:
+      - /url: https://www.nineforbrands.com.au/profile/peter-tonagh/
+      - img "Peter Tonagh"
+    - link "Peter Tonagh" [ref=e19] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/peter-tonagh/
+      - heading "Peter Tonagh" [ref=e20] [level=4]
+    - paragraph: Independent Non-Executive Chair
+    - link "Chris Halios-Lewis" [ref=e21]:
+      - /url: https://www.nineforbrands.com.au/profile/chris-halios-lewis/
+      - img "Chris Halios-Lewis"
+    - link "Chris Halios-Lewis" [ref=e22] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/chris-halios-lewis/
+      - heading "Chris Halios-Lewis" [ref=e23] [level=4]
+    - paragraph: Non-Independent, Non-Executive Director
+    - link "Andrew Lancaster" [ref=e24]:
+      - /url: https://www.nineforbrands.com.au/profile/andrew-lancaster/
+      - img "Andrew Lancaster"
+    - link "Andrew Lancaster" [ref=e25] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/andrew-lancaster/
+      - heading "Andrew Lancaster" [ref=e26] [level=4]
+    - paragraph: Non-Independent, Non-Executive Director
+    - link "Timothy Longstaff" [ref=e27]:
+      - /url: https://www.nineforbrands.com.au/profile/timothy-longstaff/
+      - img "Timothy Longstaff"
+    - link "Timothy Longstaff" [ref=e28] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/timothy-longstaff/
+      - heading "Timothy Longstaff" [ref=e29] [level=4]
+    - paragraph: Independent Non-Executive Director
+    - link "Mandy Pattinson" [ref=e30]:
+      - /url: https://www.nineforbrands.com.au/profile/mandy-pattinson/
+      - img "Mandy Pattinson"
+    - link "Mandy Pattinson" [ref=e31] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/mandy-pattinson/
+      - heading "Mandy Pattinson" [ref=e32] [level=4]
+    - paragraph: Independent Non-Executive Director
+    - link "Mickie Rosen" [ref=e33]:
+      - /url: https://www.nineforbrands.com.au/profile/mickie-rosen/
+      - img "Mickie Rosen"
+    - link "Mickie Rosen" [ref=e34] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/mickie-rosen/
+      - heading "Mickie Rosen" [ref=e35] [level=4]
+    - paragraph: Independent Non-Executive Director
+    - heading "Management Team" [ref=e36] [level=1]
+    - link "Matt Stanton" [ref=e37]:
+      - /url: https://www.nineforbrands.com.au/profile/matt-stanton/
+      - img "Matt Stanton"
+    - link "Matt Stanton" [ref=e38] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/matt-stanton/
+      - heading "Matt Stanton" [ref=e39] [level=4]
+    - paragraph: Chief Executive Officer & Managing Director
+    - link "Amanda Laing" [ref=e40]:
+      - /url: https://www.nineforbrands.com.au/profile/amanda-laing/
+      - img "Amanda Laing"
+    - link "Amanda Laing" [ref=e41] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/amanda-laing/
+      - heading "Amanda Laing" [ref=e42] [level=4]
+    - paragraph: Managing Director, Streaming & Broadcast
+    - link "Tory Maguire" [ref=e43]:
+      - /url: https://www.nineforbrands.com.au/profile/tory-maguire-2/
+      - img "Tory Maguire"
+    - link "Tory Maguire" [ref=e44] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/tory-maguire-2/
+      - heading "Tory Maguire" [ref=e45] [level=4]
+    - paragraph: Managing Director, Publishing
+    - link "Matt James" [ref=e46]:
+      - /url: https://www.nineforbrands.com.au/profile/matt-james/
+      - img "Matt James"
+    - link "Matt James" [ref=e47] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/matt-james/
+      - heading "Matt James" [ref=e48] [level=4]
+    - paragraph: Chief Sales Officer
+    - link "Rachel Launders" [ref=e49]:
+      - /url: https://www.nineforbrands.com.au/profile/rachel-launders/
+      - img "Rachel Launders"
+    - link "Rachel Launders" [ref=e50] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/rachel-launders/
+      - heading "Rachel Launders" [ref=e51] [level=4]
+    - paragraph: General Counsel & Company Secretary
+    - link "Martyn Roberts" [ref=e52]:
+      - /url: https://www.nineforbrands.com.au/profile/martyn-roberts/
+      - img "Martyn Roberts"
+    - link "Martyn Roberts" [ref=e53] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/martyn-roberts/
+      - heading "Martyn Roberts" [ref=e54] [level=4]
+    - paragraph: Chief Financial Officer
+    - link "Vanessa Morley" [ref=e55]:
+      - /url: https://www.nineforbrands.com.au/profile/vanessa-morley/
+      - img "Vanessa Morley"
+    - link "Vanessa Morley" [ref=e56] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/vanessa-morley/
+      - heading "Vanessa Morley" [ref=e57] [level=4]
+    - paragraph: Chief People Officer
+    - link "Alex Parsons" [ref=e58]:
+      - /url: https://www.nineforbrands.com.au/profile/alex-parsons/
+      - img "Alex Parsons"
+    - link "Alex Parsons" [ref=e59] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/alex-parsons/
+      - heading "Alex Parsons" [ref=e60] [level=4]
+    - paragraph: Chief Digital Officer
+    - link "James Boyce" [ref=e61]:
+      - /url: https://www.nineforbrands.com.au/profile/james-boyce/
+      - img "James Boyce"
+    - link "James Boyce" [ref=e62] [nth=1]:
+      - /url: https://www.nineforbrands.com.au/profile/james-boyce/
+      - heading "James Boyce" [ref=e63] [level=4]
+    - paragraph: Director Regulatory, Public Affairs & Communications
+    - heading "Connect with us" [ref=e64] [level=1]
+    - link " Subscribe to Nine Insights" [ref=e65]:
+      - /url: https://www.nineforbrands.com.au/subscribe/
+    - link " Follow us on Linkedin" [ref=e66]:
+      - /url: https://www.linkedin.com/company/nine-entertainment-co./
+  - contentinfo:
+    - link "Ninetrade Site Logo" [ref=e67] [nth=1]:
+      - /url: https://www.nineforbrands.com.au
+      - img "Ninetrade Site Logo"
+    - navigation:
+      - list:
+        - listitem:
+          - link "Careers at Nine" [ref=e68] [nth=1]:
+            - /url: https://ninecareers.com.au/
+        - listitem:
+          - link "Help" [ref=e69]:
+            - /url: https://ninehelp.zendesk.com/hc/en-au
+        - listitem:
+          - link "Terms of Use" [ref=e70]:
+            - /url: https://login.nine.com.au/terms?client_id=9nowweb
+        - listitem:
+          - link "Privacy Policy" [ref=e71]:
+            - /url: https://login.nine.com.au/privacy?client_id=9nowweb
+        - listitem:
+          - link "Advertise with Nine" [ref=e72]:
+            - /url: https://www.nineplus.com.au/
+    - paragraph: "Acknowledgement: Nine acknowledges the traditional custodians of Country, and the connections of First Nations people to the lands and waterways on which we work and live. We pay our respects to elders past and present, and we commit to listening, learning and acting on our journey towards reconciliation."
+    - heading "Nine Insights, straight to your inbox" [ref=e73] [level=5]
+    - paragraph: News, Perspective & Opportunity
+    - link "Subscribe Now Subscription Envelope Icon" [ref=e74]:
+      - /url: /subscribe/
+      - text: Subscribe Now
+      - img "Subscription Envelope Icon"
+    - text: © 2026 Nine Entertainment Company
+  - iframe

@@ -1,0 +1,256 @@
+{
+  "meta": {
+    "source": "https://www.nineforbrands.com.au/",
+    "brand": "Nine for Brands",
+    "domain": "www.nineforbrands.com.au",
+    "extracted": "2026-04-14",
+    "pages_analysed": [
+      "https://www.nineforbrands.com.au/",
+      "https://www.nineforbrands.com.au/about/",
+      "https://www.nineforbrands.com.au/brands/",
+      "https://www.nineforbrands.com.au/solutions/",
+      "https://www.nineforbrands.com.au/research/",
+      "https://www.nineforbrands.com.au/our-audience/"
+    ],
+    "platform": "WordPress + Beaver Builder",
+    "theme": "ninetrade (custom)"
+  },
+  "colour": {
+    "brand": {
+      "nine-blue": {
+        "value": "#0493de",
+        "rgb": "rgb(4, 147, 222)",
+        "usage": "Primary brand colour, CTAs, links, active states",
+        "confidence": "HIGH",
+        "occurrences": 90,
+        "source": "custom-property --wp--preset--color--nine-blue"
+      },
+      "dark-navy": {
+        "value": "#070720",
+        "rgb": "rgb(7, 7, 32)",
+        "usage": "Hero backgrounds, footer, navigation bar background",
+        "confidence": "MEDIUM",
+        "occurrences": 3,
+        "source": "computed-style"
+      },
+      "logo-gradient-start": {
+        "value": "#2855a0",
+        "usage": "Nine logo gradient start (dark blue)",
+        "confidence": "MEDIUM",
+        "source": "visual-inspection"
+      },
+      "logo-gradient-end": {
+        "value": "#00d4ff",
+        "usage": "Nine logo gradient end (cyan)",
+        "confidence": "MEDIUM",
+        "source": "visual-inspection"
+      }
+    },
+    "neutral": {
+      "black": {
+        "value": "#0a0a0a",
+        "rgb": "rgb(10, 10, 10)",
+        "usage": "Near-black text, dark backgrounds",
+        "confidence": "HIGH",
+        "occurrences": 12
+      },
+      "body-text": {
+        "value": "#333333",
+        "rgb": "rgb(51, 51, 51)",
+        "usage": "Default body text colour",
+        "confidence": "HIGH",
+        "occurrences": 667
+      },
+      "muted-text": {
+        "value": "#737373",
+        "rgb": "rgb(115, 115, 115)",
+        "usage": "Secondary text, captions, metadata",
+        "confidence": "HIGH",
+        "occurrences": 6
+      },
+      "border-gray": {
+        "value": "#ababab",
+        "rgb": "rgb(171, 171, 171)",
+        "usage": "Borders, dividers, subtle separators",
+        "confidence": "HIGH",
+        "occurrences": 8
+      },
+      "light-gray-bg": {
+        "value": "#f5f5f5",
+        "rgb": "rgb(245, 245, 245)",
+        "usage": "Alternate section backgrounds, card backgrounds",
+        "confidence": "HIGH",
+        "occurrences": 13
+      },
+      "white": {
+        "value": "#ffffff",
+        "rgb": "rgb(255, 255, 255)",
+        "usage": "Primary background, text on dark surfaces",
+        "confidence": "HIGH",
+        "occurrences": 68
+      }
+    },
+    "accent": {
+      "linkedin-blue": {
+        "value": "#0077b5",
+        "rgb": "rgb(0, 119, 181)",
+        "usage": "LinkedIn social icon",
+        "confidence": "LOW",
+        "occurrences": 1
+      },
+      "twitter-blue": {
+        "value": "#1da1f2",
+        "rgb": "rgb(29, 161, 242)",
+        "usage": "Twitter/X social icon",
+        "confidence": "MEDIUM",
+        "occurrences": 2
+      }
+    },
+    "hero-gradients": {
+      "primary": "linear-gradient(to bottom, #070720 0%, #0493de 100%)",
+      "usage": "Internal page hero banners (About, Brands, Solutions, Audience)",
+      "confidence": "HIGH"
+    },
+    "research-palette": {
+      "note": "Research page uses a distinct warm palette on black background",
+      "background": "#000000",
+      "gradient-tiles": "linear-gradient(135deg, #e84393, #fdcb6e)",
+      "confidence": "MEDIUM"
+    }
+  },
+  "typography": {
+    "families": {
+      "primary": {
+        "value": "\"Proxima Nova\", Arial, sans-serif",
+        "usage": "All text — body, headings, navigation, buttons",
+        "confidence": "HIGH",
+        "occurrences": 403,
+        "source": "Google Fonts / self-hosted"
+      },
+      "icons": {
+        "value": "\"Font Awesome 5 Free\", \"Font Awesome 5 Brands\"",
+        "usage": "Icon system (social icons, UI icons)",
+        "confidence": "HIGH",
+        "occurrences": 10
+      }
+    },
+    "scale": {
+      "xs": { "value": "12px", "rem": "0.75rem", "usage": "Fine print, legal text", "occurrences": 6 },
+      "sm": { "value": "14px", "rem": "0.875rem", "usage": "Small text, captions", "occurrences": 9 },
+      "base": { "value": "16px", "rem": "1rem", "usage": "Body text (default)", "occurrences": 388 },
+      "md": { "value": "18px", "rem": "1.125rem", "usage": "Lead paragraphs", "occurrences": 7 },
+      "lg": { "value": "20px", "rem": "1.25rem", "usage": "Sub-headings, card titles", "occurrences": 3 },
+      "xl": { "value": "24px", "rem": "1.5rem", "usage": "Section headings (h3-h4)", "occurrences": 9 },
+      "2xl": { "value": "36px", "rem": "2.25rem", "usage": "Page headings (h1-h2)", "occurrences": 5 }
+    },
+    "weights": {
+      "regular": { "value": "400", "usage": "Body text", "occurrences": 340 },
+      "bold": { "value": "700", "usage": "Emphasis, strong text", "occurrences": 4 },
+      "extra-bold": { "value": "800", "usage": "Headings, navigation items", "occurrences": 77 },
+      "black": { "value": "900", "usage": "Hero display text", "occurrences": 6 }
+    },
+    "line_heights": {
+      "tight": { "value": "1.0", "computed": "16px at 16px", "usage": "Navigation, buttons" },
+      "snug": { "value": "1.2", "computed": "19.2px at 16px", "usage": "Card titles" },
+      "normal": { "value": "1.5", "computed": "24px at 16px", "usage": "Body text (secondary)" },
+      "relaxed": { "value": "1.6", "computed": "25.6px at 16px", "usage": "Body text (primary)" }
+    },
+    "letter_spacing": {
+      "normal": { "value": "0px", "usage": "Body text" },
+      "wide": { "value": "0.25px", "usage": "Navigation, headings, uppercase labels", "occurrences": 76 },
+      "wider": { "value": "0.5px", "usage": "Buttons, CTAs", "occurrences": 8 }
+    }
+  },
+  "spacing": {
+    "base_unit": "4px",
+    "scale": {
+      "0.5": { "value": "2px" },
+      "1": { "value": "4px" },
+      "1.5": { "value": "6px" },
+      "2": { "value": "8px" },
+      "3": { "value": "12px" },
+      "4": { "value": "16px" },
+      "5": { "value": "20px" },
+      "6": { "value": "24px" },
+      "8": { "value": "32px" },
+      "9": { "value": "36px" },
+      "10": { "value": "40px" },
+      "12": { "value": "48px" },
+      "16": { "value": "64px" },
+      "20": { "value": "80px" },
+      "21": { "value": "84px" }
+    },
+    "common_paddings": [
+      { "value": "16px", "occurrences": 135, "usage": "Internal component padding" },
+      { "value": "12px", "occurrences": 102, "usage": "Compact padding" },
+      { "value": "36px", "occurrences": 12, "usage": "Section padding" },
+      { "value": "40px", "occurrences": 5, "usage": "Large section padding" },
+      { "value": "80px", "occurrences": 3, "usage": "Hero vertical padding" },
+      { "value": "84px", "occurrences": 4, "usage": "Hero vertical padding" }
+    ],
+    "section_vertical": "80px",
+    "card_internal": "16px",
+    "nav_horizontal": "12px"
+  },
+  "borders": {
+    "radii": {
+      "sm": { "value": "2px", "usage": "Subtle rounding on inputs, borders" },
+      "lg": { "value": "20px", "usage": "Card rounding" },
+      "pill": { "value": "100px", "usage": "CTA buttons, pill badges" }
+    },
+    "widths": {
+      "default": { "value": "2px", "usage": "Card borders, dividers" }
+    },
+    "colours": {
+      "default": "rgba(229, 229, 229, 0.2)",
+      "active": "#0493de"
+    }
+  },
+  "shadows": {
+    "card": {
+      "value": "0px 0px 5px 0px rgb(128, 128, 128)",
+      "usage": "Card hover state",
+      "confidence": "MEDIUM"
+    }
+  },
+  "motion": {
+    "default_duration": "0.3s",
+    "default_easing": "ease",
+    "hero_entrance": "transform 1.2s ease-in-out 0.1s",
+    "fade": "visibility, opacity 0.5s linear"
+  },
+  "breakpoints": {
+    "xs": "480px",
+    "sm": "640px",
+    "md": "768px",
+    "lg": "960px",
+    "xl": "1024px",
+    "2xl": "1200px",
+    "grid_framework": "Foundation 6 Flex Grid"
+  },
+  "assets": {
+    "logos": {
+      "primary_white": "assets/site-logo-white.png",
+      "primary_dark": "assets/site-logo.png",
+      "footer": "assets/site-logo-footer.png",
+      "mobile_white": "assets/site-logo-mobile-white.png",
+      "mobile_dark": "assets/site-logo-mobile.png",
+      "brand_mark_colour": "assets/Nine_FullColour_RGB.png",
+      "brand_mark_white": "assets/Nine_White_RGB.png"
+    },
+    "favicons": {
+      "32": "assets/favicon-32x32.png",
+      "180": "assets/favicon-180x180.png",
+      "192": "assets/favicon-192x192.png"
+    },
+    "icons": {
+      "system": "Font Awesome 5",
+      "burger_white": "assets/burger-icon-white.png",
+      "burger_dark": "assets/burger-icon-dark.png",
+      "cross_white": "assets/cross-icon-white.png",
+      "cross_dark": "assets/cross-icon-dark.png",
+      "envelope_white": "assets/envelope-white.png",
+      "envelope_blue": "assets/envelope-blue.png"
+    }
+  }
+}

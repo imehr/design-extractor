@@ -1,0 +1,103 @@
+- document:
+  - banner:
+    - link "Subscribe Subscription Envelope Icon" [ref=e1]:
+      - /url: /subscribe/
+      - text: Subscribe
+      - img "Subscription Envelope Icon"
+    - link "" [ref=e2]:
+      - /url: https://www.linkedin.com/company/nine-entertainment-co./
+    - img "Sidebar Menu Icon"
+    - link "Ninetrade Mobile Site Logo" [ref=e3]:
+      - /url: https://www.nineforbrands.com.au
+      - img "Ninetrade Mobile Site Logo"
+    - link "Subscribe Subscription Envelope Icon" [ref=e4] [nth=1]:
+      - /url: /subscribe/
+      - text: Subscribe
+      - img "Subscription Envelope Icon"
+    - link "" [ref=e5] [nth=1]:
+      - /url: https://www.linkedin.com/company/nine-entertainment-co./
+    - img "Sidebar Menu Icon"
+    - link "Ninetrade Site Logo" [ref=e6]:
+      - /url: https://www.nineforbrands.com.au
+      - img "Ninetrade Site Logo"
+    - navigation:
+      - list:
+        - listitem:
+          - link "About Us" [ref=e7]:
+            - /url: https://www.nineforbrands.com.au/about/
+        - listitem:
+          - link "Brands" [ref=e8]:
+            - /url: https://www.nineforbrands.com.au/brands/
+        - listitem:
+          - link "Advertise" [ref=e9]:
+            - /url: https://www.nineforbrands.com.au/solutions/
+        - listitem:
+          - link "Research" [ref=e10]:
+            - /url: https://www.nineforbrands.com.au/research/
+        - listitem:
+          - link "News" [ref=e11]:
+            - /url: https://www.nineforbrands.com.au/media-releases/
+        - listitem:
+          - link "Investors" [ref=e12]:
+            - /url: https://www.nineforbrands.com.au/investors/
+        - listitem:
+          - link "Careers at Nine" [ref=e13]:
+            - /url: http://ninecareers.com.au
+        - listitem:
+          - link "Olympics and Paralympics" [ref=e14]:
+            - /url: https://www.nineforbrands.com.au/milano-cortina-winter-olympics-paralympics/
+        - listitem:
+          - link "Nine in 2026" [ref=e15]:
+            - /url: https://www.nineforbrands.com.au/ninein2026/
+  - main:
+    - heading "Solutions" [ref=e16] [level=2]
+    - paragraph: We’re ready to help you hit your marketing goals harnessing a range of solutions spanning content, data and technology, right across our television, digital, radio and print assets. We know it isn’t one size fits all, so we can help you pick and choose what services work best for your business and campaign.
+    - link "Content" [ref=e17]:
+      - /url: https://www.nineforbrands.com.au/content/
+      - paragraph: Content
+    - link "Data" [ref=e18]:
+      - /url: https://www.nineforbrands.com.au/dataatnine/
+      - paragraph: Data
+    - link "Technology" [ref=e19]:
+      - /url: https://www.nineforbrands.com.au/technology/
+      - paragraph: Technology
+    - paragraph: When it comes to connecting brands with the passions of Australians, there’s no other media company like Nine. Providing you with a one-stop shop to book a range of advertising campaigns across a diverse range of platforms, all in one transaction.
+    - button "TV advertising" [ref=e20]
+    - button "Digital advertising" [ref=e21]
+    - button "Radio advertising" [ref=e22]
+    - button "Print advertising" [ref=e23]
+    - heading "Connect with us" [ref=e24] [level=1]
+    - link " Subscribe to Nine Insights" [ref=e25]:
+      - /url: https://www.nineforbrands.com.au/subscribe/
+    - link " Follow us on Linkedin" [ref=e26]:
+      - /url: https://www.linkedin.com/company/nine-entertainment-co./
+  - contentinfo:
+    - link "Ninetrade Site Logo" [ref=e27] [nth=1]:
+      - /url: https://www.nineforbrands.com.au
+      - img "Ninetrade Site Logo"
+    - navigation:
+      - list:
+        - listitem:
+          - link "Careers at Nine" [ref=e28] [nth=1]:
+            - /url: https://ninecareers.com.au/
+        - listitem:
+          - link "Help" [ref=e29]:
+            - /url: https://ninehelp.zendesk.com/hc/en-au
+        - listitem:
+          - link "Terms of Use" [ref=e30]:
+            - /url: https://login.nine.com.au/terms?client_id=9nowweb
+        - listitem:
+          - link "Privacy Policy" [ref=e31]:
+            - /url: https://login.nine.com.au/privacy?client_id=9nowweb
+        - listitem:
+          - link "Advertise with Nine" [ref=e32]:
+            - /url: https://www.nineplus.com.au/
+    - paragraph: "Acknowledgement: Nine acknowledges the traditional custodians of Country, and the connections of First Nations people to the lands and waterways on which we work and live. We pay our respects to elders past and present, and we commit to listening, learning and acting on our journey towards reconciliation."
+    - heading "Nine Insights, straight to your inbox" [ref=e33] [level=5]
+    - paragraph: News, Perspective & Opportunity
+    - link "Subscribe Now Subscription Envelope Icon" [ref=e34]:
+      - /url: /subscribe/
+      - text: Subscribe Now
+      - img "Subscription Envelope Icon"
+    - text: © 2026 Nine Entertainment Company
+  - iframe

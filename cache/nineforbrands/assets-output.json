@@ -1,0 +1,590 @@
+{
+  "stage": "asset_extraction",
+  "url": "https://www.nineforbrands.com.au/",
+  "logos": [
+    {
+      "selector": "header img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Ninetrade Mobile Site Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "header img",
+      "tag": "IMG",
+      "src": "https://www.nineforbrands.com.au/wp-content/themes/ninetrade/src/images/icons/envelope-white.png",
+      "width": 20,
+      "height": 16,
+      "alt": "Subscription Envelope Icon",
+      "download_error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "selector": "header img",
+      "tag": "IMG",
+      "src": "https://www.nineforbrands.com.au/wp-content/themes/ninetrade/src/images/icons/burger-icon-white.png",
+      "width": 19,
+      "height": 12,
+      "alt": "Sidebar Menu Icon",
+      "download_error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "selector": "header img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Sidebar Cross Icon",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "header img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Subscription Envelope Icon",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "header img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Ninetrade Mobile Site Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "header img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Subscription Envelope Icon",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "header img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Sidebar Menu Icon",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "header img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Sidebar Cross Icon",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "header img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Subscription Envelope Icon",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "header img",
+      "tag": "IMG",
+      "src": "https://www.nineforbrands.com.au/wp-content/themes/ninetrade/src/images/logos/site-logo-white.png",
+      "width": 155,
+      "height": 40,
+      "alt": "Ninetrade Site Logo",
+      "download_error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "selector": "nav img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Subscription Envelope Icon",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "nav img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Subscription Envelope Icon",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Ninetrade Mobile Site Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Ninetrade Mobile Site Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "https://www.nineforbrands.com.au/wp-content/themes/ninetrade/src/images/logos/site-logo-white.png",
+      "width": 155,
+      "height": 40,
+      "alt": "Ninetrade Site Logo",
+      "download_error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Brand Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    },
+    {
+      "selector": "[class*=\"logo\"] img",
+      "tag": "IMG",
+      "src": "data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%200%200'%3E%3C/svg%3E",
+      "width": 300,
+      "height": 150,
+      "alt": "Ninetrade Site Logo",
+      "local_path": "cache/nineforbrands/assets/logo-img-300x150.jpg"
+    }
+  ],
+  "favicons": [
+    {
+      "rel": "icon",
+      "href": "https://www.nineforbrands.com.au/wp-content/uploads/2025/05/cropped-favicon-96x96-1-32x32.png",
+      "sizes": "32x32",
+      "download_error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "rel": "icon",
+      "href": "https://www.nineforbrands.com.au/wp-content/uploads/2025/05/cropped-favicon-96x96-1-192x192.png",
+      "sizes": "192x192",
+      "download_error": "HTTP Error 403: Forbidden"
+    },
+    {
+      "rel": "apple-touch-icon",
+      "href": "https://www.nineforbrands.com.au/wp-content/uploads/2025/05/cropped-favicon-96x96-1-180x180.png",
+      "sizes": "",
+      "download_error": "HTTP Error 403: Forbidden"
+    }
+  ],
+  "icon_system": "Font Awesome",
+  "saved_assets": {
+    "svg_logos": 0,
+    "favicons_downloaded": 0,
+    "img_logos_downloaded": 58
+  }
+}

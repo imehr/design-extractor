@@ -51,6 +51,24 @@ CLAUDE_TIMEOUT = 900  # 15 min for replica generation
 
 # ── Helpers ───────────────────────────────────────────────────────────────
 
+def parse_eval_json(stdout: str):
+    """Parse JSON from agent-browser eval output, handling double-quoting."""
+    stdout = stdout.strip()
+    if not stdout:
+        return None
+    try:
+        parsed = json.loads(stdout)
+        # agent-browser wraps eval results in quotes — unwrap if string containing JSON
+        if isinstance(parsed, str):
+            try:
+                return json.loads(parsed)
+            except (json.JSONDecodeError, TypeError):
+                return parsed
+        return parsed
+    except json.JSONDecodeError:
+        return None
+
+
 def derive_slug(url: str) -> str:
     """https://www.example.com.au -> example-com-au"""
     parsed = urlparse(url)
@@ -157,15 +175,12 @@ def verify_url(url: str, headed: bool) -> str:
     """Open the URL in agent-browser and verify it loads. Returns page title."""
     step("Phase 1", f"Verifying URL: {url}")
 
-    session = "verify"
+    session = f"verify-{int(time.time())}"
     cmd_open = agent_browser_cmd(["open", url], session=session, headed=headed)
     run_cmd(cmd_open, timeout=30, check=True)
 
     # Wait for page to settle
-    run_cmd(
-        agent_browser_cmd(["wait", "--load", "networkidle"], session=session),
-        timeout=20,
-    )
+    time.sleep(3)  # Simple wait instead of networkidle (many sites never reach idle)
 
     # Extract title
     result = run_cmd(
@@ -190,13 +205,10 @@ def identify_pages(url: str, headed: bool) -> dict[str, dict]:
     """Extract nav links and classify into page types. Returns pages dict."""
     step("Phase 2", "Identifying pages via nav link extraction")
 
-    session = "recon"
+    session = f"recon-{int(time.time())}"
     cmd_open = agent_browser_cmd(["open", url], session=session, headed=headed)
     run_cmd(cmd_open, timeout=30, check=True)
-    run_cmd(
-        agent_browser_cmd(["wait", "--load", "networkidle"], session=session),
-        timeout=20,
-    )
+    time.sleep(3)  # Simple wait instead of networkidle (many sites never reach idle)
 
     # Extract all internal links from nav/header elements
     js_extract = """JSON.stringify((() => {
@@ -246,9 +258,10 @@ def identify_pages(url: str, headed: bool) -> dict[str, dict]:
     raw_links = []
     stdout = (result.stdout or "").strip()
     if stdout:
-        try:
-            raw_links = json.loads(stdout)
-        except json.JSONDecodeError:
+        parsed_json = parse_eval_json(stdout)
+        if isinstance(parsed_json, list):
+            raw_links = parsed_json
+        else:
             info(f"Warning: Could not parse nav links. Raw output: {stdout[:200]}")
 
     info(f"Found {len(raw_links)} internal links")
@@ -393,10 +406,7 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
         timeout=30,
         check=True,
     )
-    run_cmd(
-        agent_browser_cmd(["wait", "--load", "networkidle"], session=session),
-        timeout=20,
-    )
+    time.sleep(3)  # Simple wait instead of networkidle (many sites never reach idle)
 
     # Take reference screenshot
     run_cmd(
@@ -486,9 +496,8 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
     dom_data = {}
     stdout = (result.stdout or "").strip()
     if stdout:
-        try:
-            dom_data = json.loads(stdout)
-        except json.JSONDecodeError:
+        dom_data = parse_eval_json(stdout)
+        if dom_data is None:
             info(f"  Warning: Could not parse DOM extraction for {page_slug}")
             dom_data = {"url": page_url, "title": "", "sections": [], "parse_error": True}
 
@@ -570,9 +579,8 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
     measurements = {}
     stdout = (result.stdout or "").strip()
     if stdout:
-        try:
-            measurements = json.loads(stdout)
-        except json.JSONDecodeError:
+        measurements = parse_eval_json(stdout)
+        if measurements is None:
             measurements = {"parse_error": True}
 
     with open(measurements_path, "w") as f:
@@ -684,8 +692,8 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
         )
         stdout = (result.stdout or "").strip()
         if stdout:
-            try:
-                font_list = json.loads(stdout)
+            font_list = parse_eval_json(stdout)
+            if isinstance(font_list, list):
                 for font in font_list:
                     font_url = font.get("url", "")
                     if not font_url:
@@ -703,8 +711,6 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
                         downloaded += 1
                     except Exception:
                         pass
-            except json.JSONDecodeError:
-                pass
     except RuntimeError:
         info("  Font extraction failed (non-fatal)")
 
