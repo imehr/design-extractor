@@ -71,7 +71,7 @@ export async function startImprovementJob(
     "--target",
     String(options.targetScore ?? 80),
     "--claude-timeout",
-    "600",
+    "900",
   ];
 
   if (options.feedback && Object.keys(options.feedback).length > 0) {

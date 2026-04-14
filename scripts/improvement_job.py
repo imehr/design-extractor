@@ -166,6 +166,7 @@ def build_claude_improvement_prompt(
     pages: list[dict[str, Any]],
     inline_feedback: dict[str, Any] | None = None,
     recent_feedback: list[dict[str, Any]] | None = None,
+    component_issues: str = "",
 ) -> str:
     # Focus on the SINGLE worst page for faster, more reliable fixes
     worst_page = pages[0] if pages else None
@@ -178,46 +179,14 @@ def build_claude_improvement_prompt(
     orig_screenshot = worst_page.get("original_screenshot", "")
     repl_screenshot = worst_page.get("replica_screenshot", "")
 
-    # Run component validation for targeted, actionable guidance
+    # Use pre-computed component issues passed from the caller
     component_info = ""
-    try:
-        import subprocess as _sp
-        repo_root = str(Path(__file__).resolve().parent.parent)
-        pages_json = Path.home() / ".claude" / "design-library" / "cache" / brand / "validation" / "pages.json"
-        if pages_json.exists():
-            pages_config = json.loads(pages_json.read_text())
-            page_config = pages_config.get(slug, {})
-            original_url = page_config.get("original_url", "")
-
-            if original_url:
-                cv_result = _sp.run(
-                    ["python3", "scripts/component_validator.py",
-                     "--brand", brand, "--page", slug,
-                     "--base-url", "http://localhost:5173",
-                     "--output", f"/tmp/cv-{brand}-{slug}.json"],
-                    capture_output=True, text=True, timeout=120,
-                    cwd=repo_root,
-                )
-                cv_path = Path(f"/tmp/cv-{brand}-{slug}.json")
-                if cv_result.returncode == 0 and cv_path.exists():
-                    cv_report = json.loads(cv_path.read_text())
-                    components = cv_report.get("components", [])
-                    if components:
-                        component_info = "\n\nComponent-level issues found:\n"
-                        for comp in components:
-                            heading = comp.get("heading", "?")
-                            status = comp.get("status", "?")
-                            ps = comp.get("pixel_score", 0)
-                            issues = comp.get("issues", [])
-                            if status == "missing_in_replica":
-                                component_info += f"\n- MISSING: '{heading}' — exists on original but not in replica\n"
-                            elif status == "matched" and (ps < 80 or issues):
-                                component_info += f"\n- '{heading}' ({ps}% match):\n"
-                                for issue in issues[:5]:
-                                    component_info += f"  - {issue}\n"
-                        component_info += "\nFix the worst components first. Use the specific measurements above."
-    except Exception:
-        pass
+    if component_issues:
+        component_info = (
+            "\n\nComponent-level issues found:\n"
+            + component_issues
+            + "\nFix the worst components first. Use the specific measurements above."
+        )
 
     lines = [
         f"Fix the {slug} replica page to improve its match score from {score}% toward {target_score}%.",

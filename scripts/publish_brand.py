@@ -705,6 +705,28 @@ def main():
                     else:
                         print(f"  Sections ({page_name}): {h2_count}/{len(sections)} OK")
 
+    # Check layout structure: each replica must have header + content + footer
+    pages_json_path = cache_dir / "validation" / "pages.json"
+    if pages_json_path.exists():
+        with open(pages_json_path) as f:
+            pages_config = json.load(f)
+        for page_slug in pages_config:
+            if page_slug == "homepage":
+                tsx_path = Path("ui/app/brands") / args.brand / "replica" / "page.tsx"
+            else:
+                tsx_path = Path("ui/app/brands") / args.brand / "replica" / page_slug / "page.tsx"
+            if tsx_path.exists():
+                content = tsx_path.read_text()
+                has_header = "Header" in content
+                has_footer = "Footer" in content
+                has_images = "<img" in content or "Image" in content
+                if not has_header:
+                    issues.append(f"WARN: {page_slug} replica missing header component")
+                if not has_footer:
+                    issues.append(f"WARN: {page_slug} replica missing footer component")
+                if not has_images:
+                    issues.append(f"WARN: {page_slug} replica has no images")
+
     # Check SKILL.md exists and is non-empty
     if skill_path.exists() and skill_path.stat().st_size > 100:
         print(f"  SKILL.md: OK")

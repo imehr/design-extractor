@@ -170,6 +170,33 @@ def setup_directories(slug: str) -> dict[str, Path]:
     return dirs
 
 
+# ── Phase 0.5: Verify Agent Rules ────────────────────────────────────────
+
+def verify_agent_rules():
+    """Check that agent files contain critical learned rules."""
+    step("Phase 0.5", "Verifying agent rules")
+    rules_to_check = {
+        "agents/dom-extractor.md": ["background-image", "sectionCount", "Step 7"],
+        "agents/replica-builder.md": ["section completeness", "DOM measurement", "object-cover"],
+    }
+    missing = []
+    for agent_file, required_terms in rules_to_check.items():
+        path = PLUGIN_DIR / agent_file
+        if not path.exists():
+            missing.append(f"{agent_file} not found")
+            continue
+        content = path.read_text().lower()
+        for term in required_terms:
+            if term.lower() not in content:
+                missing.append(f"{agent_file} missing rule: '{term}'")
+
+    if missing:
+        for m in missing:
+            info(f"  WARNING: {m}")
+    else:
+        info("  All agent rules verified")
+
+
 # ── Phase 1: Verify URL ──────────────────────────────────────────────────
 
 def verify_url(url: str, headed: bool) -> str:
@@ -898,6 +925,9 @@ def run_validation(slug: str) -> float:
     """Run the validation harness. Returns average score."""
     step("Phase 6", "Running screenshot validation")
 
+    base_url = "http://localhost:5173"
+    cache_dir = CACHE_ROOT / slug
+
     validation_script = SCRIPTS_DIR / "run_validation_loop.py"
     if not validation_script.exists():
         info("Warning: run_validation_loop.py not found, skipping validation")
@@ -907,7 +937,7 @@ def run_validation(slug: str) -> float:
         [
             sys.executable, str(validation_script),
             "--brand", slug,
-            "--base-url", "http://localhost:5173",
+            "--base-url", base_url,
             "--target", "80",
             "--skip-originals",
         ],
@@ -917,6 +947,22 @@ def run_validation(slug: str) -> float:
 
     output = (result.stdout or "")
     print(output)
+
+    # Also run component-level validation for actionable feedback
+    info("Running component-level validation...")
+    comp_validator = SCRIPTS_DIR / "component_validator.py"
+    if comp_validator.exists():
+        comp_result = run_cmd(
+            [sys.executable, str(comp_validator),
+             "--brand", slug, "--all-pages",
+             "--base-url", base_url,
+             "--output", str(cache_dir / "validation" / "component-report.json")],
+            timeout=300, check=False,
+        )
+        if comp_result.returncode == 0:
+            info("Component validation report saved")
+        else:
+            info(f"Component validation exited with code {comp_result.returncode} (non-fatal)")
 
     # Parse average score from output
     for line in output.split("\n"):
@@ -1156,6 +1202,9 @@ def main() -> int:
     info(f"Cache: {dirs['cache']}")
     info(f"Brand: {dirs['brands']}")
     info(f"UI:    {dirs['public']}")
+
+    # Phase 0.5: Verify agent rules
+    verify_agent_rules()
 
     # Phase 1: Verify URL
     try:

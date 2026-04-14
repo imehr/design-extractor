@@ -67,7 +67,7 @@ export default function HomePage() {
   }
 
   return (
-    <div>
+    <div className="min-h-screen bg-gradient-to-b from-[#f5f5f7] to-white">
       <section className="px-6 pt-8 pb-2">
         <div className="mx-auto max-w-4xl">
           <div className="flex items-start justify-between">
@@ -75,6 +75,9 @@ export default function HomePage() {
               <h1 className="text-[28px] font-semibold tracking-tight text-[#1d1d1f]">
                 Design Library
               </h1>
+              <p className="mt-1 text-[13px] font-medium text-[#1d1d1f]/60">
+                {library.brands.length} design system{library.brands.length !== 1 ? "s" : ""} extracted
+              </p>
               <p className="mt-1 max-w-lg text-[14px] leading-relaxed text-[#86868b]">
                 Extracted design systems from live websites. Each entry contains tokens, fonts, assets,
                 React/shadcn replicas, and a DESIGN.md that coding agents use to build matching UI.
@@ -86,7 +89,7 @@ export default function HomePage() {
                 placeholder="Search designs..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 rounded-lg border-[#d2d2d7] bg-[#f5f5f7] pl-9 text-sm"
+                className="h-9 rounded-lg border-[#d2d2d7] bg-white pl-9 text-sm shadow-sm"
               />
             </div>
           </div>
@@ -162,30 +165,50 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="space-y-0">
-              {filtered.map((brand) => (
-                <Link
-                  key={brand.slug}
-                  href={`/brands/${brand.slug}`}
-                  className="group flex items-center justify-between border-b border-[#d2d2d7]/40 py-4 transition-colors hover:bg-[#f5f5f7]/50"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[17px] font-semibold leading-[1.47] tracking-[-0.374px] text-[#1d1d1f] group-hover:text-[#0071e3]">
-                        {brand.name || titleCase(brand.slug)}
-                      </span>
-                      <ScoreBadge score={brand.overall_score} confidence={brand.confidence} />
+              {filtered.map((brand) => {
+                const pct = brand.overall_score !== null ? Math.round(brand.overall_score * 100) : null;
+                const scoreColor =
+                  pct === null
+                    ? "bg-[#f5f5f7] text-[#86868b]"
+                    : pct >= 80
+                      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                      : pct >= 60
+                        ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                        : "bg-red-50 text-red-700 ring-1 ring-red-200";
+
+                return (
+                  <Link
+                    key={brand.slug}
+                    href={`/brands/${brand.slug}`}
+                    className="group flex items-center justify-between border-b border-[#d2d2d7]/40 py-4 transition-colors hover:bg-[#f5f5f7]/50 px-2 -mx-2 rounded-lg"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[17px] font-semibold leading-[1.47] tracking-[-0.374px] text-[#1d1d1f] group-hover:text-[#0071e3]">
+                          {brand.name || titleCase(brand.slug)}
+                        </span>
+                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[12px] font-semibold ${scoreColor}`}>
+                          {pct !== null ? `${pct}%` : "N/A"}
+                        </span>
+                      </div>
+                      <div className="mt-0.5 flex items-center gap-2 text-[13px] text-[#86868b]">
+                        <span className="truncate">{brand.source_url}</span>
+                        <span className="shrink-0 text-[#d2d2d7]">·</span>
+                        <span className="shrink-0 text-[12px]">
+                          {brand.extracted_at
+                            ? new Date(brand.extracted_at).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })
+                            : "Unknown date"}
+                        </span>
+                      </div>
                     </div>
-                    <p className="mt-0.5 text-[13px] text-[#86868b]">
-                      {brand.source_url}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {brand.categories.slice(0, 3).map((cat) => (
-                      <Badge key={cat} variant="secondary" className="text-[10px]">{cat}</Badge>
-                    ))}
-                  </div>
-                </Link>
-              ))}
+                    <div className="flex items-center gap-1.5 shrink-0 ml-4">
+                      {brand.categories.slice(0, 3).map((cat) => (
+                        <Badge key={cat} variant="secondary" className="text-[10px]">{cat}</Badge>
+                      ))}
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>

@@ -541,41 +541,63 @@ export default function BrandPage({
       </div>
 
       {/* Header */}
-      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
           {brand.has_logo && logoFile && (
-            <div className="flex h-12 shrink-0 items-center rounded-lg border bg-white px-3 py-2">
+            <div className="flex h-14 shrink-0 items-center rounded-xl border border-[#d2d2d7]/50 bg-white px-4 py-2 shadow-sm">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={logoFile?.src ?? ""}
                 alt={`${titleCase(brand.slug)} logo`}
-                className="h-8 w-auto"
+                className="h-9 w-auto"
               />
             </div>
           )}
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
+            <h1 className="text-[32px] font-bold tracking-tight text-[#1d1d1f]">
               {titleCase(brand.slug)}
             </h1>
             <a
               href={brand.source_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground hover:underline"
+              className="inline-flex items-center gap-1.5 text-[14px] text-[#0071e3] hover:text-[#0077ED] hover:underline"
             >
               {brand.source_url}
-              <ExternalLink className="size-3" />
+              <ExternalLink className="size-3.5" />
             </a>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Extracted {new Date(brand.extracted_at).toLocaleDateString()}
+            <p className="mt-1 text-[12px] text-[#86868b]">
+              Extracted on {new Date(brand.extracted_at).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 flex-col items-end gap-2">
-          <ScoreBadge score={displayScore} confidence={brand.confidence} />
-          <div className="flex flex-wrap justify-end gap-1">
+        <div className="flex shrink-0 flex-col items-end gap-3">
+          {(() => {
+            const pct = displayScore !== null ? Math.round(displayScore * 100) : null;
+            const scoreBg =
+              pct === null
+                ? "bg-[#f5f5f7] text-[#86868b]"
+                : pct >= 80
+                  ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+                  : pct >= 60
+                    ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                    : "bg-red-50 text-red-700 ring-1 ring-red-200";
+            return (
+              <span className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-[18px] font-bold ${scoreBg}`}>
+                {pct !== null ? `${pct}%` : "N/A"}
+                {brand.confidence && (
+                  <span className="text-[12px] font-medium opacity-60">{brand.confidence}</span>
+                )}
+              </span>
+            );
+          })()}
+          <div className="flex flex-wrap justify-end gap-1.5">
             {brand.categories.map((cat) => (
-              <Badge key={cat} variant="outline" className="text-xs">
+              <Badge
+                key={cat}
+                variant="secondary"
+                className="rounded-md bg-[#f5f5f7] px-2.5 py-0.5 text-[11px] font-medium text-[#1d1d1f]/70"
+              >
                 {cat}
               </Badge>
             ))}

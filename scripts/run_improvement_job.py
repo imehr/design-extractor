@@ -94,6 +94,7 @@ def run_claude_improver(
     feedback: dict[str, object],
     timeout_s: int,
     log_path: Path,
+    component_issues: str = "",
 ) -> dict[str, object]:
     recent_feedback = read_recent_feedback_entries(
         repo_root / "state" / "learning" / "feedback-log.jsonl",
@@ -108,6 +109,7 @@ def run_claude_improver(
         pages=pages,
         inline_feedback=feedback,
         recent_feedback=recent_feedback,
+        component_issues=component_issues,
     )
     cmd = build_claude_command(prompt)
 
@@ -180,7 +182,7 @@ def main() -> int:
     parser.add_argument(
         "--claude-timeout",
         type=int,
-        default=600,
+        default=900,
         help="Timeout in seconds for each Claude refinement pass",
     )
     parser.add_argument(
@@ -371,6 +373,47 @@ def main() -> int:
         if args.skip_claude:
             continue
 
+        # Run component validation once per iteration before the Claude call.
+        # This avoids running it inside the prompt builder where it added
+        # 2+ minutes to the Claude subprocess timeout budget.
+        comp_issues = ""
+        worst_page_slug = (
+            pages_needing_work[0].get("slug", "") if pages_needing_work else ""
+        )
+        if worst_page_slug:
+            comp_report_path = jobs_dir / f"{job_id}-components-iter-{iteration}.json"
+            try:
+                comp_result = subprocess.run(
+                    [
+                        sys.executable,
+                        str(repo_root / "scripts" / "component_validator.py"),
+                        "--brand",
+                        args.brand,
+                        "--page",
+                        worst_page_slug,
+                        "--base-url",
+                        args.base_url,
+                        "--output",
+                        str(comp_report_path),
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=120,
+                    cwd=repo_root,
+                )
+                if comp_result.returncode == 0 and comp_report_path.exists():
+                    comp_data = json.loads(comp_report_path.read_text())
+                    for comp in comp_data.get("components", []):
+                        if comp.get("issues"):
+                            comp_issues += (
+                                f"\n- {comp['heading']}"
+                                f" ({comp.get('pixel_score', 0)}%):\n"
+                            )
+                            for issue in comp["issues"][:3]:
+                                comp_issues += f"  - {issue}\n"
+            except (subprocess.TimeoutExpired, Exception):
+                pass  # component validation is best-effort
+
         claude_result = run_claude_improver(
             repo_root=repo_root,
             brand=args.brand,
@@ -382,6 +425,7 @@ def main() -> int:
             feedback=feedback,
             timeout_s=args.claude_timeout,
             log_path=jobs_dir / f"{job_id}-claude-iter-{iteration}.log",
+            component_issues=comp_issues,
         )
         update_job_state(
             job_path,
