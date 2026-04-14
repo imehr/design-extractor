@@ -772,6 +772,18 @@ def build_replicas(slug: str, url: str, pages: dict, dirs: dict) -> None:
             "replica_route": config["replica_route"],
         })
 
+    # List all downloaded assets so Claude knows what images are available
+    public_dir = dirs["public"]
+    asset_list = []
+    if public_dir.exists():
+        for f in sorted(public_dir.rglob("*")):
+            if f.is_file() and not f.name.startswith("."):
+                rel = f.relative_to(public_dir)
+                asset_list.append(str(rel))
+    asset_str = "\n".join(f"  /brands/{slug}/{a}" for a in asset_list[:50])
+    if len(asset_list) > 50:
+        asset_str += f"\n  ... and {len(asset_list) - 50} more files"
+
     prompt = f"""Build React/shadcn replica components for {url}.
 
 Brand slug: {slug}
@@ -779,28 +791,31 @@ Pages to build: {json.dumps(page_list, indent=2)}
 
 Read the DOM extraction files at {dirs['dom_extraction']}
 Read the measurement files at {dirs['dom_extraction']} (files ending in -measurements.json)
-Images are available at /brands/{slug}/ (relative to public dir)
-Font files are at /brands/{slug}/fonts/
+
+DOWNLOADED ASSETS ({len(asset_list)} files available at /brands/{slug}/):
+{asset_str}
+
+CRITICAL: You MUST use these actual images in the replicas. Every section that has
+an image in the DOM extraction JSON MUST reference the corresponding downloaded file.
+Use <img src="/brands/{slug}/filename.jpg" /> for images.
+Font files are at /brands/{slug}/fonts/ — add @font-face to globals.css if custom fonts exist.
 
 Create these files:
-1. {dirs['components']}/ -- shared header, footer, logo components (e.g. {slug}-header.tsx, {slug}-footer.tsx)
-2. {dirs['replica']}/page.tsx -- homepage replica
-3. {dirs['replica']}/layout.tsx -- layout that hides Design Library chrome (full-width, no sidebar)
-4. For each inner page: {dirs['replica']}/{{page-slug}}/page.tsx
+1. {dirs['components']}/ — shared header, footer, logo (e.g. {slug}-header.tsx, {slug}-footer.tsx)
+2. {dirs['replica']}/page.tsx — homepage with ALL sections (hero, content, cards, CTAs, etc.)
+3. {dirs['replica']}/layout.tsx — hides Design Library chrome
+4. For each inner page: {dirs['replica']}/{{page-slug}}/page.tsx — with ALL sections and images
 
-Rules:
-- Use shadcn/ui components (Card, Button, Separator, Badge, NavigationMenu)
-- Use Lucide React icons only (never emoji characters)
-- Import actual downloaded images from /brands/{slug}/ paths
-- Extract ALL content from the DOM JSON files -- every section heading, every paragraph, every image
-- Do NOT fabricate or invent text content. Use only what exists in the DOM JSON
-- Use Tailwind CSS for all styling
-- Match colors, fonts, and spacing from the measurement JSON files
-- Each page.tsx must be a valid Next.js page component (export default function)
-- The layout.tsx should be minimal -- just render children with no extra chrome
+RULES:
+- Use shadcn/ui components (Card, Button, Separator)
+- Use Lucide React icons only for UI elements (never emoji)
+- INCLUDE ALL IMAGES — every hero, card, article thumbnail, logo from the asset list above
+- Extract ALL sections from DOM JSON — every H2 heading must have a section in the replica
+- Do NOT fabricate text — only use content from DOM extraction JSON files
+- Match colors and spacing from measurement JSON files
+- Each page must be a complete, scrollable page with header + content sections + footer
 
 The UI project is a Next.js app at {UI_DIR}.
-Components directory is {UI_DIR}/components.
 """
 
     info("Calling claude --print for replica generation...")
