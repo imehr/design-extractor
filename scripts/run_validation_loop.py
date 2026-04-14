@@ -168,13 +168,13 @@ def capture_all_pages(base_url: str, pages: dict, skip_originals: bool = False, 
             orig_ok = True
         else:
             print(f"  Capturing original: {config['original_url']}")
-            orig_ok = run_agent_browser(config["original_url"], orig_path, session="orig", wait_secs=5, full_page=True, headed=headed)
+            orig_ok = run_agent_browser(config["original_url"], orig_path, session=f"orig-{slug}-{int(time.time())}", wait_secs=5, full_page=True, headed=headed)
             print(f"  Original: {'ok' if orig_ok else 'FAILED'}")
 
         # Capture replica (full page)
         replica_url = f"{base_url}{config['replica_route']}"
         print(f"  Capturing replica: {replica_url}")
-        repl_ok = run_agent_browser(replica_url, repl_path, session="repl", wait_secs=3, full_page=True)
+        repl_ok = run_agent_browser(replica_url, repl_path, session=f"repl-{slug}-{int(time.time())}", wait_secs=3, full_page=True)
         print(f"  Replica: {'ok' if repl_ok else 'FAILED'}")
 
         results[slug] = {
