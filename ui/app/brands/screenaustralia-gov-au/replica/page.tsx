@@ -14,22 +14,26 @@ const SCREEN_NEWS = [
       "Australians in Film and Screen Australia Announce the 2026 Participants in the Talent Gateway and Global Producers Program",
     date: "09 Apr 2026",
     author: "Screen Australia",
+    image: "/brands/screenaustralia-gov-au/04-07-Talent-Gateway-and-Global-Producers-Exchange.jpg",
   },
   {
     title: "Official Co-production Ask Me Anything (AMA) Session",
     date: "26 Mar 2026",
     author: "Screen Australia",
+    image: "/brands/screenaustralia-gov-au/03-26-POCU-AMA.jpg",
   },
   {
     title: "Applications Open for Skip Ahead 11",
     date: "19 Mar 2026",
     author: "Screen Australia",
+    image: "/brands/screenaustralia-gov-au/Skip-Ahead-11-NoFrame_thumbnail_3.jpg",
   },
   {
     title:
       "Screen Australia appoints Tanya Phegan as Narrative Content Head of Development",
     date: "17 Mar 2026",
     author: "Screen Australia",
+    image: "/brands/screenaustralia-gov-au/Tanya-v2_thumbnail_1.jpg",
   },
 ];
 
@@ -60,8 +64,9 @@ export default function ScreenAustraliaHomepage() {
     >
       {/* ─── 1. Hero section ─── */}
       <section className="relative flex min-h-screen flex-col">
-        {/* Gradient background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a1a] via-[#2a2a2a] to-[#1a1a1a]" />
+        {/* Hero background image */}
+        <img src="/brands/screenaustralia-gov-au/shutterstock_1115466512_web.jpg" alt="" className="absolute inset-0 h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-black/60" />
 
         {/* Header overlaid */}
         <SAHeader variant="transparent" />
@@ -121,7 +126,11 @@ export default function ScreenAustraliaHomepage() {
                   <Card
                     className="cursor-pointer rounded-none border-0 bg-transparent py-0 ring-0 transition-colors hover:bg-white/5"
                   >
-                    <div className="px-0 py-5">
+                    <div className="flex gap-4 px-0 py-5">
+                      {article.image && (
+                        <img src={article.image} alt="" className="h-20 w-28 shrink-0 rounded object-cover" />
+                      )}
+                      <div>
                       <h3
                         className="text-base font-semibold leading-snug text-white"
                         style={{
@@ -134,6 +143,7 @@ export default function ScreenAustraliaHomepage() {
                       <p className="mt-2 text-sm text-[#999]">
                         {article.date} &mdash; By {article.author}
                       </p>
+                      </div>
                     </div>
                   </Card>
                   {i < SCREEN_NEWS.length - 1 && (
@@ -144,7 +154,7 @@ export default function ScreenAustraliaHomepage() {
             </div>
           </div>
 
-          {/* Website Maintenance sidebar */}
+          {/* Featured content sidebar */}
           <aside className="lg:col-span-1">
             <div className="mb-8 inline-flex items-center gap-3">
               <span className="h-[3px] w-8 bg-[#f79c1f]" />
@@ -155,17 +165,31 @@ export default function ScreenAustraliaHomepage() {
                   fontWeight: 700,
                 }}
               >
-                Website Maintenance
+                Featured
               </h2>
             </div>
 
-            <Card className="overflow-hidden rounded-lg border-0 bg-[#1a1a1a] p-0 ring-0">
-              <div className="h-2 bg-[#f79c1f]" />
-              <div className="p-6">
-                <p className="text-sm leading-relaxed text-[#999]">
-                  Scheduled maintenance may temporarily affect access to some
-                  features. We apologise for any inconvenience.
-                </p>
+            <Card className="overflow-hidden rounded-lg border-0 bg-[#222] p-0 ring-0">
+              <img src="/brands/screenaustralia-gov-au/Narrative-Content-Slate-April.jpg" alt="Narrative Content Slate" className="w-full object-cover" />
+              <div className="p-4">
+                <h3 className="text-sm font-semibold text-white">Narrative Content Slate</h3>
+                <p className="mt-1 text-xs text-[#999]">April 2026 funding round now open</p>
+              </div>
+            </Card>
+
+            <Card className="mt-4 overflow-hidden rounded-lg border-0 bg-[#222] p-0 ring-0">
+              <img src="/brands/screenaustralia-gov-au/CH2332V001_DNWTS_Frog_ES-06.png" alt="Upcoming productions" className="w-full object-cover" />
+              <div className="p-4">
+                <h3 className="text-sm font-semibold text-white">Upcoming Productions</h3>
+                <p className="mt-1 text-xs text-[#999]">Discover what&apos;s coming to Australian screens</p>
+              </div>
+            </Card>
+
+            <Card className="mt-4 overflow-hidden rounded-lg border-0 bg-[#222] p-0 ring-0">
+              <img src="/brands/screenaustralia-gov-au/aus-uk-image-1.jpg" alt="Australia-UK partnership" className="w-full object-cover" />
+              <div className="p-4">
+                <h3 className="text-sm font-semibold text-white">Australia-UK Co-production</h3>
+                <p className="mt-1 text-xs text-[#999]">International partnerships and opportunities</p>
               </div>
             </Card>
           </aside>
