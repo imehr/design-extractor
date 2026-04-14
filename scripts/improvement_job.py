@@ -178,43 +178,60 @@ def build_claude_improvement_prompt(
     orig_screenshot = worst_page.get("original_screenshot", "")
     repl_screenshot = worst_page.get("replica_screenshot", "")
 
-    # Run segment comparison for targeted guidance
-    segment_info = ""
+    # Run component validation for targeted, actionable guidance
+    component_info = ""
     try:
         import subprocess as _sp
-        seg_result = _sp.run(
-            ["python3", "scripts/segment_compare.py",
-             "--original", orig_screenshot,
-             "--replica", repl_screenshot,
-             "--output", f"/tmp/seg-{brand}-{slug}.json"],
-            capture_output=True, text=True, timeout=30,
-            cwd=str(Path(__file__).resolve().parent.parent),
-        )
-        if seg_result.returncode == 0:
-            seg_report = json.loads(Path(f"/tmp/seg-{brand}-{slug}.json").read_text())
-            worst_segs = seg_report.get("worst_segments", [])
-            if worst_segs:
-                segment_info = "\n\nWorst-matching segments (each is 720px tall):\n"
-                for ws in worst_segs:
-                    segment_info += f"- Segment {ws['index']} ({ws['y_range']}): {ws['score']}% match\n"
-                segment_info += "\nFocus your fixes on the content in these pixel ranges first."
+        repo_root = str(Path(__file__).resolve().parent.parent)
+        pages_json = Path.home() / ".claude" / "design-library" / "cache" / brand / "validation" / "pages.json"
+        if pages_json.exists():
+            pages_config = json.loads(pages_json.read_text())
+            page_config = pages_config.get(slug, {})
+            original_url = page_config.get("original_url", "")
+
+            if original_url:
+                cv_result = _sp.run(
+                    ["python3", "scripts/component_validator.py",
+                     "--brand", brand, "--page", slug,
+                     "--base-url", "http://localhost:5173",
+                     "--output", f"/tmp/cv-{brand}-{slug}.json"],
+                    capture_output=True, text=True, timeout=120,
+                    cwd=repo_root,
+                )
+                cv_path = Path(f"/tmp/cv-{brand}-{slug}.json")
+                if cv_result.returncode == 0 and cv_path.exists():
+                    cv_report = json.loads(cv_path.read_text())
+                    components = cv_report.get("components", [])
+                    if components:
+                        component_info = "\n\nComponent-level issues found:\n"
+                        for comp in components:
+                            heading = comp.get("heading", "?")
+                            status = comp.get("status", "?")
+                            ps = comp.get("pixel_score", 0)
+                            issues = comp.get("issues", [])
+                            if status == "missing_in_replica":
+                                component_info += f"\n- MISSING: '{heading}' — exists on original but not in replica\n"
+                            elif status == "matched" and (ps < 80 or issues):
+                                component_info += f"\n- '{heading}' ({ps}% match):\n"
+                                for issue in issues[:5]:
+                                    component_info += f"  - {issue}\n"
+                        component_info += "\nFix the worst components first. Use the specific measurements above."
     except Exception:
         pass
 
     lines = [
-        f"Fix the {slug} replica page to improve its pixel match score from {score}% toward {target_score}%.",
+        f"Fix the {slug} replica page to improve its match score from {score}% toward {target_score}%.",
         "",
         f"File to edit: {tsx_path}",
         f"Original screenshot: {orig_screenshot}",
         f"Replica screenshot: {repl_screenshot}",
-        segment_info,
+        component_info,
         "",
         "Steps:",
         "1. Read the replica TSX file",
-        "2. View both screenshots (original and replica) to see the visual differences",
-        "3. Focus on the worst-matching segments identified above",
-        "4. Make targeted edits to close the visual gap — fix layout, spacing, colors, images, missing sections",
-        "5. Do NOT refactor or restructure — make surgical fixes only",
+        "2. View both screenshots to see visual differences",
+        "3. Fix the specific component issues listed above — exact measurements are provided",
+        "4. Make surgical fixes only — do NOT refactor or restructure",
         "",
         "Rules:",
         "- Edit ONLY the listed file and shared brand components under ui/components/brands/",

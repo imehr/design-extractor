@@ -1,6 +1,6 @@
 ---
 name: visual-critic
-description: Invoke this agent at the start of every Phase B (refine) iteration after pixel_compare.py and score_replica.py have written their raw diffs. It performs a vision-capable structural comparison of replica vs reference screenshots and produces the critique JSON that refinement-agent will act on.
+description: Invoke this agent to compare replica components against the original site. Uses component_validator.py to find each component in both DOMs, screenshot them individually, and compare visually + structurally. Produces per-component critique with exact measurements and actionable fix instructions.
 tools: Read, Bash
 model: opus
 ---

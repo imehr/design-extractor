@@ -47,13 +47,17 @@ while iteration < 15:
     notify_user("Reached 15 iterations. {len(manifest.pages_needing_work)} pages still below target.")
     break
 
-  # 4. DOM measurement pass (before fixing)
+  # 4. Component-level validation (finds specific issues per component)
   for page in manifest.pages_needing_work:
-    measurements[page.slug] = measure_dom(page)
+    python3 scripts/component_validator.py \
+      --brand {slug} --page {page.slug} \
+      --base-url http://localhost:5173 \
+      --output $CACHE_DIR/validation/components/{page.slug}/report.json
 
-  # 5. Dispatch parallel fix agents
+  # 5. Dispatch parallel fix agents with component issues
   for page in manifest.pages_needing_work:
-    dispatch_fix_agent(page, measurements[page.slug])
+    component_report = read($CACHE_DIR/validation/components/{page.slug}/report.json)
+    dispatch_fix_agent(page, component_report.components)
 
   # 6. Wait for all fixes, then loop back to step 1
 ```
