@@ -58,32 +58,55 @@ def main():
     
     install_script = f"""#!/bin/bash
 # Install {brand_name} design system into your project
-# Run from your project root: bash install.sh
+# Run from your project root: bash /path/to/brand-kit/install.sh
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "Installing {brand_name} design system..."
+echo "  Source: $SCRIPT_DIR"
+echo "  Target: $(pwd)"
 
 # 1. Install Claude Code skill
 mkdir -p .claude/skills/brand-{args.brand}
-cp skill/SKILL.md .claude/skills/brand-{args.brand}/
-cp skill/DESIGN.md .claude/skills/brand-{args.brand}/
-cp skill/design-tokens.json .claude/skills/brand-{args.brand}/
+cp "$SCRIPT_DIR/skill/SKILL.md" .claude/skills/brand-{args.brand}/
+cp "$SCRIPT_DIR/skill/DESIGN.md" .claude/skills/brand-{args.brand}/
+cp "$SCRIPT_DIR/skill/design-tokens.json" .claude/skills/brand-{args.brand}/
+cp "$SCRIPT_DIR/skill/design-tokens.css" .claude/skills/brand-{args.brand}/ 2>/dev/null
 echo "  Skill installed at .claude/skills/brand-{args.brand}/"
 
-# 2. Copy assets to public/brand/
-mkdir -p public/brand
-cp -r assets/* public/brand/
-echo "  Assets copied to public/brand/"
+# 2. Copy DESIGN.md to project root
+cp "$SCRIPT_DIR/skill/DESIGN.md" ./DESIGN.md
+echo "  DESIGN.md copied to project root"
 
-# 3. Append CSS variables (optional)
-if [ -f skill/design-tokens.css ]; then
+# 3. Copy assets to public/brand/
+mkdir -p public/brand
+cp -r "$SCRIPT_DIR/assets/"* public/brand/ 2>/dev/null
+ASSET_COUNT=$(find public/brand -type f 2>/dev/null | wc -l | tr -d ' ')
+echo "  $ASSET_COUNT assets copied to public/brand/"
+
+# 4. Copy React components as reference
+mkdir -p components/brand
+cp "$SCRIPT_DIR/components/"*.tsx components/brand/ 2>/dev/null
+
+# 5. Append CSS variables
+if [ -f app/globals.css ]; then
   echo "" >> app/globals.css
   echo "/* {brand_name} Design Tokens */" >> app/globals.css
-  cat skill/design-tokens.css >> app/globals.css
+  cat "$SCRIPT_DIR/skill/design-tokens.css" >> app/globals.css
   echo "  CSS variables appended to app/globals.css"
+elif [ -f src/app/globals.css ]; then
+  echo "" >> src/app/globals.css
+  cat "$SCRIPT_DIR/skill/design-tokens.css" >> src/app/globals.css
+  echo "  CSS variables appended to src/app/globals.css"
+else
+  cp "$SCRIPT_DIR/skill/design-tokens.css" ./design-tokens.css 2>/dev/null
 fi
 
 echo ""
-echo "Done! Claude Code will now follow {brand_name} design rules when building UI."
+echo "Done! Your project now has:"
+echo "  ./DESIGN.md              — Design system rules"
+echo "  .claude/skills/          — Claude Code auto-triggers"
+echo "  public/brand/            — Logos, fonts, images"
+echo ""
 echo "Ask Claude: 'Build a landing page matching the {brand_name} brand'"
 """
     (out / "install.sh").write_text(install_script)
