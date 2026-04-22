@@ -294,15 +294,17 @@ def main() -> int:
             history.append(score)
 
         # Compare against brand best, not just the previous iteration.
-        # brand_best_score was seeded from metadata and is updated only
-        # when a candidate strictly exceeds it.
+        # Require gain to exceed pixelmatch noise floor (σ ≈ 0.009) — anything
+        # smaller is re-render jitter, not real improvement. See
+        # docs/plans/2026-04-22-improvement-loop-diagnosis.md.
+        NOISE_FLOOR = 0.01
         if score is not None and brand_best_score is not None:
-            if score > brand_best_score:
+            if score > brand_best_score + NOISE_FLOOR:
                 kept = True
                 status_label = "improved"
-            elif score == brand_best_score:
+            elif score > brand_best_score - NOISE_FLOOR:
                 kept = False
-                status_label = "flat"
+                status_label = "noise"
             else:
                 kept = False
                 status_label = "regressed"
@@ -363,9 +365,14 @@ def main() -> int:
             update_job_state(job_path, state, status="completed")
             return 0
 
-        if len(history) >= 2 and abs(history[-1] - history[-2]) < 0.001:
-            update_job_state(job_path, state, status="stalled")
-            return 0
+        # Stall detection: 3-iteration window with spread below the noise floor
+        # means the loop is thrashing inside re-render jitter — stop wasting
+        # Claude runs. See docs/plans/2026-04-22-improvement-loop-diagnosis.md.
+        if len(history) >= 3:
+            window = history[-3:]
+            if max(window) - min(window) < 0.01:
+                update_job_state(job_path, state, status="stalled")
+                return 0
 
         if iteration >= args.max_iterations:
             break

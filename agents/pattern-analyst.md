@@ -77,5 +77,5 @@ The cache_dir is passed to you in the dispatch prompt. It will be something like
 
 ## Output contract
 
-- `{cache_dir}/patterns.json` -- 9 mechanical pattern signals
+- `{cache_dir}/patterns.json` -- 9 mechanical pattern signals plus a top-level `component_categories` field mapping each extracted component name to one of: `layout`, `navigation`, `data-display`, `data-input`, `feedback`, `overlay`, `typography`, `media`, `other`. Downstream agents (notably `replica-builder`) can use these categories to group components and pick appropriate shadcn primitives. The field is `{}` when no components are present in `tokens-output.json`.
 - `{cache_dir}/patterns-llm.json` -- LLM-interpreted design signals

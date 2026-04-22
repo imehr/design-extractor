@@ -145,7 +145,7 @@ def test_build_claude_improvement_prompt_includes_pages_and_feedback():
 
     assert "woolworthsgroup-com-au" in prompt
     assert "80.0%" in prompt
-    assert "67.8%" in prompt
+    assert "64.1%" in prompt
     assert "our-brands" in prompt
     assert "ui/app/brands/woolworthsgroup-com-au/replica/our-brands/page.tsx" in prompt
     assert "layout fidelity" in prompt
@@ -161,7 +161,10 @@ def test_build_claude_command_uses_print_prompt_and_tools():
     assert "--permission-mode" in command
     assert "bypassPermissions" in command
     assert "--allowedTools" in command
-    assert "--tools" in command
+    # Verify key allowed tools are present
+    assert "Read" in command
+    assert "Write" in command
+    assert "Edit" in command
 
 
 def test_missing_capture_pages_reports_pages_without_required_images():

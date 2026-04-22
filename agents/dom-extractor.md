@@ -180,4 +180,32 @@ The extraction JSON should have a `sectionCount` field at the top level for vali
 - `{cache_dir}/dom-extraction/{page-slug}.json` — extracted DOM content
 - `{cache_dir}/dom-extraction/{page-slug}-screenshot.png` — full-page reference screenshot
 - `{cache_dir}/assets/images/` — downloaded images
+
+### JSON schema (must be present for downstream asset download + replica build)
+
+```jsonc
+{
+  "url": "...",
+  "title": "...",
+  "sections": [
+    {
+      "tag": "main",
+      "images": [ { "src": "https://...", "alt": "..." } ],
+      "backgroundImages": [ "https://..." ]   // MUST include descendants, not just section element
+    }
+  ],
+  "header": {                                  // dedicated capture outside strict <header>/<nav>
+    "logo": { "src": "https://.../logo.svg", "alt": "...", "type": "img" }
+    //  or: { "outerHTML": "<svg>...</svg>", "type": "svg" }
+  },
+  "allImages": [ { "src": "...", "loc": { "top": N, "w": N, "h": N } } ],          // fallback pool
+  "allBackgroundImages": [ { "url": "...", "tag": "div", "loc": { ... } } ]         // fallback pool
+}
+```
+
+### Critical invariants
+
+1. **`backgroundImages` must walk descendants**, not just the section element. Hero illustrations live on a nested `<div class="hero-banner">`, not on the `<main>` wrapper. A section with `getComputedStyle(el).backgroundImage === 'none'` can still contain descendants with real URLs.
+2. **`header.logo` must be captured explicitly**, via selectors like `a[href="/"] img`, `[class*="logo"] img`, `a[title*="logo" i] img`, and inline-SVG fallbacks. Do not rely on the logo being inside a `<header>` or `<nav>` tag — many sites wrap it in a generic `<div class="header-main__logo">`.
+3. **`allImages` and `allBackgroundImages` are mandatory fallback pools** that capture every image on the page (including data-cards that section traversal misses). Downstream asset download unions these with per-section arrays. Never omit them.
 - `{cache_dir}/assets/fonts/` — downloaded fonts

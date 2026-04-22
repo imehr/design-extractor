@@ -75,6 +75,14 @@ Write a negative trigger block covering: the brand's actual product/service doma
 
 Construct the context dict with: brand_name, slug, source_url, extracted_at, positive_triggers, negative_triggers, tokens_inline (compact colour/type/spacing/radius/shadow/motion values), component_rules (extracted from DESIGN.md Components section), voice_guardrails (tone, CTA patterns, do/don't examples), and tagline.
 
+Additionally, to make the rendered SKILL.md self-contained (so target projects do not need sibling files at read-time), pass these extra context variables into the render:
+
+- `design_md_body`: result of reading `{cache_dir}/DESIGN.md` (the full rendered DESIGN.md text). Embedded inline under a `## Full reference (embedded)` section so Claude has the whole spec without hopping to a sibling file.
+- `tokens_json_compact`: `json.dumps(compact_tokens, indent=2)` where `compact_tokens` is the filtered subset already produced for `references/tokens.json` (colour, typography, spacing, radius, shadow, and motion groups only, with extraction metadata stripped). Keep it small -- this is the same blob written to `references/tokens.json`, serialised as an indented JSON string.
+- `components_block`: the full Components section extracted from DESIGN.md -- the same text used for `references/components.md`, or the slice between the `## Components` header and the next top-level `## ` header. Do NOT truncate individual component specs.
+
+Do NOT embed the replica HTML -- it is too large and will bloat the skill. `replica/index.html` stays as a sibling file only.
+
 Render via Bash:
 
 ```bash

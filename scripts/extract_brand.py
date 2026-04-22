@@ -34,6 +34,26 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
 
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.text import Text
+    _RICH = True
+    _console = Console()
+except ImportError:
+    _RICH = False
+    _console = None
+
+# Telemetry is best-effort: script lives in same dir as telemetry.py, so a
+# direct import should always work when invoked as `python3 scripts/...`.
+# Guarded so a missing telemetry.py never breaks the CLI.
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from telemetry import write_phase_event as _write_phase_event
+except Exception:  # pragma: no cover — defensive fallback
+    def _write_phase_event(*_args, **_kwargs):  # type: ignore[misc]
+        return None
+
 # ── Constants ─────────────────────────────────────────────────────────────
 
 LIBRARY_ROOT = Path.home() / ".claude" / "design-library"
@@ -47,7 +67,7 @@ MIN_PAGES = 5
 AGENT_BROWSER = "agent-browser"
 DOM_EXTRACT_TIMEOUT = 45
 SCREENSHOT_TIMEOUT = 20
-CLAUDE_TIMEOUT = 900  # 15 min for replica generation
+CLAUDE_TIMEOUT = 1500  # 25 min per replica-build pass (split into 2 passes)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────
@@ -115,19 +135,56 @@ def agent_browser_cmd(args: list[str], session: str, headed: bool = False) -> li
     return cmd
 
 
-def step(phase: str, message: str) -> None:
-    """Print a step header."""
-    print(f"\n{'='*60}")
-    print(f"  [{phase}] {message}")
-    print(f"{'='*60}")
+def phase_banner(phase_num: int, title: str, detail: str = "") -> None:
+    """Print a visually distinct phase banner. Falls back to plain text if rich is missing."""
+    if _RICH:
+        body = Text()
+        body.append(f"Phase {phase_num}", style="bold cyan")
+        body.append(f"  {title}", style="bold white")
+        if detail:
+            body.append(f"\n{detail}", style="dim")
+        _console.print(Panel(body, border_style="cyan", padding=(0, 1)))
+    else:
+        print()
+        print("=" * 72)
+        print(f"  Phase {phase_num}: {title}")
+        if detail:
+            print(f"  {detail}")
+        print("=" * 72)
+
+
+def step(msg: str) -> None:
+    if _RICH:
+        _console.print(f"[cyan]•[/] {msg}")
+    else:
+        print(f"  • {msg}")
+
+
+def ok(msg: str) -> None:
+    if _RICH:
+        _console.print(f"[green]✓[/] {msg}")
+    else:
+        print(f"  [OK] {msg}")
+
+
+def warn(msg: str) -> None:
+    if _RICH:
+        _console.print(f"[yellow]![/] {msg}")
+    else:
+        print(f"  [!] {msg}")
 
 
 def info(msg: str) -> None:
+    """Lightweight info line (plain, used for bulk output like lists)."""
     print(f"  {msg}")
 
 
 def fail(msg: str) -> None:
-    print(f"\n  FAILED: {msg}", file=sys.stderr)
+    """Print an error and exit (non-zero). Preserves previous exit behavior."""
+    if _RICH:
+        _console.print(f"[red]✗[/] [bold red]FAILED:[/] {msg}")
+    else:
+        print(f"\n  [X] FAILED: {msg}", file=sys.stderr)
     sys.exit(1)
 
 
@@ -174,7 +231,7 @@ def setup_directories(slug: str) -> dict[str, Path]:
 
 def verify_agent_rules():
     """Check that agent files contain critical learned rules."""
-    step("Phase 0.5", "Verifying agent rules")
+    phase_banner(0, "Verifying agent rules", "Checking critical learned rules in agent definitions")
     rules_to_check = {
         "agents/dom-extractor.md": ["background-image", "sectionCount", "Step 7"],
         "agents/replica-builder.md": ["section completeness", "DOM measurement", "object-cover"],
@@ -192,16 +249,16 @@ def verify_agent_rules():
 
     if missing:
         for m in missing:
-            info(f"  WARNING: {m}")
+            warn(m)
     else:
-        info("  All agent rules verified")
+        ok("All agent rules verified")
 
 
 # ── Phase 1: Verify URL ──────────────────────────────────────────────────
 
 def verify_url(url: str, headed: bool) -> str:
     """Open the URL in agent-browser and verify it loads. Returns page title."""
-    step("Phase 1", f"Verifying URL: {url}")
+    phase_banner(1, "Verifying URL", url)
 
     session = f"verify-{int(time.time())}"
     cmd_open = agent_browser_cmd(["open", url], session=session, headed=headed)
@@ -223,7 +280,7 @@ def verify_url(url: str, headed: bool) -> str:
     if not title or "404" in title.lower() or "not found" in title.lower():
         fail(f"URL appears invalid. Page title: '{title}'")
 
-    info(f"Page title: {title}")
+    ok(f"Page title: {title}")
     return title
 
 
@@ -231,7 +288,7 @@ def verify_url(url: str, headed: bool) -> str:
 
 def identify_pages(url: str, headed: bool) -> dict[str, dict]:
     """Extract nav links and classify into page types. Returns pages dict."""
-    step("Phase 2", "Identifying pages via nav link extraction")
+    phase_banner(2, "Identifying pages", "Extracting nav links and classifying page types")
 
     session = f"recon-{int(time.time())}"
     cmd_open = agent_browser_cmd(["open", url], session=session, headed=headed)
@@ -290,9 +347,9 @@ def identify_pages(url: str, headed: bool) -> dict[str, dict]:
         if isinstance(parsed_json, list):
             raw_links = parsed_json
         else:
-            info(f"Warning: Could not parse nav links. Raw output: {stdout[:200]}")
+            warn(f"Could not parse nav links. Raw output: {stdout[:200]}")
 
-    info(f"Found {len(raw_links)} internal links")
+    step(f"Found {len(raw_links)} internal links")
 
     # Classify links into page types
     classified = _classify_links(raw_links, url)
@@ -346,7 +403,7 @@ def identify_pages(url: str, headed: bool) -> dict[str, dict]:
             }
             used_paths.add(path)
 
-    info(f"Selected {len(pages)} pages:")
+    ok(f"Selected {len(pages)} pages:")
     for name, config in pages.items():
         info(f"  {name}: {config['original_url']}")
 
@@ -408,7 +465,7 @@ def write_pages_json(slug: str, pages: dict) -> Path:
     pages_path.parent.mkdir(parents=True, exist_ok=True)
     with open(pages_path, "w") as f:
         json.dump(pages, f, indent=2)
-    info(f"Wrote {pages_path}")
+    ok(f"Wrote {pages_path}")
     return pages_path
 
 
@@ -422,11 +479,11 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
     screenshot_path = dom_dir / f"{page_slug}-screenshot.png"
 
     if skip_existing and dom_json_path.exists() and measurements_path.exists():
-        info(f"  {page_slug}: skipped (exists)")
+        step(f"{page_slug}: skipped (exists)")
         return
 
     session = f"dom-{slug}-{page_slug}"
-    info(f"  {page_slug}: opening {page_url}")
+    step(f"{page_slug}: opening {page_url}")
 
     # Open page
     run_cmd(
@@ -448,7 +505,111 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
         shutil.copy2(screenshot_path, ref_path)
 
     # Extract DOM content
+    # NOTE: Three critical fixes vs earlier versions:
+    #   1. backgroundImages walks section descendants, not just section element.
+    #      Hero backgrounds live on inner <div>, not on the <main> wrapper.
+    #   2. Dedicated header block captures logo <img>/<svg>/[class*=logo]
+    #      outside the strict <header>/<nav> tag selectors.
+    #   3. Top-level allImages + allBackgroundImages fallback arrays
+    #      catch anything missed by section traversal.
     js_dom = """JSON.stringify((() => {
+        const parseUrls = (bgImg) => {
+            if (!bgImg || bgImg === 'none') return [];
+            const out = [];
+            const matches = bgImg.match(/url\\(["']?([^"')]+)["']?\\)/g) || [];
+            matches.forEach(m => {
+                const clean = m.replace(/url\\(["']?/, '').replace(/["']?\\)$/, '');
+                if (clean && !clean.startsWith('data:')) out.push(clean);
+            });
+            return out;
+        };
+        // Reject SVG fragment references: url(#clip-path), or browser-resolved forms
+        // like 'https://origin/#clip-path' that point at inline SVG <defs>.
+        // Chromium sometimes URL-encodes the hash into the path as /%23clip-path,
+        // so we also check for that shape.
+        const isSvgFragmentRef = (u) => {
+            if (!u) return true;
+            if (u.startsWith('#')) return true;
+            // Match 'https?://host/#...' or 'https?://host/%23...'
+            if (/^https?:\\/\\/[^\\/]+\\/(?:#|%23)/i.test(u)) return true;
+            try {
+                const parsed = new URL(u, window.location.href);
+                const isSameOrigin = parsed.origin === window.location.origin;
+                const decodedPath = decodeURIComponent(parsed.pathname || '');
+                const hasMeaningfulPath = decodedPath && decodedPath !== '/' && !decodedPath.startsWith('/#');
+                if (!hasMeaningfulPath && (parsed.hash || decodedPath.startsWith('/#'))) return true;
+                if (!hasMeaningfulPath && isSameOrigin) return true;
+            } catch {}
+            return false;
+        };
+        const absolute = (u) => {
+            try { return new URL(u, window.location.href).href; } catch { return u; }
+        };
+
+        // Fallback: every <img> on the page (dedupe later)
+        const allImages = Array.from(document.querySelectorAll('img[src]')).map(img => {
+            const r = img.getBoundingClientRect();
+            return {
+                src: absolute(img.src),
+                alt: img.alt || '',
+                width: img.naturalWidth,
+                height: img.naturalHeight,
+                loc: { top: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }
+            };
+        });
+
+        // Fallback: every background-image on the page (walk all elements)
+        const allBackgroundImages = [];
+        const seenBg = new Set();
+        Array.from(document.querySelectorAll('body *')).forEach(el => {
+            const r = el.getBoundingClientRect();
+            if (r.width < 40 || r.height < 40) return;
+            const urls = parseUrls(getComputedStyle(el).backgroundImage);
+            urls.forEach(u => {
+                if (isSvgFragmentRef(u)) return;
+                const abs = absolute(u);
+                if (isSvgFragmentRef(abs)) return;
+                if (seenBg.has(abs)) return;
+                seenBg.add(abs);
+                allBackgroundImages.push({
+                    url: abs,
+                    tag: el.tagName.toLowerCase(),
+                    className: (el.className?.toString?.() || '').substring(0, 120),
+                    loc: { top: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }
+                });
+            });
+        });
+
+        // Dedicated header extraction (logo images, inline SVG, nav)
+        const header = { logo: null, logoImages: [], logoSvgs: [] };
+        const logoCandidateSelectors = [
+            'header a[href="/"] img',
+            'a[title*="logo" i] img',
+            'a[aria-label*="logo" i] img',
+            '[class*="logo"] img',
+            'header img[alt*="logo" i]'
+        ];
+        for (const sel of logoCandidateSelectors) {
+            document.querySelectorAll(sel).forEach(img => {
+                if (!header.logo) {
+                    header.logo = { src: absolute(img.src), alt: img.alt || '', type: 'img' };
+                }
+                header.logoImages.push({ src: absolute(img.src), alt: img.alt || '' });
+            });
+            if (header.logo) break;
+        }
+        if (!header.logo) {
+            const svgSelectors = ['header a[href="/"] svg', '[class*="logo"] svg', 'header svg'];
+            for (const sel of svgSelectors) {
+                const svg = document.querySelector(sel);
+                if (svg) {
+                    header.logo = { outerHTML: svg.outerHTML.substring(0, 8000), type: 'svg' };
+                    header.logoSvgs.push(svg.outerHTML.substring(0, 8000));
+                    break;
+                }
+            }
+        }
+
         const sections = [];
         const allSections = document.querySelectorAll('header, nav, main, section, footer, [role="main"], [role="banner"], [role="contentinfo"], article, .hero, [class*="hero"]');
 
@@ -491,29 +652,44 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
 
             el.querySelectorAll('img[src]').forEach(img => {
                 section.images.push({
-                    src: img.src,
+                    src: absolute(img.src),
                     alt: img.alt || '',
                     width: img.naturalWidth,
                     height: img.naturalHeight
                 });
             });
 
-            const cs = getComputedStyle(el);
-            const bgImg = cs.backgroundImage;
-            if (bgImg && bgImg !== 'none') {
-                const urls = bgImg.match(/url\\(["']?([^"')]+)["']?\\)/g);
-                if (urls) {
-                    urls.forEach(u => {
-                        const clean = u.replace(/url\\(["']?/, '').replace(/["']?\\)/, '');
-                        section.backgroundImages.push(clean);
-                    });
-                }
-            }
+            // FIX: walk section + descendants for background-image, not just the section itself.
+            const seenInSection = new Set();
+            const scanEl = (target) => {
+                const urls = parseUrls(getComputedStyle(target).backgroundImage);
+                urls.forEach(u => {
+                    if (isSvgFragmentRef(u)) return;
+                    const abs = absolute(u);
+                    if (isSvgFragmentRef(abs)) return;
+                    if (seenInSection.has(abs)) return;
+                    seenInSection.add(abs);
+                    section.backgroundImages.push(abs);
+                });
+            };
+            scanEl(el);
+            el.querySelectorAll('*').forEach(child => {
+                const r = child.getBoundingClientRect();
+                if (r.width < 60 || r.height < 60) return;
+                scanEl(child);
+            });
 
             sections.push(section);
         });
 
-        return { url: window.location.href, title: document.title, sections: sections };
+        return {
+            url: window.location.href,
+            title: document.title,
+            sections: sections,
+            header: header,
+            allImages: allImages,
+            allBackgroundImages: allBackgroundImages
+        };
     })())"""
 
     result = run_cmd(
@@ -526,7 +702,7 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
     if stdout:
         dom_data = parse_eval_json(stdout)
         if dom_data is None:
-            info(f"  Warning: Could not parse DOM extraction for {page_slug}")
+            warn(f"Could not parse DOM extraction for {page_slug}")
             dom_data = {"url": page_url, "title": "", "sections": [], "parse_error": True}
 
     with open(dom_json_path, "w") as f:
@@ -614,7 +790,7 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
     with open(measurements_path, "w") as f:
         json.dump(measurements, f, indent=2)
 
-    info(f"  {page_slug}: DOM ({len(dom_data.get('sections', []))} sections) + measurements saved")
+    ok(f"{page_slug}: DOM ({len(dom_data.get('sections', []))} sections) + measurements saved")
     assert_exists(dom_json_path, f"DOM extraction for {page_slug}")
 
 
@@ -652,7 +828,7 @@ def _browser_fetch_fallback(url: str, dest: str, session: str = "dl", headed: bo
 
 def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
     """Download images, fonts, SVGs, and CSS background images from DOM extraction data."""
-    step("Phase 4", "Downloading assets")
+    phase_banner(4, "Downloading assets", "Images, fonts, SVGs, and CSS background images")
 
     dom_dir = dirs["dom_extraction"]
     public_dir = dirs["public"]
@@ -678,8 +854,25 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
                 if bg and not bg.startswith("data:"):
                     bg_image_urls.add(bg)
 
+        # Page-level fallback pools (new in dom-extractor v2) — catch images missed by section traversal
+        for img in dom.get("allImages", []):
+            src = img.get("src", "")
+            if src and not src.startswith("data:"):
+                image_urls.add(src)
+        for bg in dom.get("allBackgroundImages", []):
+            url = bg.get("url", "") if isinstance(bg, dict) else bg
+            if url and not url.startswith("data:"):
+                bg_image_urls.add(url)
+
+        # Header logo (dedicated capture)
+        header = dom.get("header", {}) or {}
+        logo = header.get("logo") or {}
+        logo_src = logo.get("src") if isinstance(logo, dict) else None
+        if logo_src and not logo_src.startswith("data:"):
+            image_urls.add(logo_src)
+
     all_urls = list(image_urls | bg_image_urls)
-    info(f"Found {len(image_urls)} images + {len(bg_image_urls)} background images = {len(all_urls)} total")
+    step(f"Found {len(image_urls)} images + {len(bg_image_urls)} background images = {len(all_urls)} total")
 
     for url_str in all_urls:
         try:
@@ -714,12 +907,12 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
             file_type = (result.stdout or "").strip().lower()
             if "html" in file_type and not filename.endswith(".svg"):
                 dest.unlink()
-                info(f"  Removed HTML error page: {filename}")
+                warn(f"Removed HTML error page: {filename}")
                 continue
 
             downloaded += 1
         except Exception as e:
-            info(f"  Failed to download {url_str[:80]}: {e}")
+            warn(f"Failed to download {url_str[:80]}: {e}")
 
     # Extract and download fonts from the first page using agent-browser
     first_page_url = list(pages.values())[0]["original_url"]
@@ -779,97 +972,221 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
                     except Exception:
                         pass
     except RuntimeError:
-        info("  Font extraction failed (non-fatal)")
+        warn("Font extraction failed (non-fatal)")
 
-    info(f"Downloaded {downloaded} assets to {public_dir}")
+    ok(f"Downloaded {downloaded} assets to {public_dir}")
+
+    # Mirror downloaded files into the cache assets directory so the brand's
+    # symlinked `assets/` (cache -> published brand dir) reflects what was
+    # actually fetched. Without this, apply_design.py --include-replica-ui ships
+    # a stale asset set from earlier runs.
+    assets_cache = dirs["assets_cache"]
+    assets_cache.mkdir(parents=True, exist_ok=True)
+    mirrored = 0
+    for src_file in public_dir.rglob("*"):
+        if not src_file.is_file() or src_file.name.startswith("."):
+            continue
+        rel = src_file.relative_to(public_dir)
+        dst_file = assets_cache / rel
+        try:
+            dst_file.parent.mkdir(parents=True, exist_ok=True)
+            if not dst_file.exists() or dst_file.stat().st_mtime < src_file.stat().st_mtime:
+                shutil.copy2(src_file, dst_file)
+                mirrored += 1
+        except OSError:
+            continue
+    if mirrored:
+        step(f"Mirrored {mirrored} files into {assets_cache}")
+
     return downloaded
+
+
+# ── Phase 4b: Brand Kit (press-kit discovery) ────────────────────────────
+
+def run_brand_kit(slug: str, url: str, brand_name: str, dirs: dict) -> dict:
+    """Invoke brand_kit_extractor.py to discover and download official press-kit
+    assets. Best-effort — must never fail the pipeline."""
+    phase_banner(4, "Brand kit (press-kit discovery)", "Probing /press, /brand, /brand-assets")
+    cache_dir = dirs["cache"]
+    cmd = [
+        sys.executable,
+        str(SCRIPTS_DIR / "brand_kit_extractor.py"),
+        "--brand-name", brand_name or slug,
+        "--slug", slug,
+        "--source-url", url,
+        "--cache-dir", str(cache_dir),
+        "--ui-dir", str(UI_DIR),
+        "--limit", "40",
+    ]
+    step(f"Running brand_kit_extractor against {url}")
+    try:
+        r = subprocess.run(cmd, timeout=300, capture_output=True, text=True)
+    except subprocess.TimeoutExpired:
+        warn("brand_kit_extractor timed out — skipping")
+        return {"status": "timeout"}
+    except Exception as e:
+        warn(f"brand_kit_extractor dispatch failed: {e}")
+        return {"status": "error"}
+    if r.returncode != 0:
+        warn(f"brand_kit_extractor non-zero exit: {r.returncode}")
+        if r.stderr:
+            warn(r.stderr[-500:])
+        return {"status": "error"}
+    report_path = cache_dir / "brand-kit" / "report.json"
+    if report_path.exists():
+        try:
+            return json.loads(report_path.read_text())
+        except json.JSONDecodeError:
+            return {"status": "malformed_report"}
+    status_path = cache_dir / "brand-kit" / "status.json"
+    if status_path.exists():
+        try:
+            return json.loads(status_path.read_text())
+        except json.JSONDecodeError:
+            return {"status": "malformed_status"}
+    return {"status": "no_output"}
 
 
 # ── Phase 5: Build Replicas ──────────────────────────────────────────────
 
-def build_replicas(slug: str, url: str, pages: dict, dirs: dict) -> None:
-    """Call claude --print to generate React/shadcn replicas from DOM extraction data."""
-    step("Phase 5", "Building React/shadcn replicas via Claude")
-
-    page_list = []
-    for page_slug, config in pages.items():
-        page_list.append({
-            "slug": page_slug,
-            "original_url": config["original_url"],
-            "replica_route": config["replica_route"],
-        })
-
-    # List all downloaded assets so Claude knows what images are available
-    public_dir = dirs["public"]
-    asset_list = []
+def _build_asset_listing(slug: str, public_dir: Path) -> tuple[list[str], str]:
+    """Return (full_asset_paths, human-formatted listing for the prompt)."""
+    asset_list: list[str] = []
     if public_dir.exists():
         for f in sorted(public_dir.rglob("*")):
             if f.is_file() and not f.name.startswith("."):
                 rel = f.relative_to(public_dir)
                 asset_list.append(str(rel))
-    asset_str = "\n".join(f"  /brands/{slug}/{a}" for a in asset_list[:50])
-    if len(asset_list) > 50:
-        asset_str += f"\n  ... and {len(asset_list) - 50} more files"
+    asset_str = "\n".join(f"  /brands/{slug}/{a}" for a in asset_list[:80])
+    if len(asset_list) > 80:
+        asset_str += f"\n  ... and {len(asset_list) - 80} more files"
+    return asset_list, asset_str
 
-    prompt = f"""Build React/shadcn replica components for {url}.
+
+def _run_claude_print(prompt: str, label: str) -> None:
+    """Dispatch a single claude --print call. Non-fatal on failure/timeout."""
+    step(f"Calling claude --print: {label}")
+    try:
+        result = run_cmd(
+            [
+                "claude", "--print",
+                "-p", prompt,
+                "--permission-mode", "bypassPermissions",
+                "--allowedTools", "Read,Write,Edit,Bash,Glob,Grep",
+            ],
+            timeout=CLAUDE_TIMEOUT,
+            check=False,
+        )
+        if result.returncode != 0:
+            stderr = (result.stderr or "").strip()
+            warn(f"Claude exited with code {result.returncode} ({label})")
+            if stderr:
+                info(f"stderr: {stderr[:500]}")
+    except RuntimeError as err:
+        warn(f"Claude dispatch timed out ({label}): {err}")
+
+
+def build_replicas(slug: str, url: str, pages: dict, dirs: dict) -> None:
+    """Generate React/shadcn replicas in two passes, each with its own claude --print budget.
+
+    Pass 1: shared components (header, footer, logo) + homepage replica
+    Pass 2: remaining inner pages (about-us, products, contact-us, etc.)
+
+    Splitting prevents the 15-minute timeout from cutting off the inner pages when the
+    shared components take most of the budget. Each pass gets the full CLAUDE_TIMEOUT.
+    """
+    phase_banner(5, "Building React/shadcn replicas", "Two-pass Claude dispatch for timeout resilience")
+
+    asset_list, asset_str = _build_asset_listing(slug, dirs["public"])
+    dom_dir = dirs["dom_extraction"]
+
+    common_rules = (
+        "RULES:\n"
+        "- Use shadcn/ui components (Card, Button, Separator) where appropriate\n"
+        "- Use Lucide React icons only for generic UI elements (never emoji)\n"
+        "- INCLUDE ALL IMAGES — every hero, card, article thumbnail, logo from the asset list\n"
+        "- Extract ALL sections from DOM JSON — every H2 heading must have a replica section\n"
+        "- Do NOT fabricate text — only use content from DOM extraction JSON files\n"
+        "- Match colors and spacing from the measurement JSON files\n"
+        "- Use the real logo from header.logo.src (path under /brands/{slug}/)\n"
+        "- Use background-image URLs from section.backgroundImages and allBackgroundImages\n"
+        "  for hero sections — these are stored as /brands/{slug}/<filename> after download\n"
+    )
+
+    # ── Pass 1: shared components + homepage ─────────────────────────────
+    homepage_cfg = pages.get("homepage") or next(iter(pages.values()))
+    pass1_prompt = f"""Build React/shadcn shared components + the homepage replica for {url}.
 
 Brand slug: {slug}
-Pages to build: {json.dumps(page_list, indent=2)}
 
-Read the DOM extraction files at {dirs['dom_extraction']}
-Read the measurement files at {dirs['dom_extraction']} (files ending in -measurements.json)
+Read these DOM extraction files (primary source of truth):
+  {dom_dir}/homepage.json
+  {dom_dir}/homepage-measurements.json
+
+The DOM JSON schema includes:
+  - sections[]: per-section headings/text/links/images/backgroundImages
+  - header.logo: {{ src, alt, type }} — USE THIS for the brand logo (it's the real file)
+  - allImages, allBackgroundImages: page-level fallback pools
 
 DOWNLOADED ASSETS ({len(asset_list)} files available at /brands/{slug}/):
 {asset_str}
 
-CRITICAL: You MUST use these actual images in the replicas. Every section that has
-an image in the DOM extraction JSON MUST reference the corresponding downloaded file.
-Use <img src="/brands/{slug}/filename.jpg" /> for images.
-Font files are at /brands/{slug}/fonts/ — add @font-face to globals.css if custom fonts exist.
+Create these files (and ONLY these — the 4 inner pages are built in a separate pass):
+1. {dirs['components']}/{slug}-logo.tsx       — Logo component using header.logo.src
+2. {dirs['components']}/{slug}-header.tsx     — Top nav with utility bar + main nav
+3. {dirs['components']}/{slug}-footer.tsx     — Footer with links, social, legal text
+4. {dirs['replica']}/layout.tsx               — Hides Design Library chrome
+5. {dirs['replica']}/page.tsx                 — Homepage with ALL sections (hero uses backgroundImages[0] from the main section)
 
-Create these files:
-1. {dirs['components']}/ — shared header, footer, logo (e.g. {slug}-header.tsx, {slug}-footer.tsx)
-2. {dirs['replica']}/page.tsx — homepage with ALL sections (hero, content, cards, CTAs, etc.)
-3. {dirs['replica']}/layout.tsx — hides Design Library chrome
-4. For each inner page: {dirs['replica']}/{{page-slug}}/page.tsx — with ALL sections and images
+{common_rules}
 
-RULES:
-- Use shadcn/ui components (Card, Button, Separator)
-- Use Lucide React icons only for UI elements (never emoji)
-- INCLUDE ALL IMAGES — every hero, card, article thumbnail, logo from the asset list above
-- Extract ALL sections from DOM JSON — every H2 heading must have a section in the replica
-- Do NOT fabricate text — only use content from DOM extraction JSON files
-- Match colors and spacing from measurement JSON files
-- Each page must be a complete, scrollable page with header + content sections + footer
-
-The UI project is a Next.js app at {UI_DIR}.
+The UI project is a Next.js app at {UI_DIR}. Verify TypeScript compiles before finishing.
 """
+    _run_claude_print(pass1_prompt, "pass 1 (shared + homepage)")
 
-    info("Calling claude --print for replica generation...")
-    info("(This may take several minutes)")
+    # ── Pass 2: inner pages ──────────────────────────────────────────────
+    inner_pages = [
+        {"slug": s, "original_url": c["original_url"], "replica_route": c["replica_route"]}
+        for s, c in pages.items()
+        if s != "homepage"
+    ]
+    if not inner_pages:
+        ok("Only homepage requested — skipping pass 2")
+        return
 
-    result = run_cmd(
-        [
-            "claude", "--print",
-            "-p", prompt,
-            "--permission-mode", "bypassPermissions",
-            "--allowedTools", "Read,Write,Edit,Bash,Glob,Grep",
-        ],
-        timeout=CLAUDE_TIMEOUT,
-        check=False,
+    inner_list = "\n".join(
+        f"  {p['slug']:20s} -> {dirs['replica']}/{p['slug']}/page.tsx  (read {dom_dir}/{p['slug']}.json)"
+        for p in inner_pages
     )
 
-    if result.returncode != 0:
-        stderr = (result.stderr or "").strip()
-        info(f"Claude exited with code {result.returncode}")
-        if stderr:
-            info(f"stderr: {stderr[:500]}")
-        # Non-fatal: check if files were created anyway
+    pass2_prompt = f"""Build the inner-page replicas for {url}. Shared components (header/footer/logo) already exist at {dirs['components']}/ — import them.
+
+Brand slug: {slug}
+
+Inner pages to build ({len(inner_pages)} total):
+{inner_list}
+
+For each page:
+  - Read {dom_dir}/<page-slug>.json for sections/content/images
+  - Read {dom_dir}/<page-slug>-measurements.json for layout hints
+  - Every H2 in DOM => one section in the replica
+  - Hero uses section.backgroundImages or allBackgroundImages[0] as background
+  - Import header from {dirs['components']}/{slug}-header.tsx
+  - Import footer from {dirs['components']}/{slug}-footer.tsx
+
+DOWNLOADED ASSETS ({len(asset_list)} files at /brands/{slug}/):
+{asset_str}
+
+{common_rules}
+
+The UI project is a Next.js app at {UI_DIR}. Build ALL {len(inner_pages)} inner pages. Verify TypeScript compiles before finishing.
+"""
+    _run_claude_print(pass2_prompt, f"pass 2 ({len(inner_pages)} inner pages)")
 
 
 def verify_replicas(slug: str, pages: dict, dirs: dict) -> None:
     """Verify all expected replica files exist."""
-    step("Phase 5b", "Verifying replica files")
+    phase_banner(5, "Verifying replica files", "Checking generated components and running TypeScript check")
 
     replica_dir = dirs["replica"]
     components_dir = dirs["components"]
@@ -878,14 +1195,14 @@ def verify_replicas(slug: str, pages: dict, dirs: dict) -> None:
     homepage_tsx = replica_dir / "page.tsx"
     if not homepage_tsx.exists():
         fail(f"Missing homepage replica: {homepage_tsx}")
-    info(f"  homepage/page.tsx: exists ({homepage_tsx.stat().st_size} bytes)")
+    ok(f"homepage/page.tsx: exists ({homepage_tsx.stat().st_size} bytes)")
 
     # Check layout
     layout_tsx = replica_dir / "layout.tsx"
     if not layout_tsx.exists():
-        info("  Warning: layout.tsx missing (will use parent layout)")
+        warn("layout.tsx missing (will use parent layout)")
     else:
-        info(f"  layout.tsx: exists ({layout_tsx.stat().st_size} bytes)")
+        ok(f"layout.tsx: exists ({layout_tsx.stat().st_size} bytes)")
 
     # Check inner pages
     for page_slug in pages:
@@ -893,18 +1210,18 @@ def verify_replicas(slug: str, pages: dict, dirs: dict) -> None:
             continue
         page_tsx = replica_dir / page_slug / "page.tsx"
         if not page_tsx.exists():
-            info(f"  Warning: missing {page_slug}/page.tsx")
+            warn(f"missing {page_slug}/page.tsx")
         else:
-            info(f"  {page_slug}/page.tsx: exists ({page_tsx.stat().st_size} bytes)")
+            ok(f"{page_slug}/page.tsx: exists ({page_tsx.stat().st_size} bytes)")
 
     # Check shared components
     component_files = list(components_dir.glob("*.tsx"))
-    info(f"  Shared components: {len(component_files)} files")
+    step(f"Shared components: {len(component_files)} files")
     for cf in component_files:
         info(f"    {cf.name} ({cf.stat().st_size} bytes)")
 
     # TypeScript compile check (non-fatal)
-    info("  Running TypeScript check...")
+    step("Running TypeScript check")
     result = run_cmd(
         ["npx", "tsc", "--noEmit"],
         timeout=120,
@@ -912,25 +1229,25 @@ def verify_replicas(slug: str, pages: dict, dirs: dict) -> None:
         check=False,
     )
     if result.returncode == 0:
-        info("  TypeScript: passed")
+        ok("TypeScript: passed")
     else:
         errors = (result.stdout or "").strip()
         error_count = errors.count("error TS")
-        info(f"  TypeScript: {error_count} errors (non-fatal, replicas may still render)")
+        warn(f"TypeScript: {error_count} errors (non-fatal, replicas may still render)")
 
 
 # ── Phase 6: Validate ────────────────────────────────────────────────────
 
 def run_validation(slug: str) -> float:
     """Run the validation harness. Returns average score."""
-    step("Phase 6", "Running screenshot validation")
+    phase_banner(6, "Running screenshot validation", "Comparing replicas against reference screenshots")
 
     base_url = "http://localhost:5173"
     cache_dir = CACHE_ROOT / slug
 
     validation_script = SCRIPTS_DIR / "run_validation_loop.py"
     if not validation_script.exists():
-        info("Warning: run_validation_loop.py not found, skipping validation")
+        warn("run_validation_loop.py not found, skipping validation")
         return 0.0
 
     result = run_cmd(
@@ -949,7 +1266,7 @@ def run_validation(slug: str) -> float:
     print(output)
 
     # Also run component-level validation for actionable feedback
-    info("Running component-level validation...")
+    step("Running component-level validation")
     comp_validator = SCRIPTS_DIR / "component_validator.py"
     if comp_validator.exists():
         comp_result = run_cmd(
@@ -960,9 +1277,9 @@ def run_validation(slug: str) -> float:
             timeout=300, check=False,
         )
         if comp_result.returncode == 0:
-            info("Component validation report saved")
+            ok("Component validation report saved")
         else:
-            info(f"Component validation exited with code {comp_result.returncode} (non-fatal)")
+            warn(f"Component validation exited with code {comp_result.returncode} (non-fatal)")
 
     # Parse average score from output
     for line in output.split("\n"):
@@ -978,11 +1295,11 @@ def run_validation(slug: str) -> float:
 
 def publish(slug: str) -> None:
     """Run the publish pipeline to generate design tokens, DESIGN.md, SKILL.md."""
-    step("Phase 7", "Publishing brand artifacts")
+    phase_banner(7, "Publishing brand artifacts", "Generating design tokens, DESIGN.md, and SKILL.md")
 
     publish_script = SCRIPTS_DIR / "publish_brand.py"
     if not publish_script.exists():
-        info("Warning: publish_brand.py not found, skipping publish")
+        warn("publish_brand.py not found, skipping publish")
         return
 
     result = run_cmd(
@@ -992,14 +1309,14 @@ def publish(slug: str) -> None:
     )
     print(result.stdout or "")
     if result.returncode != 0:
-        info(f"Warning: publish exited with code {result.returncode}")
+        warn(f"publish exited with code {result.returncode}")
 
 
 # ── Phase 8: Register ────────────────────────────────────────────────────
 
 def register_in_library(slug: str, url: str, title: str) -> None:
     """Register the brand in the library index."""
-    step("Phase 8", "Registering in design library")
+    phase_banner(8, "Registering in design library", "Updating metadata.json and library index")
 
     brands_dir = BRANDS_ROOT / slug
     meta_path = brands_dir / "metadata.json"
@@ -1072,14 +1389,14 @@ def register_in_library(slug: str, url: str, title: str) -> None:
             json.dump(index, f, indent=2)
             f.write("\n")
 
-    info(f"Registered {slug} in library index")
+    ok(f"Registered {slug} in library index")
 
 
 # ── Phase 9: Final Verification ──────────────────────────────────────────
 
 def final_verification(slug: str, pages: dict, asset_count: int, score: float) -> None:
     """Verify all expected artifacts exist and print summary."""
-    step("Phase 9", "Final verification")
+    phase_banner(9, "Final verification", "Checking artifacts and printing summary")
 
     brands_dir = BRANDS_ROOT / slug
     cache_dir = CACHE_ROOT / slug
@@ -1101,29 +1418,29 @@ def final_verification(slug: str, pages: dict, asset_count: int, score: float) -
 
     for name, path in checks.items():
         if path.exists():
-            info(f"  {name}: OK")
+            ok(f"{name}")
             passed += 1
         else:
-            info(f"  {name}: MISSING")
+            warn(f"{name}: MISSING")
             failed_checks.append(name)
 
     # Check public assets count
     public_files = list(public_dir.rglob("*"))
     public_file_count = len([f for f in public_files if f.is_file()])
     if public_file_count >= 5:
-        info(f"  public/brands/{slug}/: {public_file_count} files OK")
+        ok(f"public/brands/{slug}/: {public_file_count} files")
         passed += 1
     else:
-        info(f"  public/brands/{slug}/: {public_file_count} files (expected 5+)")
+        warn(f"public/brands/{slug}/: {public_file_count} files (expected 5+)")
         failed_checks.append(f"public assets ({public_file_count} files)")
 
     # Check shared components
     component_count = len(list(components_dir.glob("*.tsx")))
     if component_count >= 1:
-        info(f"  components/brands/{slug}/: {component_count} components OK")
+        ok(f"components/brands/{slug}/: {component_count} components")
         passed += 1
     else:
-        info(f"  components/brands/{slug}/: {component_count} components (expected 1+)")
+        warn(f"components/brands/{slug}/: {component_count} components (expected 1+)")
         failed_checks.append("shared components")
 
     # Check library index
@@ -1134,10 +1451,10 @@ def final_verification(slug: str, pages: dict, asset_count: int, score: float) -
             idx = json.load(f)
         in_index = any(b.get("slug") == slug for b in idx.get("brands", []))
     if in_index:
-        info(f"  Library index: registered")
+        ok("Library index: registered")
         passed += 1
     else:
-        info(f"  Library index: NOT registered")
+        warn("Library index: NOT registered")
         failed_checks.append("library index")
 
     total_checks = len(checks) + 3  # +3 for public, components, index
@@ -1191,28 +1508,59 @@ def main() -> int:
     slug = derive_slug(url)
     start_time = time.time()
 
-    print(f"Design Extractor — Orchestrator")
-    print(f"URL:  {url}")
-    print(f"Slug: {slug}")
-    print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    if _RICH:
+        header = Text()
+        header.append("Design Extractor", style="bold magenta")
+        header.append("  Orchestrator\n", style="bold white")
+        header.append(f"URL:  {url}\n", style="white")
+        header.append(f"Slug: {slug}\n", style="white")
+        header.append(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", style="dim")
+        _console.print(Panel(header, border_style="magenta", padding=(0, 1)))
+    else:
+        print("Design Extractor — Orchestrator")
+        print(f"URL:  {url}")
+        print(f"Slug: {slug}")
+        print(f"Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+    # ── Telemetry helper ────────────────────────────────────────────
+    # Each phase call below is wrapped so we emit a "started" event before
+    # and a "completed" event (with duration_s) after. If a phase raises or
+    # calls sys.exit, only the "started" event is written — the aggregator
+    # infers failure from the missing "completed" event.
+    def _phase(phase_id: str, fn, *a, **kw):
+        _write_phase_event(slug, phase=phase_id, status="started")
+        _t0 = time.time()
+        result = fn(*a, **kw)
+        _write_phase_event(
+            slug,
+            phase=phase_id,
+            status="completed",
+            duration_s=time.time() - _t0,
+        )
+        return result
 
     # Phase 0: Setup
-    step("Phase 0", "Setting up directories")
+    _write_phase_event(slug, phase="0", status="started")
+    _p0_start = time.time()
+    phase_banner(0, "Setting up directories", "Creating cache, brand, UI output locations")
     dirs = setup_directories(slug)
     info(f"Cache: {dirs['cache']}")
     info(f"Brand: {dirs['brands']}")
     info(f"UI:    {dirs['public']}")
+    _write_phase_event(slug, phase="0", status="completed", duration_s=time.time() - _p0_start)
 
     # Phase 0.5: Verify agent rules
-    verify_agent_rules()
+    _phase("0.5", verify_agent_rules)
 
     # Phase 1: Verify URL
+    _write_phase_event(slug, phase="1", status="started")
+    _p1_start = time.time()
     try:
         title = verify_url(url, args.headed)
     except RuntimeError as e:
         # Retry with headed if headless fails
         if not args.headed:
-            info(f"Headless failed ({e}), retrying with --headed...")
+            warn(f"Headless failed ({e}), retrying with --headed")
             try:
                 title = verify_url(url, headed=True)
                 args.headed = True  # Use headed for all subsequent steps
@@ -1220,13 +1568,19 @@ def main() -> int:
                 fail(f"URL verification failed: {e2}")
         else:
             fail(f"URL verification failed: {e}")
+    _write_phase_event(slug, phase="1", status="completed", duration_s=time.time() - _p1_start)
 
     # Phase 2: Identify pages
+    _write_phase_event(slug, phase="2", status="started")
+    _p2_start = time.time()
     pages = identify_pages(url, args.headed)
     write_pages_json(slug, pages)
+    _write_phase_event(slug, phase="2", status="completed", duration_s=time.time() - _p2_start)
 
     # Phase 3: Extract DOM from each page
-    step("Phase 3", f"Extracting DOM from {len(pages)} pages")
+    _write_phase_event(slug, phase="3", status="started")
+    _p3_start = time.time()
+    phase_banner(3, "Extracting DOM", f"Extracting content and measurements from {len(pages)} pages")
     for page_slug, config in pages.items():
         extract_dom(
             page_slug,
@@ -1242,33 +1596,52 @@ def main() -> int:
     for page_slug in pages:
         dom_path = dom_dir / f"{page_slug}.json"
         assert_exists(dom_path, f"DOM extraction for {page_slug}")
-    info(f"All {len(pages)} DOM extractions verified")
+    ok(f"All {len(pages)} DOM extractions verified")
+    _write_phase_event(slug, phase="3", status="completed", duration_s=time.time() - _p3_start)
 
     # Phase 4: Download assets
-    asset_count = download_assets(slug, pages, dirs, args.headed)
+    asset_count = _phase("4", download_assets, slug, pages, dirs, args.headed)
+
+    # Phase 4b: Brand kit (press-kit discovery) — best-effort, never fails the pipeline
+    try:
+        brand_kit = _phase("4b", run_brand_kit, slug, url, title, dirs)
+    except Exception as e:
+        warn(f"Brand kit phase errored ({e}) — continuing")
+        brand_kit = {"status": "error"}
+    if isinstance(brand_kit, dict):
+        bk_status = brand_kit.get("status", "unknown")
+        bk_count = brand_kit.get("downloaded_count", 0)
+        if bk_status == "ok":
+            ok(f"Brand kit: {bk_count} assets downloaded via {brand_kit.get('discovery_method','unknown')}")
+        elif bk_status == "not_found":
+            warn("Brand kit: no press-kit page discovered (ok — not all brands publish one)")
+        elif bk_status == "skipped":
+            warn(f"Brand kit: skipped — {brand_kit.get('reason','')}")
+        else:
+            warn(f"Brand kit: status={bk_status}")
 
     # Phase 5: Build replicas
     if not args.skip_replicas:
-        build_replicas(slug, url, pages, dirs)
-        verify_replicas(slug, pages, dirs)
+        _phase("5", build_replicas, slug, url, pages, dirs)
+        _phase("5b", verify_replicas, slug, pages, dirs)
     else:
-        info("Skipping replica generation (--skip-replicas)")
+        warn("Skipping replica generation (--skip-replicas)")
 
     # Phase 6: Validate
     score = 0.0
     if not args.skip_validation and not args.skip_replicas:
-        score = run_validation(slug)
+        score = _phase("6", run_validation, slug)
     else:
-        info("Skipping validation (--skip-validation or --skip-replicas)")
+        warn("Skipping validation (--skip-validation or --skip-replicas)")
 
     # Phase 7: Publish
-    publish(slug)
+    _phase("7", publish, slug)
 
     # Phase 8: Register
-    register_in_library(slug, url, title)
+    _phase("8", register_in_library, slug, url, title)
 
     # Phase 9: Final verification
-    final_verification(slug, pages, asset_count, score)
+    _phase("9", final_verification, slug, pages, asset_count, score)
 
     elapsed = time.time() - start_time
     print(f"\nTotal time: {elapsed/60:.1f} minutes")

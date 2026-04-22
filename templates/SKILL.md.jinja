@@ -142,6 +142,34 @@ Do **not** trigger on:
 {% endif %}{% else %}(No voice data available.)
 {% endif %}
 
+## Full reference (embedded)
+
+### DESIGN.md
+
+{% if design_md_body is defined and design_md_body %}
+{{ design_md_body }}
+{% else %}
+_DESIGN.md body not embedded -- see sibling `DESIGN.md` if available._
+{% endif %}
+
+### design-tokens.json (compact)
+
+```json
+{% if tokens_json_compact is defined and tokens_json_compact %}
+{{ tokens_json_compact }}
+{% else %}
+{}
+{% endif %}
+```
+
+### Components (all specs)
+
+{% if components_block is defined and components_block %}
+{{ components_block }}
+{% else %}
+_No detailed component specs available._
+{% endif %}
+
 ## Install command
 
 ```bash
@@ -152,10 +180,8 @@ This copies this skill into the target project's `.claude/skills/brand-{{ brand.
 
 ## Source
 
-- `DESIGN.md` -- full 15-section design spec
-- `design-tokens.json` -- W3C DTCG 2025.10 format tokens
-- `design-tokens.css` -- `:root` custom properties
-- `replica/index.html` -- self-contained Tailwind-CDN landing page reference
-- `metadata.json` -- library index entry
+All reference material above is embedded inline -- no sibling-file reads required. Sibling files (if present) are kept for debugging:
+
+- `DESIGN.md`, `design-tokens.json`, `design-tokens.css`, `replica/index.html`
 
 Extracted from **{{ brand.source_url | default('N/A') }}** on {{ brand.extracted_at | default('N/A') }}.

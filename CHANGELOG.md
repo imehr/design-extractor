@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-04-22
+
+### Added
+- **`agents/brand-kit-extractor.md` + `scripts/brand_kit_extractor.py`** — new optional Phase 4b agent. Discovers official press-kit / brand-guidelines pages via HTTP path probing (no keys needed). Falls back to SerpAPI only when probing finds nothing. Three-tier scraping preference: Firecrawl → Cloudflare Browser Rendering → plain urllib. Live-tested against perplexity.ai: 43 authentic brand assets downloaded from sources link-walking would never reach.
+- **`scripts/telemetry.py`** — shared helper. `write_phase_event`, `read_all_phase_events`, `read_all_brands`, `read_experiments`. Writes `<ms-ts>-<phase>-<status>.json` events so filenames sort chronologically.
+- **`scripts/extraction_stats.py`** — aggregator CLI. Text + `--json` modes, summary + `--brand <slug>` detail. Reports per-phase median/p95 duration, per-brand score progression, end-to-end success rate. `SUCCESS_THRESHOLD=0.85`, `PARTIAL_THRESHOLD=0.70`.
+- **`scripts/env_loader.py` + `.env.example`** — stdlib-only `.env` loader. Shell-exported values override file values. Documents all optional API keys (`FIRECRAWL_API_KEY`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `SERP_API_KEY`).
+- **Inline-embedded SKILL.md** — `templates/SKILL.md.jinja` gets a new `## Full reference (embedded)` section that inlines DESIGN.md, compact tokens JSON, and components block. Installed brand skills are now self-contained.
+- **Component category regex** — `scripts/pattern_extractor.py` adds `CATEGORY_PATTERNS` + `categorize_component()`. Outputs `component_categories` dict feeding replica-builder.
+- **CLI polish in `extract_brand.py`** — guarded `rich` import with plain-text fallback. `phase_banner`, `step`, `ok`, `warn`, `fail` helpers replace ad-hoc prints.
+- **Phase 4b wiring** — `extract_brand.py` dispatches `brand_kit_extractor.py` alongside Phase 4 asset-extractor; wrapped so it can never fail the pipeline.
+- **Telemetry migration** — `ws_extraction_server.py::_save_job_state` delegates to `telemetry.write_phase_event`; UI resume fields preserved via `extra=` dict.
+- **25 new pytest cases** — `test_brand_kit_extractor.py`, `test_categorize_component.py`, `test_skill_template.py`, `test_extract_brand_cli.py`, `test_package_brand.py`. All unit-testable; no network or live API calls in tests.
+- **Baseline fixture seeded** — `tests/fixtures/baseline/linear-app/` (20KB JSON, from nineforbrands extraction) + `scripts/seed_test_baseline.sh` idempotent seeder. 14 integration tests that previously erred on missing `/tmp/` fixture now run on committed data.
+- **`docs/plans/2026-04-22-improvement-loop-diagnosis.md`** — root-cause analysis of the 40%/60% improvement loop kept/regressed ratio. Pixelmatch noise floor (σ ≈ 0.009) identified as primary cause.
+
+### Fixed
+- **Stale improvement_job test assertions** — `test_build_claude_command_uses_print_prompt_and_tools` no longer asserts a non-existent `--tools` flag; `test_build_claude_improvement_prompt_includes_pages_and_feedback` asserts current `64.1%` instead of stale `67.8%`. `build_claude_improvement_prompt` now actually inlines `recent_feedback` notes (was accepted as kwarg but silently ignored).
+- **Baseline-coupled tests skip cleanly** when fixture is absent instead of erroring.
+
+### Changed
+- **Improvement-loop thresholds** (`scripts/run_improvement_job.py`) — "improved" requires `score > best + 0.01`; "regressed" requires `score < best - 0.01`; band between labelled `noise` and not kept. Stall detection widened from 2-iter delta < 0.001 to 3-iter window spread < 0.01. Expected to cut wasted Claude runs ~40% without losing real gains.
+
+### Testing
+- `pytest tests/ -q` → **57 passed, 1 skipped** (baseline before session: 17 passed, 3 failed, 13 errored).
+- Live end-to-end verified: Firecrawl OK, SerpAPI OK; Cloudflare adapter wired (auth depends on user-supplied token scope).
+
+### Notes
+- Plugin version bumped 0.1.0 → 0.4.0 to align `plugin.json`/`marketplace.json` with the CHANGELOG's actual progression (0.1.0 → 0.2.0 → 0.3.0 → 0.3.1 → 0.4.0). Previous manifests were out of sync.
+
 ## [0.3.1] - 2026-04-13
 
 ### Added

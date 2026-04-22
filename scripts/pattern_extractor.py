@@ -11,6 +11,39 @@ def parse_px(val: str) -> Optional[float]:
     m = re.match(r"^(-?\d+(?:\.\d+)?)px$", val.strip())
     return float(m.group(1)) if m else None
 
+# -- Component category regex map -------------------------------------------
+# First match wins. Pattern adapted from npxskillui/src/extractors/components.ts.
+# Matches against the component name with camelCase→space normalization so
+# word-boundary (\b) patterns work on tokens like "PrimaryButton" → "Primary Button".
+#
+# Ordering note: typography and media are checked before layout so that names
+# like "PageHeading" resolve to typography (heading is a more specific intent
+# than the generic "page" layout anchor). This matches the expected behavior in
+# the implementation spec's verification block.
+CATEGORY_PATTERNS: list[tuple[str, re.Pattern]] = [
+    ("typography",   re.compile(r"\b(heading|title|text|paragraph|blockquote|code|prose|eyebrow|caption|label)\b", re.I)),
+    ("media",        re.compile(r"\b(image|img|video|gallery|carousel|player|embed|icon|illustration|avatar)\b", re.I)),
+    ("feedback",     re.compile(r"\b(alert|toast|notification|banner|callout|progress|spinner|loader|empty|error|warning|success)\b", re.I)),
+    ("overlay",      re.compile(r"\b(modal|dialog|popover|tooltip|dropdown|sheet|hover\s*card|command|palette)\b", re.I)),
+    ("data-input",   re.compile(r"\b(button|btn|cta|input|form|field|select|checkbox|radio|switch|toggle|slider|search|picker|combobox|textarea)\b", re.I)),
+    ("navigation",   re.compile(r"\b(nav|navbar|menu|breadcrumb|tab|tabs|pagination|stepper|sidebar|header|footer|drawer)\b", re.I)),
+    ("data-display", re.compile(r"\b(card|list|table|row|item|tile|avatar|badge|chip|tag|stat|metric|price|pricing|logo|divider|skeleton)\b", re.I)),
+    ("layout",       re.compile(r"\b(hero|section|container|grid|stack|flex|layout|page|wrapper|split|shell)\b", re.I)),
+]
+
+def categorize_component(name: str) -> str:
+    """Return the category bucket for a component name. Falls back to 'other'."""
+    if not name:
+        return "other"
+    # Insert separators between camelCase/PascalCase transitions so \b can match
+    # tokens like "PrimaryButton" → "Primary Button".
+    normalized = re.sub(r"([a-z0-9])([A-Z])", r"\1 \2", name)
+    normalized = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1 \2", normalized)
+    for cat, pat in CATEGORY_PATTERNS:
+        if pat.search(normalized):
+            return cat
+    return "other"
+
 def gcd_pair(a: int, b: int) -> int:
     while b:
         a, b = b, a % b
@@ -386,8 +419,23 @@ def main() -> None:
     signals["shadow_elevation"] = signal_shadow_elevation(tokens.get("shadows", []))
     signals["motion_language"] = signal_motion_language(tokens.get("transitions", []))
     signals["color_temperature"] = signal_color_temperature(tokens.get("colours", {}))
+    # Component categorization (additive — feeds replica-builder structured hints).
+    components_section = tokens.get("components", {}) if isinstance(tokens, dict) else {}
+    component_names: list[str] = []
+    if isinstance(components_section, dict):
+        component_names = list(components_section.keys())
+    elif isinstance(components_section, list):
+        component_names = [
+            c.get("name", "") for c in components_section
+            if isinstance(c, dict) and c.get("name")
+        ]
+    component_categories = {
+        name: categorize_component(name) for name in component_names if name
+    }
+
     elapsed = round((time.time() - t0) * 1000)
     output = {"url": url, "signals": signals,
+              "component_categories": component_categories,
               "metadata": {"signals_computed": 9 - skipped, "signals_skipped": skipped,
                            "extraction_time_ms": elapsed}}
     with open(args.output, "w") as f:

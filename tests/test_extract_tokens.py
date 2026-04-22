@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-BASELINE = Path("/tmp/design-extractor-baseline")
+BASELINE = Path(__file__).parent / "fixtures" / "baseline"
 LINEAR_DIR = BASELINE / "linear-app"
 AIRBNB_DIR = BASELINE / "airbnb-com"
 
@@ -70,6 +70,10 @@ def test_spacing_base_unit(tokens):
 
 # -- Error handling ------------------------------------------------------------
 
+@pytest.mark.skipif(
+    not (AIRBNB_DIR / "recon-output.json").exists(),
+    reason="airbnb baseline recon-output.json not present",
+)
 def test_airbnb_error_handling():
     """Airbnb recon should have an error key (site blocks headless browsers)."""
     with open(AIRBNB_DIR / "recon-output.json") as f:

@@ -53,23 +53,40 @@ class ExtractionJob:
         self.start_from = start_from
 
     def _job_state_dir(self) -> Path:
-        return Path.home() / ".claude" / "design-library" / "cache" / self.slug / "jobs"
+        # Thin wrapper over telemetry.jobs_dir for backward compatibility with
+        # any internal callers. telemetry.jobs_dir() already creates the path.
+        try:
+            from telemetry import jobs_dir
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from telemetry import jobs_dir
+        return jobs_dir(self.slug)
 
     def _save_job_state(self, phase: str, status: str):
-        state = {
-            "url": self.url,
-            "brand_name": self.brand_name,
-            "slug": self.slug,
-            "max_pages": self.max_pages,
-            "current_phase": phase,
-            "status": status,
-            "failed_phases": self.failed_phases,
-            "completed_phases": self.completed_phases,
-            "timestamp": time.time(),
-        }
-        job_dir = self._job_state_dir()
-        job_dir.mkdir(parents=True, exist_ok=True)
-        (job_dir / f"{int(time.time())}.json").write_text(json.dumps(state, indent=2))
+        try:
+            from telemetry import write_phase_event
+        except ImportError:
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            from telemetry import write_phase_event
+
+        elapsed = time.time() - self.start_time
+        # Preserve legacy fields via `extra=` so resume logic (which reads
+        # url / brand_name / max_pages / completed_phases from the most
+        # recent job file) keeps working.
+        write_phase_event(
+            self.slug,
+            phase=phase,
+            status=status,
+            duration_s=round(elapsed, 2),
+            extra={
+                "url": self.url,
+                "brand_name": self.brand_name,
+                "max_pages": self.max_pages,
+                "current_phase": phase,
+                "failed_phases": list(self.failed_phases),
+                "completed_phases": list(self.completed_phases),
+            },
+        )
 
     async def _emit(self, event: dict):
         payload = json.dumps(event)

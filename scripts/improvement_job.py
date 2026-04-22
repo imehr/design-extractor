@@ -212,6 +212,16 @@ def build_claude_improvement_prompt(
     if inline_feedback:
         lines.extend(["", "Operator feedback:", json.dumps(inline_feedback, indent=2)])
 
+    if recent_feedback:
+        notes = []
+        for entry in recent_feedback:
+            fb = entry.get("feedback", entry) if isinstance(entry, dict) else {}
+            note = fb.get("notes") if isinstance(fb, dict) else None
+            if note:
+                notes.append(f"- {note}")
+        if notes:
+            lines.extend(["", "Recent operator guidance (most recent first):", *notes])
+
     return "\n".join(lines)
 
 
