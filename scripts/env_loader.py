@@ -40,7 +40,13 @@ def _parse_line(line: str) -> tuple[str, str] | None:
 
 
 def load_env(env_path: Path | None = None, override: bool = False) -> dict[str, str]:
-    """Load .env file into os.environ. Returns the dict of keys loaded (not counting skipped)."""
+    """Load .env file into os.environ. Returns the dict of keys loaded (not counting skipped).
+
+    Set DESIGN_EXTRACTOR_SKIP_DOTENV=1 in the environment to disable .env loading
+    entirely — useful for tests that verify behavior under specific key absence.
+    """
+    if os.environ.get("DESIGN_EXTRACTOR_SKIP_DOTENV"):
+        return {}
     if env_path is None:
         env_path = Path(__file__).resolve().parent.parent / ".env"
     if not env_path.exists():

@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 
-SCRIPTS = Path("/Users/mehran/Documents/github/design-extractor/scripts")
+SCRIPTS = Path(__file__).resolve().parent.parent / "scripts"
 
 
 def _load_module(name: str, path: Path):
@@ -93,8 +93,13 @@ def test_skip_path_without_source_url(tmp_path):
     cache_dir.mkdir()
     ui_dir.mkdir()
 
-    env = {k: v for k, v in os.environ.items() if k not in ("SERP_API_KEY", "FIRECRAWL_API_KEY")}
+    env = {k: v for k, v in os.environ.items() if k not in (
+        "SERP_API_KEY", "FIRECRAWL_API_KEY",
+        "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID",
+    )}
     env.setdefault("PATH", os.environ.get("PATH", ""))
+    # Disable .env auto-load so a real .env at repo root can't re-populate keys.
+    env["DESIGN_EXTRACTOR_SKIP_DOTENV"] = "1"
 
     result = subprocess.run(
         [
@@ -126,8 +131,13 @@ def test_not_found_with_unreachable_source_url(tmp_path):
     cache_dir.mkdir()
     ui_dir.mkdir()
 
-    env = {k: v for k, v in os.environ.items() if k not in ("SERP_API_KEY", "FIRECRAWL_API_KEY")}
+    env = {k: v for k, v in os.environ.items() if k not in (
+        "SERP_API_KEY", "FIRECRAWL_API_KEY",
+        "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_ACCOUNT_ID",
+    )}
     env.setdefault("PATH", os.environ.get("PATH", ""))
+    # Disable .env auto-load so a real .env at repo root can't re-populate keys.
+    env["DESIGN_EXTRACTOR_SKIP_DOTENV"] = "1"
 
     result = subprocess.run(
         [
