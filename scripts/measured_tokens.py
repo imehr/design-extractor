@@ -234,7 +234,101 @@ def _px(value) -> int | None:
     return int(round(float(m.group(1)))) if m else None
 
 
-# ── Role detection ───────────────────────────────────────────────────────────
+# ── Transition / easing capture (Task 2.3) ───────────────────────────────────
+
+_DURATION_RE = re.compile(r"\d+(?:\.\d+)?(?:ms|s)\b")
+_BEZIER_RE = re.compile(r"cubic-bezier\([^)]*\)")
+_NAMED_EASE_RE = re.compile(
+    r"\b(ease-in-out|ease-in|ease-out|ease|linear|step-start|step-end|steps\([^)]*\))\b"
+)
+
+
+def _ms(duration: str) -> float:
+    """Normalize a CSS duration string to milliseconds for ordering."""
+    m = re.match(r"(\d+(?:\.\d+)?)(ms|s)", duration)
+    if not m:
+        return 0.0
+    value = float(m.group(1))
+    return value * 1000 if m.group(2) == "s" else value
+
+
+def parse_transition(shorthand) -> dict:
+    """Parse a CSS ``transition`` shorthand into ``{fast, base, ease}``.
+
+    * ``fast`` — shortest duration present.
+    * ``base`` — modal duration (ties broken toward the longer one).
+    * ``ease`` — first ``cubic-bezier(...)``, else the first named easing, else None.
+    """
+    empty = {"fast": None, "base": None, "ease": None}
+    if not isinstance(shorthand, str):
+        return empty
+    text = shorthand.strip()
+    if not text or text.lower() in ("none", "initial"):
+        return empty
+
+    durations = _DURATION_RE.findall(text)
+    out = {"fast": None, "base": None, "ease": None}
+    if durations:
+        out["fast"] = min(durations, key=_ms)
+        counter: Counter = Counter(durations)
+        out["base"] = sorted(counter, key=lambda d: (-counter[d], -_ms(d)))[0]
+
+    bezier = _BEZIER_RE.search(text)
+    if bezier:
+        out["ease"] = bezier.group(0)
+    else:
+        named = _NAMED_EASE_RE.findall(text)
+        if named:
+            out["ease"] = named[0]
+    return out
+
+
+def capture_motion(interactive_transitions, keyframes=None) -> dict:
+    """Aggregate many transition shorthands → ``{fast, base, ease, keyframeNames}``.
+
+    * ``fast`` — shortest duration across all transitions.
+    * ``base`` — modal duration (ties toward longer).
+    * ``ease`` — first explicit cubic-bezier, else OD fallback.
+    * ``keyframeNames`` — ``@keyframes`` names from raw CSS, carried as evidence
+      (not tokenized into motion values).
+    """
+    result = {
+        "fast": OD_FALLBACK["--motion-fast"],
+        "base": OD_FALLBACK["--motion-base"],
+        "ease": OD_FALLBACK["--ease-standard"],
+        "keyframeNames": [],
+        "sources": [],
+        "count": 0,
+    }
+    all_durations: list[str] = []
+    easings: list[str] = []
+    sources: list[str] = []
+    for entry in interactive_transitions or []:
+        sh = entry if isinstance(entry, str) else (
+            entry.get("transition") if isinstance(entry, dict) else None
+        )
+        if not isinstance(sh, str) or not sh.strip():
+            continue
+        all_durations.extend(_DURATION_RE.findall(sh))
+        bezier = _BEZIER_RE.search(sh)
+        if bezier:
+            easings.append(bezier.group(0))
+        sources.append(sh.strip())
+
+    if all_durations:
+        result["fast"] = min(all_durations, key=_ms)
+        counter: Counter = Counter(all_durations)
+        result["base"] = sorted(counter, key=lambda d: (-counter[d], -_ms(d)))[0]
+    if easings:
+        result["ease"] = easings[0]
+
+    result["keyframeNames"] = [
+        kf.get("name", "") for kf in (keyframes or []) if isinstance(kf, dict) and kf.get("name")
+    ]
+    result["sources"] = sources
+    result["count"] = len(sources)
+    return result
+
 
 def _role(sample: dict) -> str:
     role = str(sample.get("role") or "").lower()
@@ -357,6 +451,7 @@ def analyze(measured_samples: list[dict], raw_css: dict | None = None, viewports
     shadows: list[tuple[str, str, str]] = []  # (shadow, selector, class)
     container_widths: list[tuple[int, str]] = []
     container_gutters: list[tuple[int, str]] = []
+    transition_values: list[str] = []
 
     spacing_keys = (
         "paddingTop", "paddingRight", "paddingBottom", "paddingLeft",
@@ -418,6 +513,10 @@ def analyze(measured_samples: list[dict], raw_css: dict | None = None, viewports
         shadow = sample.get("boxShadow")
         if isinstance(shadow, str) and shadow.strip():
             shadows.append((shadow.strip(), sel, _classify_shadow(shadow)))
+
+        tr_val = sample.get("transition")
+        if isinstance(tr_val, str) and tr_val.strip() and tr_val.strip().lower() not in ("none", "initial"):
+            transition_values.append(tr_val.strip())
 
         if role in ("container", "main"):
             w = _px(sample.get("width") or sample.get("maxWidth"))
@@ -574,6 +673,14 @@ def analyze(measured_samples: list[dict], raw_css: dict | None = None, viewports
     # ── Section rhythm + per-viewport gutters (Task 2.4 feeds this) ────────
     if isinstance(viewports, dict):
         _apply_viewport_tokens(tokens, viewports)
+
+    # ── Motion: durations + easing from interactive transitions (Task 2.3) ─
+    if transition_values:
+        motion = capture_motion(transition_values, (raw_css or {}).get("keyframes") if isinstance(raw_css, dict) else None)
+        if motion["count"]:
+            tokens.set("--motion-fast", _provenance(motion["fast"], motion["sources"], motion["count"]))
+            tokens.set("--motion-base", _provenance(motion["base"], motion["sources"], motion["count"]))
+            tokens.set("--ease-standard", _provenance(motion["ease"], motion["sources"], motion["count"]))
 
     # ── Fill A2 fallbacks (semantic / motion / accent states) ──────────────
     root_vars = {}

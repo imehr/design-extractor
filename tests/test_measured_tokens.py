@@ -211,3 +211,68 @@ def test_empty_samples_does_not_crash():
     mt = load_module("measured_tokens")
     tokens = mt.analyze([]).to_dict()
     assert isinstance(tokens, dict)
+
+
+# -- (Task 2.3) transition / easing capture -----------------------------------
+
+def test_parse_transition_basic_shorthand():
+    mt = load_module("measured_tokens")
+    out = mt.parse_transition("color 150ms ease, opacity 200ms cubic-bezier(0.2,0,0,1)")
+    assert out["fast"] == "150ms"
+    assert out["base"] == "200ms"
+    assert out["ease"] == "cubic-bezier(0.2,0,0,1)"
+
+
+def test_parse_transition_handles_seconds_and_named_easing():
+    mt = load_module("measured_tokens")
+    out = mt.parse_transition("all 0.2s ease-in")
+    assert out["fast"] == "0.2s"
+    assert out["base"] == "0.2s"
+    assert out["ease"] == "ease-in"
+
+
+def test_parse_transition_empty_and_none_safe():
+    mt = load_module("measured_tokens")
+    assert mt.parse_transition("") == {"fast": None, "base": None, "ease": None}
+    assert mt.parse_transition(None) == {"fast": None, "base": None, "ease": None}
+    assert mt.parse_transition("none") == {"fast": None, "base": None, "ease": None}
+
+
+def test_capture_motion_picks_fast_base_ease_and_keyframe_names():
+    mt = load_module("measured_tokens")
+    transitions = [
+        "color 150ms ease",
+        "opacity 200ms cubic-bezier(0.2,0,0,1)",
+        "transform 150ms cubic-bezier(0.2,0,0,1)",
+    ]
+    keyframes = [{"name": "spin", "steps": []}, {"name": "fade", "steps": []}]
+    motion = mt.capture_motion(transitions, keyframes)
+    assert motion["fast"] == "150ms"          # shortest duration
+    assert motion["base"] == "150ms"          # modal (150 appears twice)
+    assert motion["ease"] == "cubic-bezier(0.2,0,0,1)"
+    assert motion["keyframeNames"] == ["spin", "fade"]
+    assert motion["count"] == 3
+
+
+def test_capture_motion_falls_back_to_od_defaults_when_no_transitions():
+    mt = load_module("measured_tokens")
+    motion = mt.capture_motion([], [])
+    assert motion["fast"] == "150ms"
+    assert motion["base"] == "200ms"
+    assert motion["ease"] == "cubic-bezier(0.2, 0, 0, 1)"
+    assert motion["keyframeNames"] == []
+
+
+def test_analyze_feeds_transition_samples_into_motion_tokens():
+    mt = load_module("measured_tokens")
+    samples = [
+        {"selector": "a", "role": "link", "color": "rgb(220, 38, 38)",
+         "transition": "color 150ms ease"},
+        {"selector": "button", "role": "button", "backgroundColor": "rgb(220, 38, 38)",
+         "transition": "opacity 200ms cubic-bezier(0.2,0,0,1)"},
+    ]
+    raw_css = {"keyframes": [{"name": "spin", "steps": []}]}
+    tokens = mt.analyze(samples, raw_css=raw_css).to_dict()
+    assert tokens["--motion-fast"]["value"] == "150ms"
+    assert tokens["--motion-base"]["value"] == "200ms"
+    assert tokens["--ease-standard"]["value"] == "cubic-bezier(0.2,0,0,1)"
