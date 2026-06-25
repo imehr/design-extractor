@@ -369,8 +369,143 @@ def _site_specific_extras(measured) -> list[tuple[str, str]]:
     return extras
 
 
-def render_design_tokens_json(measured, *, generated_at: str = "") -> str:  # 3.3
-    return json.dumps({"format": "od-design-tokens/v1", "tokens": []}, indent=2) + "\n"
+def render_design_tokens_json(measured, *, generated_at: str = "") -> str:
+    """Port of ``renderDesignTokensJson`` → ``od-design-tokens/v1`` JSON.
+
+    One entry per declared schema token with the OD-inferred ``type``, plus a
+    summary rubric graded on measured A1 coverage.
+    """
+    import json as _json
+
+    bindings = [_token_binding(measured, spec) for spec in TOKEN_SCHEMA]
+    for name, value in _site_specific_extras(measured):
+        spec = {"name": name, "layer": "C-extension"}
+        bindings.append(_token_binding(measured, spec))
+
+    report = {
+        "schemaVersion": 1,
+        "format": "od-design-tokens/v1",
+        "contract": "TOKEN_SCHEMA",
+        "generatedAt": generated_at,
+        "source": {
+            "tokensCss": "tokens.css",
+            "tokenContractReport": "source/token-contract.report.json",
+        },
+        "summary": _summarize(measured),
+        "tokens": [
+            {
+                "name": b["name"],
+                "value": b["value"],
+                "type": infer_design_token_type(b["name"]),
+                "layer": b["layer"],
+                "confidence": b["confidence"],
+                "reason": b["reason"],
+                "sources": b["sources"],
+                **({"sourceName": b["sourceName"]} if b.get("sourceName") else {}),
+            }
+            for b in bindings
+        ],
+    }
+    return _json.dumps(report, indent=2) + "\n"
+
+
+# Exact color-name set from inferDesignTokenType (derived-token-outputs.ts).
+_DESIGN_TOKEN_COLOR_NAMES = frozenset({
+    "--bg", "--surface", "--surface-warm", "--fg", "--fg-2", "--muted", "--meta",
+    "--border", "--border-soft", "--accent", "--accent-on", "--accent-hover",
+    "--accent-active", "--success", "--warn", "--danger",
+})
+
+
+def infer_design_token_type(name: str) -> str:
+    """Byte-faithful port of ``inferDesignTokenType`` (derived-token-outputs.ts)."""
+    if name in _DESIGN_TOKEN_COLOR_NAMES:
+        return "color"
+    if name.startswith("--font-"):
+        return "fontFamily"
+    if name.startswith("--leading-"):
+        return "number"
+    if name == "--ease-standard":
+        return "cubicBezier"
+    if name.startswith("--motion-"):
+        return "duration"
+    if name.startswith("--elev-") or name == "--focus-ring":
+        return "shadow"
+    if (name.startswith("--text-") or name.startswith("--space-")
+            or name.startswith("--section-y-") or name.startswith("--radius-")
+            or name.startswith("--container-") or name.startswith("--tracking-")):
+        return "dimension"
+    return "other"
+
+
+def _is_measured(measured, name: str) -> bool:
+    prov = measured.get(name)
+    if not isinstance(prov, dict):
+        return False
+    return bool(prov.get("sources")) or int(prov.get("count") or 0) > 0
+
+
+def _token_binding(measured, spec: dict) -> dict:
+    name = spec["name"]
+    layer = spec.get("layer") or token_layer(name)
+    prov = measured.get(name)
+    measured_val = measured.value(name)
+
+    if measured_val and _is_measured(measured, name):
+        sources = list(prov.get("sources") or []) if isinstance(prov, dict) else []
+        confidence = str((prov or {}).get("confidence") or "LOW") if isinstance(prov, dict) else "LOW"
+        count = int((prov or {}).get("count") or 0) if isinstance(prov, dict) else 0
+        reason = f"measured from {count} computed-style sample(s)"
+        binding = {"name": name, "value": str(measured_val), "layer": layer,
+                   "confidence": confidence, "reason": reason, "sources": sources}
+        if isinstance(prov, dict) and len(sources) == 1 and prov.get("sourceName"):
+            binding["sourceName"] = str(prov["sourceName"])
+        return binding
+
+    schema = _SCHEMA_BY_NAME.get(name) or {}
+    if schema.get("fallback"):
+        return {"name": name, "value": schema["fallback"], "layer": layer,
+                "confidence": "FALLBACK",
+                "reason": "OD A2 fallback (token not measured)", "sources": []}
+    if schema.get("aliasTo"):
+        return {"name": name, "value": schema["aliasTo"], "layer": layer,
+                "confidence": "ALIAS",
+                "reason": f"B-slot alias to {schema['aliasTo']}", "sources": []}
+    if name in _A1_IDENTITY_DEFAULTS or name in _A1_STRUCTURE_DEFAULTS:
+        return {"name": name, "value": _token_value_for_css(measured, name),
+                "layer": layer, "confidence": "DEFAULT",
+                "reason": "neutral default (token not captured)", "sources": []}
+    # C-extension or unknown without provenance.
+    return {"name": name, "value": str(measured_val or ""), "layer": layer,
+            "confidence": "MISSING", "reason": "no value available", "sources": []}
+
+
+def _summarize(measured) -> dict:
+    required = [t for t in TOKEN_SCHEMA if t["layer"].startswith("A1")]
+    layer_counts: dict[str, int] = {}
+    for t in TOKEN_SCHEMA:
+        layer_counts[t["layer"]] = layer_counts.get(t["layer"], 0) + 1
+    measured_required = sum(1 for t in required if _is_measured(measured, t["name"]))
+    ratio = measured_required / len(required) if required else 0.0
+    score = round(ratio, 2)
+    if ratio >= 0.9:
+        grade = "A"
+    elif ratio >= 0.75:
+        grade = "B"
+    elif ratio >= 0.5:
+        grade = "C"
+    elif ratio >= 0.25:
+        grade = "D"
+    else:
+        grade = "F"
+    return {
+        "totalTokens": len(TOKEN_SCHEMA),
+        "declaredTokens": len(TOKEN_SCHEMA),
+        "layerCounts": layer_counts,
+        "score": score,
+        "grade": grade,
+        "recommendRebuild": False,
+    }
 
 
 def render_components_html(data: dict, measured) -> str:  # 3.4

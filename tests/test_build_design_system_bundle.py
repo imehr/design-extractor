@@ -212,3 +212,88 @@ def test_tokens_css_appends_site_specific_extras():
     css = bds.render_tokens_css(mt)
     assert "--brand-glow: 0 0 12px red;" in css
 
+
+# ── 3.3 design-tokens.json ────────────────────────────────────────────────────
+
+def test_infer_design_token_type_matches_od_contract():
+    assert bds.infer_design_token_type("--bg") == "color"
+    assert bds.infer_design_token_type("--surface-warm") == "color"
+    assert bds.infer_design_token_type("--accent-hover") == "color"
+    assert bds.infer_design_token_type("--success") == "color"
+    assert bds.infer_design_token_type("--font-body") == "fontFamily"
+    assert bds.infer_design_token_type("--font-mono") == "fontFamily"
+    assert bds.infer_design_token_type("--leading-body") == "number"
+    assert bds.infer_design_token_type("--text-base") == "dimension"
+    assert bds.infer_design_token_type("--space-4") == "dimension"
+    assert bds.infer_design_token_type("--radius-md") == "dimension"
+    assert bds.infer_design_token_type("--container-max") == "dimension"
+    assert bds.infer_design_token_type("--section-y-desktop") == "dimension"
+    assert bds.infer_design_token_type("--tracking-display") == "dimension"
+    assert bds.infer_design_token_type("--ease-standard") == "cubicBezier"
+    assert bds.infer_design_token_type("--motion-base") == "duration"
+    assert bds.infer_design_token_type("--motion-fast") == "duration"
+    assert bds.infer_design_token_type("--elev-ring") == "shadow"
+    assert bds.infer_design_token_type("--elev-raised") == "shadow"
+    assert bds.infer_design_token_type("--focus-ring") == "shadow"
+    assert bds.infer_design_token_type("--brand-glow") == "other"
+
+
+def test_design_tokens_json_round_trips_and_format():
+    out = bds.render_design_tokens_json(_measured(**{"--bg": "#fff"}), generated_at="2026-06-25T00:00:00Z")
+    doc = json.loads(out)
+    assert doc["format"] == "od-design-tokens/v1"
+    assert doc["schemaVersion"] == 1
+    assert doc["contract"] == "TOKEN_SCHEMA"
+    assert doc["generatedAt"] == "2026-06-25T00:00:00Z"
+    assert doc["source"] == {"tokensCss": "tokens.css",
+                             "tokenContractReport": "source/token-contract.report.json"}
+
+
+def test_design_tokens_json_has_entry_per_declared_token():
+    mt = _measured(**{"--bg": "#ffffff"})
+    doc = json.loads(bds.render_design_tokens_json(mt))
+    names = [t["name"] for t in doc["tokens"]]
+    for spec in bds.TOKEN_SCHEMA:
+        assert spec["name"] in names
+    for t in doc["tokens"]:
+        for key in ("name", "value", "type", "layer", "confidence", "reason", "sources"):
+            assert key in t, f"token {t.get('name')} missing {key}"
+
+
+def test_design_tokens_json_summary_layer_counts():
+    doc = json.loads(bds.render_design_tokens_json(_measured()))
+    summary = doc["summary"]
+    expected_layers = {}
+    for spec in bds.TOKEN_SCHEMA:
+        expected_layers[spec["layer"]] = expected_layers.get(spec["layer"], 0) + 1
+    assert summary["layerCounts"] == expected_layers
+    assert summary["totalTokens"] == len(bds.TOKEN_SCHEMA)
+    assert summary["declaredTokens"] == len(bds.TOKEN_SCHEMA)
+    assert summary["recommendRebuild"] is False
+
+
+def test_design_tokens_json_grade_a_when_all_a1_measured():
+    a1 = {t["name"]: "#000" for t in bds.TOKEN_SCHEMA if t["layer"].startswith("A1")}
+    # give valid values per type
+    for t in bds.TOKEN_SCHEMA:
+        if t["layer"].startswith("A1"):
+            a1[t["name"]] = "16px" if t["name"].startswith(("--text-", "--container", "--section-y")) else \
+                            "1.5" if t["name"].startswith("--leading") else \
+                            "0" if t["name"].startswith("--tracking") else "#000000" if t["name"] in (
+                                "--bg","--surface","--fg","--muted","--border","--accent") else "AcmeSans"
+    doc = json.loads(bds.render_design_tokens_json(_measured(**a1)))
+    assert doc["summary"]["grade"] == "A"
+    assert doc["summary"]["score"] == 1.0
+
+
+def test_design_tokens_json_measured_confidence_recorded():
+    mt = _measured(**{"--bg": "#ffffff"})
+    doc = json.loads(bds.render_design_tokens_json(mt))
+    bg = next(t for t in doc["tokens"] if t["name"] == "--bg")
+    assert bg["confidence"] == "HIGH"
+    assert bg["value"] == "#ffffff"
+    assert bg["sources"]
+    fallback = next(t for t in doc["tokens"] if t["name"] == "--accent-hover")
+    assert fallback["confidence"] == "FALLBACK"
+    assert fallback["value"] == "color-mix(in oklab, var(--accent), black 8%)"
+
