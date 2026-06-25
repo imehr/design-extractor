@@ -2463,6 +2463,121 @@ def export_open_design(slug: str) -> None:
     )
 
 
+# ── Phase 7.6 / 7.7: in-process OD bundle emission ────────────────────────
+#
+# Unlike the subprocess-driven artifact phases above, these two call the WS
+# emitters directly in-process. The WS modules were built for this (they expose
+# importable ``build`` / ``package_artifacts`` entry points), and in-process
+# calls are unit-testable via monkeypatching — which the repo's test suite
+# relies on. They are leaf-of-pipeline, best-effort artifacts: a failure in
+# either never aborts the primary extraction outputs (mirror, tokens, replicas).
+
+def _load_sibling_script(name: str):
+    """Load a sibling ``scripts/<name>.py`` module in-process (cached in sys.modules).
+
+    Mirrors the ``_load_sibling`` pattern used by export_open_design /
+    build_design_system_bundle so the same module object is shared everywhere.
+    """
+    import importlib.util as _iutil
+    spec = _iutil.spec_from_file_location(name, SCRIPTS_DIR / f"{name}.py")
+    mod = _iutil.module_from_spec(spec)
+    assert spec.loader is not None
+    sys.modules.setdefault(name, mod)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+# Lazy singleton seams — tests monkeypatch these getters to inject fakes.
+_export_open_design_module = None
+_build_design_system_bundle_module = None
+
+
+def _get_export_open_design_module():
+    global _export_open_design_module
+    if _export_open_design_module is None:
+        _export_open_design_module = _load_sibling_script("export_open_design")
+    return _export_open_design_module
+
+
+def _get_build_design_system_bundle_module():
+    global _build_design_system_bundle_module
+    if _build_design_system_bundle_module is None:
+        _build_design_system_bundle_module = _load_sibling_script("build_design_system_bundle")
+    return _build_design_system_bundle_module
+
+
+def package_od_artifact_bundles(slug, brands_dir, library_dir, cache_dir) -> None:
+    """Phase 7.6: package each mirrored page into an OD artifact bundle.
+
+    Delegates to ``export_open_design.package_artifacts`` (artifacts-only; it
+    does NOT re-emit the design-system bundle, keeping 7.6 independent of 7.7).
+    Per-page packaging is best-effort inside the helper — one bad page never
+    stops the rest.
+    """
+    brands_dir = Path(brands_dir)
+    mirror_root = brands_dir / slug / "original"
+    if not mirror_root.is_dir():
+        warn(f"No mirror root at {mirror_root}; nothing to package for OD artifacts")
+        return
+    out_dir = brands_dir / slug / "open-design"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    eod = _get_export_open_design_module()
+    packaged = eod.package_artifacts(slug, brands_dir, out_dir, mirror_root)
+    count = len(packaged or [])
+    if count:
+        ok(f"OD artifact bundles: {count} packaged under {out_dir / 'artifacts'}")
+    else:
+        info("OD artifact bundles: 0 mirrored index.html pages found to package")
+
+
+def emit_design_system_bundle(slug, brands_dir, library_dir, cache_dir) -> None:
+    """Phase 7.7: emit the ``od-design-system-project/v1`` design-system bundle.
+
+    Delegates to ``build_design_system_bundle.build`` (in-process). The emitter
+    validates the manifest internally and raises on an invalid manifest, so a
+    clean return implies a manifest-valid bundle. Requires Phase 7 (publish) to
+    have produced measured-tokens + DESIGN.md.
+    """
+    bds = _get_build_design_system_bundle_module()
+    bundle_dir = bds.build(
+        slug,
+        brands_dir=Path(brands_dir),
+        library_dir=Path(library_dir),
+        cache_dir=Path(cache_dir),
+    )
+    ok(f"OD design-system bundle emitted (manifest-valid) at {bundle_dir}")
+
+
+def run_open_design_bundle_phases(args, slug, brands_dir, library_dir, cache_dir) -> None:
+    """Run Phase 7.6 + 7.7. Both are leaf-of-pipeline, best-effort artifacts.
+
+    A failure in either phase is caught and logged — it never aborts the
+    extraction. Guards (honouring existing skip-flag dependencies):
+
+      * 7.6 skipped when ``--skip-artifact-bundle`` OR ``--skip-mirror``
+        (no mirror pages to package).
+      * 7.7 skipped when ``--skip-design-system-bundle`` OR ``--skip-publish``
+        (no measured-tokens / DESIGN.md to build from).
+    """
+    # Phase 7.6: OD artifact bundles (needs the mirror; independent of publish).
+    if getattr(args, "skip_artifact_bundle", False) or getattr(args, "skip_mirror", False):
+        warn("Skipping OD artifact bundles (--skip-artifact-bundle/--skip-mirror)")
+    else:
+        try:
+            package_od_artifact_bundles(slug, brands_dir, library_dir, cache_dir)
+        except Exception as e:  # noqa: BLE001 — leaf artifact; never fatal
+            warn(f"OD artifact bundle phase errored ({e}) — continuing")
+
+    # Phase 7.7: OD design-system bundle (needs publish output).
+    if getattr(args, "skip_design_system_bundle", False) or getattr(args, "skip_publish", False):
+        warn("Skipping OD design-system bundle (--skip-design-system-bundle/--skip-publish)")
+    else:
+        try:
+            emit_design_system_bundle(slug, brands_dir, library_dir, cache_dir)
+        except Exception as e:  # noqa: BLE001 — leaf artifact; never fatal
+            warn(f"OD design-system bundle phase errored ({e}) — continuing")
+
+
 # ── Phase 5: Build Replicas ──────────────────────────────────────────────
 
 def _build_asset_listing(slug: str, public_dir: Path) -> tuple[list[str], str]:
@@ -3035,6 +3150,8 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skip-mirror", action="store_true", help="Skip Phase 4.5 (offline mirror of original pages)")
     parser.add_argument("--skip-html-replicas", action="store_true", help="Skip Phase 6.5 (standalone token-styled HTML replicas)")
     parser.add_argument("--skip-open-design-export", action="store_true", help="Skip Phase 7.5 (open-design DESIGN.md + skill export)")
+    parser.add_argument("--skip-artifact-bundle", action="store_true", help="Skip Phase 7.6 (OD artifact bundles from mirrored pages)")
+    parser.add_argument("--skip-design-system-bundle", action="store_true", help="Skip Phase 7.7 (OD v1 design-system bundle emission)")
     return parser
 
 
@@ -3206,6 +3323,12 @@ def main() -> int:
 
         # Phase 9: Final verification
         _phase("9", final_verification, slug, pages, asset_count, score)
+
+    # Phase 7.6 + 7.7: OD artifact + design-system bundles — leaf-of-pipeline,
+    # best-effort. Run after publish/mirror so their inputs exist, but outside
+    # the publish block so 7.6 (which only needs the mirror) still runs under
+    # --skip-publish. A failure here never costs the primary outputs.
+    run_open_design_bundle_phases(args, slug, BRANDS_ROOT, LIBRARY_ROOT, CACHE_ROOT)
 
     elapsed = time.time() - start_time
     print(f"\nTotal time: {elapsed/60:.1f} minutes")
