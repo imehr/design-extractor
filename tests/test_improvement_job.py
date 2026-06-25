@@ -167,6 +167,34 @@ def test_build_claude_command_uses_print_prompt_and_tools():
     assert "Edit" in command
 
 
+def test_improvement_model_command_uses_active_provider_defaults(tmp_path, monkeypatch):
+    module = _load_module("improvement_job", SCRIPTS / "improvement_job.py")
+    settings_dir = tmp_path / ".claude/design-library/settings"
+    settings_dir.mkdir(parents=True)
+    (settings_dir / "model-providers.json").write_text(json.dumps({
+        "active_provider": "codex",
+        "providers": {
+            "codex": {
+                "model": "gpt-5.2",
+                "enabled": True,
+            },
+        },
+    }))
+    monkeypatch.setenv("HOME", str(tmp_path))
+
+    provider = module.read_active_model_provider()
+    command = module.build_model_provider_command(
+        provider,
+        "Improve the failing pages.",
+        repo_root=Path("/repo"),
+    )
+
+    assert provider["command"] == "codex"
+    assert command[:4] == ["codex", "exec", "--cd", "/repo"]
+    assert "--dangerously-bypass-approvals-and-sandbox" in command
+    assert "--ask-for-approval" not in command
+
+
 def test_missing_capture_pages_reports_pages_without_required_images():
     module = _load_module("run_validation_loop", SCRIPTS / "run_validation_loop.py")
 

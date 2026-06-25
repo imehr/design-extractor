@@ -13,16 +13,18 @@ from pathlib import Path
 
 from improvement_job import (
     append_feedback_entry,
-    build_claude_command,
     build_claude_improvement_prompt,
     build_assisted_capture_steps,
+    build_model_provider_command,
     detect_block_reason,
     detect_validation_failure,
     derive_effective_score,
     load_json,
     make_job_state,
+    model_provider_label,
     now_iso,
     read_recent_feedback_entries,
+    read_active_model_provider,
     sync_metadata_with_report,
     update_job_state,
 )
@@ -82,7 +84,109 @@ def run_validation(
     return subprocess.run(cmd, capture_output=True, text=True, cwd=repo_root)
 
 
-def run_claude_improver(
+def _load_rubric_report(brand: str) -> dict | None:
+    """Load the current rubric-report.json for a brand, if present."""
+    path = (
+        Path.home()
+        / ".claude"
+        / "design-library"
+        / "brands"
+        / brand
+        / "validation"
+        / "rubric-report.json"
+    )
+    return load_json(path, default=None)
+
+
+def _run_rubric_subprocess(repo_root: Path, brand: str, timeout_s: int = 300) -> bool:
+    """Re-run eval_rubric.py for a brand. Returns True if it completed cleanly."""
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(repo_root / "scripts" / "eval_rubric.py"),
+                "--slug",
+                brand,
+            ],
+            capture_output=True,
+            text=True,
+            cwd=repo_root,
+            timeout=timeout_s,
+        )
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+        return False
+
+
+def _compute_rubric_delta(
+    *,
+    iteration: int,
+    before: dict | None,
+    after: dict | None,
+) -> dict | None:
+    """Build a rubric_delta entry comparing two rubric reports."""
+    if not isinstance(before, dict) or not isinstance(after, dict):
+        return None
+    before_total = before.get("weighted_total")
+    after_total = after.get("weighted_total")
+    before_dims = {
+        d.get("name"): d.get("score")
+        for d in (before.get("dimensions") or [])
+        if isinstance(d, dict)
+    }
+    after_dims = {
+        d.get("name"): d.get("score")
+        for d in (after.get("dimensions") or [])
+        if isinstance(d, dict)
+    }
+    rows = []
+    for name in sorted(set(before_dims) | set(after_dims)):
+        b = before_dims.get(name)
+        a = after_dims.get(name)
+        delta = None
+        if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+            delta = round(a - b, 4)
+        rows.append({"name": name, "before": b, "after": a, "delta": delta})
+    return {
+        "iteration": iteration,
+        "weighted_total_before": before_total,
+        "weighted_total_after": after_total,
+        "dimensions": rows,
+    }
+
+
+def _summarize_rubric_delta(delta: dict) -> str:
+    """One-line stdout summary of a rubric delta."""
+    wt_b = delta.get("weighted_total_before")
+    wt_a = delta.get("weighted_total_after")
+    wt_d = None
+    if isinstance(wt_a, (int, float)) and isinstance(wt_b, (int, float)):
+        wt_d = wt_a - wt_b
+    movers = [
+        d
+        for d in delta.get("dimensions", [])
+        if isinstance(d.get("delta"), (int, float)) and abs(d["delta"]) >= 0.005
+    ]
+    movers.sort(key=lambda d: -abs(d["delta"]))
+    top = ", ".join(
+        f"{d['name']} {d['delta']:+.2f}" for d in movers[:3]
+    ) or "no significant movers"
+    wt_b_s = f"{wt_b:.2f}" if isinstance(wt_b, (int, float)) else "?"
+    wt_a_s = f"{wt_a:.2f}" if isinstance(wt_a, (int, float)) else "?"
+    wt_d_s = f"{wt_d:+.2f}" if isinstance(wt_d, (int, float)) else "?"
+    return (
+        f"iter {delta.get('iteration')}: weighted {wt_b_s} -> {wt_a_s} "
+        f"(Δ {wt_d_s}) — top movers: {top}"
+    )
+
+
+def _is_unusable_model_output(output_text: str) -> bool:
+    """Detect CLI success responses that actually mean no model was configured."""
+    normalized = output_text.strip().lower()
+    return normalized in {"llm not set", "model not set"} or "llm not set" in normalized
+
+
+def run_model_improver(
     *,
     repo_root: Path,
     brand: str,
@@ -95,7 +199,10 @@ def run_claude_improver(
     timeout_s: int,
     log_path: Path,
     component_issues: str = "",
+    rubric_report: dict | None = None,
 ) -> dict[str, object]:
+    provider = read_active_model_provider()
+    provider_label = model_provider_label(provider)
     recent_feedback = read_recent_feedback_entries(
         repo_root / "state" / "learning" / "feedback-log.jsonl",
         brand,
@@ -110,8 +217,21 @@ def run_claude_improver(
         inline_feedback=feedback,
         recent_feedback=recent_feedback,
         component_issues=component_issues,
+        rubric_report=rubric_report,
     )
-    cmd = build_claude_command(prompt)
+    try:
+        cmd = build_model_provider_command(provider, prompt, repo_root=repo_root)
+    except Exception as exc:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_path.write_text(f"{provider_label} command could not be built: {exc}\n")
+        return {
+            "ok": False,
+            "status": "needs_operator_review",
+            "detail": f"{provider_label} command could not be built: {exc}",
+            "summary": None,
+            "log_path": str(log_path),
+            "provider": provider_label,
+        }
 
     try:
         result = subprocess.run(
@@ -123,23 +243,25 @@ def run_claude_improver(
         )
     except FileNotFoundError:
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        log_path.write_text("Claude CLI was not found on PATH.\n")
+        log_path.write_text(f"{provider_label} command was not found on PATH: {cmd[0]}\n")
         return {
             "ok": False,
             "status": "needs_operator_review",
-            "detail": "Claude CLI was not found on PATH.",
+            "detail": f"{provider_label} command was not found on PATH: {cmd[0]}",
             "summary": None,
             "log_path": str(log_path),
+            "provider": provider_label,
         }
     except subprocess.TimeoutExpired:
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        log_path.write_text("Claude improvement step timed out.\n")
+        log_path.write_text(f"{provider_label} improvement step timed out.\n")
         return {
             "ok": False,
             "status": "needs_operator_review",
-            "detail": f"Claude improvement timed out after {timeout_s} seconds.",
+            "detail": f"{provider_label} improvement timed out after {timeout_s} seconds.",
             "summary": None,
             "log_path": str(log_path),
+            "provider": provider_label,
         }
 
     output_text = "\n".join(
@@ -153,25 +275,47 @@ def run_claude_improver(
             "ok": False,
             "status": "needs_operator_review",
             "detail": output_text
-            or f"Claude improvement failed with exit code {result.returncode}.",
+            or f"{provider_label} improvement failed with exit code {result.returncode}.",
             "summary": None,
             "log_path": str(log_path),
+            "provider": provider_label,
+        }
+
+    if _is_unusable_model_output(output_text):
+        return {
+            "ok": False,
+            "status": "needs_operator_review",
+            "detail": (
+                f"{provider_label} did not run because its CLI reported: "
+                f"{output_text or 'LLM not set'}."
+            ),
+            "summary": output_text or None,
+            "log_path": str(log_path),
+            "provider": provider_label,
         }
 
     return {
         "ok": True,
         "status": "running",
         "detail": None,
-        "summary": output_text or "Claude applied a refinement pass.",
+        "summary": output_text or f"{provider_label} applied a refinement pass.",
         "log_path": str(log_path),
+        "provider": provider_label,
     }
+
+
+def run_claude_improver(**kwargs) -> dict[str, object]:
+    """Backward-compatible wrapper for tests and callers using the old name."""
+    return run_model_improver(**kwargs)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run an improvement job for a brand.")
     parser.add_argument("--brand", required=True, help="Brand slug")
     parser.add_argument(
-        "--base-url", default="http://localhost:5173", help="UI base URL"
+        "--base-url",
+        default="https://design-extractor.localhost",
+        help="UI base URL (portless-managed default; override for non-portless setups)",
     )
     parser.add_argument(
         "--target", type=float, default=80.0, help="Target validation score"
@@ -183,12 +327,23 @@ def main() -> int:
         "--claude-timeout",
         type=int,
         default=900,
-        help="Timeout in seconds for each Claude refinement pass",
+        help="Timeout in seconds for each model refinement pass",
+    )
+    parser.add_argument(
+        "--model-timeout",
+        type=int,
+        default=None,
+        help="Timeout in seconds for each model refinement pass",
     )
     parser.add_argument(
         "--skip-claude",
         action="store_true",
-        help="Run validation iterations without invoking Claude for repairs",
+        help="Run validation iterations without invoking the selected model for repairs",
+    )
+    parser.add_argument(
+        "--skip-model",
+        action="store_true",
+        help="Run validation iterations without invoking the selected model for repairs",
     )
     parser.add_argument("--job-id", default=None, help="Optional precomputed job id")
     parser.add_argument(
@@ -244,7 +399,10 @@ def main() -> int:
             brand=args.brand,
             base_url=args.base_url,
             target=args.target,
-            skip_originals=iteration > 1,
+            # Reuse cached originals when present. The validation runner still
+            # captures originals that are missing, so fresh brands bootstrap
+            # normally while existing brands avoid brittle source-site recapture.
+            skip_originals=True,
         )
 
         output_text = "\n".join(part for part in (result.stdout, result.stderr) if part)
@@ -367,7 +525,7 @@ def main() -> int:
 
         # Stall detection: 3-iteration window with spread below the noise floor
         # means the loop is thrashing inside re-render jitter — stop wasting
-        # Claude runs. See docs/plans/2026-04-22-improvement-loop-diagnosis.md.
+        # model runs. See docs/plans/2026-04-22-improvement-loop-diagnosis.md.
         if len(history) >= 3:
             window = history[-3:]
             if max(window) - min(window) < 0.01:
@@ -377,12 +535,12 @@ def main() -> int:
         if iteration >= args.max_iterations:
             break
 
-        if args.skip_claude:
+        if args.skip_claude or args.skip_model:
             continue
 
-        # Run component validation once per iteration before the Claude call.
+        # Run component validation once per iteration before the model call.
         # This avoids running it inside the prompt builder where it added
-        # 2+ minutes to the Claude subprocess timeout budget.
+        # 2+ minutes to the subprocess timeout budget.
         comp_issues = ""
         worst_page_slug = (
             pages_needing_work[0].get("slug", "") if pages_needing_work else ""
@@ -421,7 +579,12 @@ def main() -> int:
             except (subprocess.TimeoutExpired, Exception):
                 pass  # component validation is best-effort
 
-        claude_result = run_claude_improver(
+        # Snapshot rubric report BEFORE the model call so we can compute a
+        # per-iteration delta after the next rubric run.
+        rubric_before = _load_rubric_report(args.brand)
+
+        model_timeout = args.model_timeout or args.claude_timeout
+        model_result = run_model_improver(
             repo_root=repo_root,
             brand=args.brand,
             target=args.target,
@@ -430,24 +593,44 @@ def main() -> int:
             manifest_path=manifest_path,
             pages=pages_needing_work,
             feedback=feedback,
-            timeout_s=args.claude_timeout,
-            log_path=jobs_dir / f"{job_id}-claude-iter-{iteration}.log",
+            timeout_s=model_timeout,
+            log_path=jobs_dir / f"{job_id}-model-iter-{iteration}.log",
             component_issues=comp_issues,
+            rubric_report=rubric_before,
         )
         update_job_state(
             job_path,
             state,
-            status=str(claude_result["status"]),
-            last_claude_summary=claude_result.get("summary"),
-            claude_log_path=claude_result.get("log_path"),
+            status=str(model_result["status"]),
+            last_model_summary=model_result.get("summary"),
+            model_log_path=model_result.get("log_path"),
+            model_provider=model_result.get("provider"),
+            last_claude_summary=model_result.get("summary"),
+            claude_log_path=model_result.get("log_path"),
         )
-        if not claude_result["ok"]:
+
+        # After a successful iteration, re-run the rubric and record the delta.
+        if model_result["ok"]:
+            if _run_rubric_subprocess(repo_root, args.brand, timeout_s=300):
+                rubric_after = _load_rubric_report(args.brand)
+                delta = _compute_rubric_delta(
+                    iteration=iteration,
+                    before=rubric_before,
+                    after=rubric_after,
+                )
+                if delta is not None:
+                    rubric_deltas = list(state.get("rubric_deltas") or [])
+                    rubric_deltas.append(delta)
+                    update_job_state(job_path, state, rubric_deltas=rubric_deltas)
+                    print(_summarize_rubric_delta(delta), flush=True)
+
+        if not model_result["ok"]:
             update_job_state(
                 job_path,
                 state,
                 blocked_reason={
-                    "code": "claude_improver_failed",
-                    "detail": str(claude_result["detail"]),
+                    "code": "model_improver_failed",
+                    "detail": str(model_result["detail"]),
                 },
             )
             return 0

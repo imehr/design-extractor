@@ -21,6 +21,8 @@ import sys
 import time
 from pathlib import Path
 
+from proc_utils import run_capture
+
 try:
     from PIL import Image
     from pixelmatch import pixelmatch
@@ -29,77 +31,263 @@ except ImportError:
     sys.exit(1)
 
 
-# JavaScript to find all components in a page DOM
-FIND_COMPONENTS_JS = r"""JSON.stringify((() => {
+COMPONENT_DISCOVERY_SELECTORS = [
+    "[data-component]",
+    "[data-section]",
+    "[data-testid*=\"component\" i]",
+    "[data-testid*=\"section\" i]",
+    "header",
+    "footer",
+    "main > section",
+    "section",
+    "article",
+    "aside",
+    "nav",
+    "form",
+    "[role=\"banner\"]",
+    "[role=\"contentinfo\"]",
+    "[role=\"navigation\"]",
+    "[role=\"main\"]",
+    "[role=\"region\"]",
+    "[role=\"form\"]",
+    "[role=\"search\"]",
+    "[aria-label]",
+    "[class*=\"hero\" i]",
+    "[class*=\"section\" i]",
+    "[class*=\"feature\" i]",
+    "[class*=\"card\" i]",
+    "[class*=\"grid\" i]",
+    "[class*=\"panel\" i]",
+    "[class*=\"cta\" i]",
+    "[class*=\"banner\" i]",
+]
+
+
+def build_find_components_js():
+    """Build the browser-side component discovery script.
+
+    The detector intentionally looks beyond headings. Modern pages often render
+    reusable blocks as ordinary divs with data attributes, ARIA landmarks,
+    utility classes, cards, or forms, so discovery uses semantic scoring rather
+    than one heading-only pass.
+    """
+    selectors_json = (
+        "["
+        + ", ".join("'" + s.replace("\\", "\\\\").replace("'", "\\'") + "'" for s in COMPONENT_DISCOVERY_SELECTORS)
+        + "]"
+    )
+    return r"""JSON.stringify((() => {
+  const COMPONENT_SELECTORS = __SELECTORS__;
   const components = [];
-  const seen = new Set();
-  const headings = document.querySelectorAll('h1, h2, h3');
-  for (const h of headings) {
-    const section = h.closest('section') || h.closest('[class*=section]') || h.parentElement?.parentElement;
-    if (!section || section === document.body) continue;
-    const r = section.getBoundingClientRect();
-    if (r.height < 40 || r.width < 200) continue;
-    const key = Math.round(r.top) + '|' + Math.round(r.height);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const cs = getComputedStyle(section);
+
+  const normalizeText = (value) => (value || '').replace(/\s+/g, ' ').trim();
+  const hasClassToken = (el, pattern) => pattern.test(String(el.className || ''));
+  const getRect = (el) => {
+    const rect = el.getBoundingClientRect();
+    return {
+      top: Math.round(rect.top + window.scrollY),
+      left: Math.round(rect.left + window.scrollX),
+      width: Math.round(rect.width),
+      height: Math.round(rect.height),
+      area: Math.max(0, Math.round(rect.width * rect.height)),
+    };
+  };
+
+  function isVisible(el) {
+    const rect = el.getBoundingClientRect();
+    if (rect.width < 24 || rect.height < 24) return false;
+    const style = getComputedStyle(el);
+    return style.display !== 'none' &&
+      style.visibility !== 'hidden' &&
+      Number(style.opacity || '1') > 0.01;
+  }
+
+  function getComponentName(el) {
+    const explicit =
+      el.getAttribute('data-component') ||
+      el.getAttribute('data-section') ||
+      el.getAttribute('data-testid') ||
+      el.getAttribute('aria-label');
+    if (explicit) return normalizeText(explicit).substring(0, 80);
+
+    const heading = el.querySelector('h1, h2, h3, h4, [role="heading"]');
+    if (heading) return normalizeText(heading.textContent).substring(0, 80);
+
+    const labeled = el.querySelector('img[alt], svg[aria-label], button, a');
+    const label = labeled?.getAttribute('alt') || labeled?.getAttribute('aria-label') || labeled?.textContent;
+    if (label) return normalizeText(label).substring(0, 80);
+
+    const role = el.getAttribute('role');
+    if (role) return role[0].toUpperCase() + role.slice(1);
+
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'header') return 'Header';
+    if (tag === 'footer') return 'Footer';
+    if (tag === 'nav') return 'Navigation';
+    if (tag === 'form') return 'Form';
+    if (tag === 'article') return 'Article';
+
+    const className = String(el.className || '').split(/\s+/).find(Boolean);
+    return className ? className.replace(/[-_]/g, ' ').substring(0, 80) : 'Section';
+  }
+
+  function classifyComponent(el) {
+    const explicit = normalizeText(el.getAttribute('data-component') || el.getAttribute('data-section')).toLowerCase();
+    if (explicit) return explicit.replace(/\s+/g, '-');
+
+    const tag = el.tagName.toLowerCase();
+    const role = normalizeText(el.getAttribute('role')).toLowerCase();
+    const cls = String(el.className || '');
+    const top = el.getBoundingClientRect().top + window.scrollY;
+
+    if (tag === 'header' || role === 'banner') return 'header';
+    if (tag === 'footer' || role === 'contentinfo') return 'footer';
+    if (tag === 'nav' || role === 'navigation') return 'navigation';
+    if (tag === 'form' || role === 'form' || role === 'search') return 'form';
+    if (tag === 'article') return 'article';
+    if (hasClassToken(el, /hero|masthead|jumbotron/i)) return 'hero';
+    if (hasClassToken(el, /cta|call-to-action|contact/i)) return 'cta';
+    if (hasClassToken(el, /card|tile/i)) return 'card';
+    if (hasClassToken(el, /grid|collection|listing|gallery/i)) return 'card-grid';
+    if (hasClassToken(el, /feature|benefit/i)) return 'feature-section';
+    if (hasClassToken(el, /banner|promo/i)) return 'banner';
+    if (el.querySelectorAll('input, textarea, select').length > 0) return 'form';
+    if (el.querySelectorAll('li').length >= 3) return 'list';
+    if (el.querySelector('h1') && top < 900) return 'hero';
+    if (cls && /section/i.test(cls)) return 'section';
+    return 'section';
+  }
+
+  function scoreCandidate(el) {
+    if (!isVisible(el) || el === document.body || el === document.documentElement) return -100;
+    const rect = el.getBoundingClientRect();
+    const tag = el.tagName.toLowerCase();
+    const role = normalizeText(el.getAttribute('role')).toLowerCase();
+    let score = 0;
+
+    if (el.hasAttribute('data-component')) score += 80;
+    if (el.hasAttribute('data-section')) score += 65;
+    if (['header', 'footer', 'section', 'article', 'nav', 'form', 'aside'].includes(tag)) score += 42;
+    if (['banner', 'contentinfo', 'navigation', 'region', 'form', 'search', 'main'].includes(role)) score += 30;
+    if (el.querySelector('h1, h2, h3, h4, [role="heading"]')) score += 24;
+    if (el.querySelector('img, picture, video, canvas, svg')) score += 12;
+    if (el.querySelectorAll('a, button').length > 0) score += 10;
+    if (el.querySelectorAll('li').length >= 3) score += 10;
+    if (el.querySelectorAll('input, textarea, select').length > 0) score += 14;
+    if (hasClassToken(el, /hero|section|feature|card|grid|panel|cta|banner|module|block/i)) score += 18;
+    if (rect.width < 180 || rect.height < 44) score -= 45;
+    if (tag === 'main') score -= 20;
+    if (el.children.length === 1 && !el.querySelector('h1, h2, h3, h4, a, button, img, form')) score -= 20;
+
+    return score;
+  }
+
+  const candidates = [];
+  COMPONENT_SELECTORS.forEach((selector) => {
+    document.querySelectorAll(selector).forEach((el) => {
+      const score = scoreCandidate(el);
+      if (score < 35) return;
+      const rect = getRect(el);
+      candidates.push({ el, score, rect });
+    });
+  });
+
+  candidates.sort((a, b) => b.score - a.score || b.rect.area - a.rect.area);
+  const picked = [];
+  const seenGeometry = new Set();
+
+  candidates.forEach((candidate) => {
+    const { el, rect } = candidate;
+    const key = [rect.top, rect.left, rect.width, rect.height].join('|');
+    if (seenGeometry.has(key)) return;
+
+    const swallowedByPicked = picked.some((item) => {
+      if (!item.el.contains(el)) return false;
+      if (el.hasAttribute('data-component') || el.hasAttribute('data-section')) return false;
+      const ratio = rect.area / Math.max(1, item.rect.area);
+      return ratio > 0.68;
+    });
+    if (swallowedByPicked) return;
+
+    seenGeometry.add(key);
+    picked.push(candidate);
+  });
+
+  picked.sort((a, b) => a.rect.top - b.rect.top || a.rect.left - b.rect.left);
+
+  picked.forEach(({ el, rect, score }) => {
+    const cs = getComputedStyle(el);
     let bgImgCount = 0;
-    section.querySelectorAll('div, figure, span').forEach(el => {
-      const bg = getComputedStyle(el).backgroundImage;
+    el.querySelectorAll('*').forEach((node) => {
+      const bg = getComputedStyle(node).backgroundImage;
       if (bg && bg !== 'none' && bg.includes('url(')) bgImgCount++;
     });
+    const headingEl = el.querySelector('h1, h2, h3, h4, [role="heading"]');
+
     components.push({
-      type: 'section', heading: h.textContent.trim().replace(/\s+/g, ' ').substring(0, 80),
-      headingTag: h.tagName, top: Math.round(r.top + window.scrollY),
-      left: Math.round(r.left), width: Math.round(r.width), height: Math.round(r.height),
-      bg: cs.backgroundColor, color: cs.color, fontSize: cs.fontSize,
+      type: classifyComponent(el),
+      heading: getComponentName(el),
+      headingTag: headingEl ? headingEl.tagName : el.tagName,
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      height: rect.height,
+      bg: cs.backgroundColor,
+      color: cs.color,
+      fontSize: cs.fontSize,
       fontFamily: cs.fontFamily.substring(0, 60),
-      imgCount: section.querySelectorAll('img').length, bgImgCount: bgImgCount,
-      linkCount: section.querySelectorAll('a').length, childCount: section.children.length,
+      imgCount: el.querySelectorAll('img, picture').length,
+      bgImgCount,
+      linkCount: el.querySelectorAll('a').length,
+      buttonCount: el.querySelectorAll('button, [role="button"]').length,
+      inputCount: el.querySelectorAll('input, textarea, select').length,
+      childCount: el.children.length,
+      selectorScore: score,
     });
-  }
-  const header = document.querySelector('header');
-  if (header) {
-    const r = header.getBoundingClientRect();
-    components.unshift({ type: 'header', heading: 'Header', headingTag: 'HEADER',
-      top: Math.round(r.top + window.scrollY), left: Math.round(r.left),
-      width: Math.round(r.width), height: Math.round(r.height),
-      bg: getComputedStyle(header).backgroundColor, color: getComputedStyle(header).color,
-      fontSize: '16px', fontFamily: '', imgCount: header.querySelectorAll('img').length,
-      bgImgCount: 0, linkCount: header.querySelectorAll('a').length, childCount: header.children.length,
-    });
-  }
-  const footer = document.querySelector('footer');
-  if (footer) {
-    const r = footer.getBoundingClientRect();
-    components.push({ type: 'footer', heading: 'Footer', headingTag: 'FOOTER',
-      top: Math.round(r.top + window.scrollY), left: Math.round(r.left),
-      width: Math.round(r.width), height: Math.round(r.height),
-      bg: getComputedStyle(footer).backgroundColor, color: getComputedStyle(footer).color,
-      fontSize: '14px', fontFamily: '', imgCount: footer.querySelectorAll('img').length,
-      bgImgCount: 0, linkCount: footer.querySelectorAll('a').length, childCount: footer.children.length,
-    });
-  }
+  });
+
   return components;
-})())"""
+})())""".replace("__SELECTORS__", selectors_json)
+
+
+# JavaScript to find all components in a page DOM
+FIND_COMPONENTS_JS = build_find_components_js()
 
 
 def browser_run(args_list, timeout=15):
     """Run an agent-browser command and return stdout."""
-    result = subprocess.run(
-        ["agent-browser"] + args_list,
-        capture_output=True, text=True, timeout=timeout,
-    )
-    return result.stdout.strip()
+    result = run_capture(["agent-browser"] + args_list, timeout=timeout)
+    return (result.stdout or "").strip()
+
+
+def close_browser_session(session):
+    """Best-effort cleanup for component validation sessions."""
+    try:
+        run_capture(
+            ["agent-browser", "close", "--session", session],
+            timeout=10,
+        )
+    except Exception:
+        pass
+
+
+def close_component_sessions_after(func):
+    def wrapped(brand, page, *args, **kwargs):
+        try:
+            return func(brand, page, *args, **kwargs)
+        finally:
+            close_browser_session(f"cv-r-{page}")
+            close_browser_session(f"cv-o-{page}")
+    return wrapped
 
 
 def browser_js(session, js, timeout=20):
     """Run JS via agent-browser and return the result string."""
-    result = subprocess.run(
+    result = run_capture(
         ["agent-browser", "eval", "--session", session, js],
-        capture_output=True, text=True, timeout=timeout,
+        timeout=timeout,
     )
-    return result.stdout.strip().strip('"')
+    return (result.stdout or "").strip().strip('"')
 
 
 def open_page(url, session, headed=False, wait=4):
@@ -107,12 +295,10 @@ def open_page(url, session, headed=False, wait=4):
     cmd = ["open", url, "--session", session]
     if headed:
         cmd.append("--headed")
-    result = subprocess.run(
-        ["agent-browser"] + cmd,
-        capture_output=True, text=True, timeout=30,
-    )
+    result = run_capture(["agent-browser"] + cmd, timeout=30)
     if result.returncode != 0:
-        print(f"  Failed to open {url}: {result.stderr.strip()}")
+        reason = "timed out" if result.returncode == -1 else (result.stderr or "").strip()
+        print(f"  Failed to open {url}: {reason}")
         return False
     time.sleep(wait)
     return True
@@ -213,30 +399,73 @@ def compare_pair(orig, repl, orig_img, repl_img):
     return result
 
 
+def _norm_text(value):
+    return " ".join(str(value or "").lower().split())
+
+
+def _component_match_score(orig, repl):
+    """Score a possible original/replica component pair."""
+    oh = _norm_text(orig.get("heading"))
+    rh = _norm_text(repl.get("heading"))
+    ot = _norm_text(orig.get("type"))
+    rt = _norm_text(repl.get("type"))
+
+    score = 0
+
+    if oh and rh:
+        if oh == rh:
+            score += 100
+        elif oh in rh or rh in oh:
+            score += 82
+        else:
+            o_words = {w for w in oh.replace("-", " ").split() if len(w) > 2}
+            r_words = {w for w in rh.replace("-", " ").split() if len(w) > 2}
+            if o_words and r_words:
+                overlap = len(o_words & r_words) / len(o_words | r_words)
+                score += round(overlap * 55)
+
+    if ot and rt:
+        if ot == rt:
+            score += 76 if ot in ("header", "footer", "navigation") else 62
+        elif {ot, rt} <= {"section", "feature-section", "card-grid", "list", "article", "hero", "cta", "banner"}:
+            score += 24
+
+    top_diff = abs(int(orig.get("top", 0) or 0) - int(repl.get("top", 0) or 0))
+    if top_diff <= 120:
+        score += 18
+    elif top_diff <= 320:
+        score += 10
+    elif top_diff <= 640:
+        score += 4
+
+    height_o = int(orig.get("height", 0) or 0)
+    height_r = int(repl.get("height", 0) or 0)
+    if height_o and height_r:
+        ratio = min(height_o, height_r) / max(height_o, height_r)
+        if ratio >= 0.75:
+            score += 8
+        elif ratio >= 0.5:
+            score += 4
+
+    return score
+
+
 def match_components(orig_comps, repl_comps):
-    """Match components by heading text. Returns list of (orig, repl) tuples."""
+    """Match components by heading, semantic type, and page position."""
     pairs = []
     used = set()
 
     for orig in orig_comps:
-        oh = orig.get("heading", "").lower().strip()
         best_j, best_score = None, 0
 
         for j, repl in enumerate(repl_comps):
             if j in used:
                 continue
-            rh = repl.get("heading", "").lower().strip()
-            if oh == rh:
-                best_j, best_score = j, 100
-                break
-            if oh and rh and (oh in rh or rh in oh):
-                if best_score < 80:
-                    best_j, best_score = j, 80
-            if orig.get("type") == repl.get("type") and orig["type"] in ("header", "footer"):
-                if best_score < 60:
-                    best_j, best_score = j, 60
+            score = _component_match_score(orig, repl)
+            if score > best_score:
+                best_j, best_score = j, score
 
-        if best_j is not None:
+        if best_j is not None and best_score >= 55:
             used.add(best_j)
             pairs.append((orig, repl_comps[best_j]))
         else:
@@ -249,6 +478,7 @@ def match_components(orig_comps, repl_comps):
     return pairs
 
 
+@close_component_sessions_after
 def validate_page(brand, page, original_url, replica_url, output_dir, headed=False):
     """Full component validation for one page."""
     output_dir.mkdir(parents=True, exist_ok=True)

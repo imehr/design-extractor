@@ -81,6 +81,29 @@ def brand_record_from_metadata(slug: str, metadata_path: Path) -> dict:
     }
 
 
+def parse_extracted_at(value: object) -> float:
+    if not isinstance(value, str) or not value.strip():
+        return 0.0
+    normalized = value.strip().replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(normalized).timestamp()
+    except ValueError:
+        try:
+            return datetime.strptime(value.strip(), "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()
+        except ValueError:
+            return 0.0
+
+
+def sort_brands(brands: list[dict]) -> list[dict]:
+    return sorted(
+        brands,
+        key=lambda b: (
+            -parse_extracted_at(b.get("extracted_at")),
+            str(b.get("name") or b.get("slug") or "").lower(),
+        ),
+    )
+
+
 def cmd_add(args: argparse.Namespace) -> int:
     metadata_path = Path(args.metadata).expanduser().resolve()
     if not metadata_path.exists():
@@ -90,9 +113,57 @@ def cmd_add(args: argparse.Namespace) -> int:
     record = brand_record_from_metadata(args.add, metadata_path)
     data["brands"] = [b for b in data["brands"] if b["slug"] != args.add]
     data["brands"].append(record)
-    data["brands"].sort(key=lambda b: b["slug"])
+    data["brands"] = sort_brands(data["brands"])
     save_index(data)
     print(f"registered {args.add} in {INDEX_PATH}")
+    return 0
+
+
+def collect_brand_records(brands_root: Path) -> dict[str, dict]:
+    """Scan <brands_root>/*/metadata.json into {slug: record}. Missing or
+    malformed metadata files are skipped with a warning, never fatal."""
+    records: dict[str, dict] = {}
+    if not brands_root.exists():
+        return records
+    for brand_dir in sorted(brands_root.iterdir()):
+        if not brand_dir.is_dir():
+            continue
+        metadata_path = brand_dir / "metadata.json"
+        if not metadata_path.exists():
+            continue
+        slug = brand_dir.name
+        try:
+            records[slug] = brand_record_from_metadata(slug, metadata_path)
+        except (json.JSONDecodeError, OSError) as exc:
+            print(f"warning: skipping {metadata_path}: {exc}", file=sys.stderr)
+    return records
+
+
+def cmd_rebuild(args: argparse.Namespace) -> int:
+    """Rebuild the library index (and a repo-local brands/index.json) from
+    brands/*/metadata.json. Idempotent: the result depends only on the
+    metadata files on disk, never on the previous index contents."""
+    library_brands = LIBRARY_ROOT / "brands"
+    repo_brands = Path(args.repo_brands_dir).expanduser() if args.repo_brands_dir else None
+
+    records = collect_brand_records(library_brands)
+    if repo_brands is not None:
+        for slug, record in collect_brand_records(repo_brands).items():
+            # Library copy is canonical when both exist (publish mirrors them).
+            records.setdefault(slug, record)
+
+    brands = sort_brands(list(records.values()))
+    data = {"version": SCHEMA_VERSION, "brands": brands}
+    save_index(data)
+    print(f"rebuilt {INDEX_PATH} with {len(brands)} brands")
+
+    if repo_brands is not None:
+        repo_brands.mkdir(parents=True, exist_ok=True)
+        repo_index = repo_brands / "index.json"
+        with repo_index.open("w") as f:
+            json.dump({"version": SCHEMA_VERSION, "updated_at": now_iso(), "brands": brands}, f, indent=2)
+            f.write("\n")
+        print(f"rebuilt {repo_index} with {len(brands)} brands")
     return 0
 
 
@@ -126,8 +197,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--metadata", help="path to the brand's metadata.json (required with --add)")
     parser.add_argument("--remove", help="unregister a brand by slug")
     parser.add_argument("--list", action="store_true", help="print all registered brands")
+    parser.add_argument(
+        "--rebuild",
+        action="store_true",
+        help="rebuild index.json from brands/*/metadata.json (idempotent)",
+    )
+    parser.add_argument(
+        "--repo-brands-dir",
+        default=str(Path(__file__).resolve().parent.parent / "brands"),
+        help="repo-local brands/ directory to scan and to write brands/index.json into",
+    )
     args = parser.parse_args(argv)
 
+    if args.rebuild:
+        return cmd_rebuild(args)
     if args.add:
         if not args.metadata:
             parser.error("--add requires --metadata")

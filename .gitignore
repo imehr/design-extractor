@@ -32,8 +32,10 @@ Thumbs.db
 .logs/
 
 # Generated extraction output (regenerable via the pipeline)
-brands/
-cache/
+/brands/
+/cache/
+/ui/public/brands/
+/ui/cache/
 
 # Playwright/MCP temp
 .playwright-mcp/
