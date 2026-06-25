@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { Suspense, useEffect, useMemo, useState, useRef, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import {
+  describeExecutionSelection,
+  type ExecutionModePayload,
+} from "@/lib/execution-display";
 
 type AgentStatus = "pending" | "running" | "completed" | "error";
 type ExtractionState = "idle" | "running" | "complete" | "error";
@@ -13,40 +17,40 @@ const PIPELINE = [
     phase: "A",
     label: "Extract",
     agents: [
-      { id: "recon-agent", model: "sonnet", role: "Page discovery" },
-      { id: "dom-extractor", model: "sonnet", role: "Live DOM measurement" },
-      { id: "asset-extractor", model: "sonnet", role: "Download assets" },
+      { id: "recon-agent", model: "selected", role: "Page discovery" },
+      { id: "dom-extractor", model: "selected", role: "Live DOM measurement" },
+      { id: "asset-extractor", model: "selected", role: "Download assets" },
     ],
   },
   {
     phase: "B",
     label: "Build",
     agents: [
-      { id: "replica-builder", model: "sonnet", role: "React/shadcn replicas" },
+      { id: "replica-builder", model: "selected", role: "React/shadcn replicas" },
     ],
   },
   {
     phase: "C",
     label: "Validate",
     agents: [
-      { id: "visual-critic", model: "opus", role: "Visual comparison" },
+      { id: "visual-critic", model: "selected", role: "Visual comparison" },
     ],
   },
   {
     phase: "D",
     label: "Improve",
     agents: [
-      { id: "refinement-agent", model: "sonnet", role: "Patch replicas" },
-      { id: "validation-monitor", model: "opus", role: "Orchestrator loop" },
+      { id: "refinement-agent", model: "selected", role: "Patch replicas" },
+      { id: "validation-monitor", model: "selected", role: "Orchestrator loop" },
     ],
   },
   {
     phase: "E",
     label: "Publish",
     agents: [
-      { id: "documentarian", model: "sonnet", role: "DESIGN.md" },
-      { id: "skill-packager", model: "sonnet", role: "SKILL.md" },
-      { id: "librarian", model: "haiku", role: "Index update" },
+      { id: "documentarian", model: "selected", role: "DESIGN.md" },
+      { id: "skill-packager", model: "selected", role: "SKILL.md" },
+      { id: "librarian", model: "selected", role: "Index update" },
     ],
   },
 ];
@@ -78,6 +82,18 @@ interface LogEntry {
 
 function modelBadgeCls(model: string) {
   return MODEL_STYLES[model] ?? "border-slate-400/40 bg-slate-500/15 text-slate-300";
+}
+
+function modelBadgeText(model: string) {
+  const tail = model.split("/").filter(Boolean).pop() ?? model;
+  return tail.length > 18 ? `${tail.slice(0, 15)}...` : tail;
+}
+
+function applyModelToPipeline(model: string) {
+  return PIPELINE.map((phase) => ({
+    ...phase,
+    agents: phase.agents.map((agent) => ({ ...agent, model })),
+  }));
 }
 
 function deriveBrandName(url: string): string {
@@ -144,24 +160,38 @@ function getCurrentPhase(agentStatuses: Record<string, AgentStatus>): string | n
   return null;
 }
 
-export default function ExtractPage() {
+function ExtractPageInner() {
+  const searchParams = useSearchParams();
+  const initialUrl = searchParams.get("url") ?? "";
+  const initialName = searchParams.get("name") ?? (initialUrl ? deriveBrandName(initialUrl) : "");
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
   const [agentStatuses, setAgentStatuses] = useState<Record<string, AgentStatus>>({});
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [extractionState, setExtractionState] = useState<ExtractionState>("idle");
-  const [inputUrl, setInputUrl] = useState("");
-  const [inputName, setInputName] = useState("");
+  const [inputUrl, setInputUrl] = useState(initialUrl);
+  const [inputName, setInputName] = useState(initialName);
   const [currentScore, setCurrentScore] = useState<number | null>(null);
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [agentFilter, setAgentFilter] = useState<string>("all");
   const [statusMessage, setStatusMessage] = useState("Ready. Enter a URL to begin extraction.");
+  const [executionSelection, setExecutionSelection] = useState<ExecutionModePayload | null>(null);
   const logEndRef = useRef<HTMLDivElement>(null);
   const pendingStartRef = useRef<{ url: string; name: string } | null>(null);
+  const { providerLabel: activeProviderLabel, modelLabel: activeModelLabel } =
+    describeExecutionSelection(executionSelection);
+  const pipeline = useMemo(() => applyModelToPipeline(activeModelLabel), [activeModelLabel]);
 
   useEffect(() => {
     logEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [logs]);
+
+  useEffect(() => {
+    fetch("/api/execution/mode", { cache: "no-store" })
+      .then((response) => response.json())
+      .then((data: ExecutionModePayload) => setExecutionSelection(data))
+      .catch(() => {});
+  }, []);
 
   const addLog = useCallback((entry: LogEntry) => {
     setLogs((prev) => [...prev, entry]);
@@ -178,7 +208,46 @@ export default function ExtractPage() {
         break;
       case "agent_log":
       case "claude_output":
-        addLog({ ts: new Date().toISOString(), agent: (data.agent as string) ?? "system", level: "info", message: data.message as string });
+        addLog({
+          ts: new Date().toISOString(),
+          agent: (data.agent as string) ?? "system",
+          level: "info",
+          message: (data.message as string) ?? (data.text as string) ?? "",
+        });
+        break;
+      case "extraction_started":
+        setExtractionState("running");
+        setStatusMessage(`Extraction started for ${data.brand as string}`);
+        break;
+      case "phase_started":
+        setStatusMessage(`Phase ${data.phase as string}: ${data.label as string}`);
+        break;
+      case "status":
+        setStatusMessage(data.message as string);
+        break;
+      case "warning":
+        addLog({ ts: new Date().toISOString(), agent: "system", level: "warn", message: data.message as string });
+        break;
+      case "job_reconnected":
+        setExtractionState("running");
+        if (data.agent) {
+          setAgentStatuses((prev) => ({ ...prev, [data.agent as string]: "running" }));
+          setStatusMessage(`Reconnected to ${(data.agent as string)}...`);
+        } else {
+          setStatusMessage("Reconnected to running extraction...");
+        }
+        break;
+      case "job_status":
+        if (data.idle) {
+          setExtractionState((prev) => (prev === "running" ? "idle" : prev));
+          setStatusMessage("No active extraction is running. Start the extraction again.");
+        } else {
+          setExtractionState("running");
+          if (data.agent) {
+            setAgentStatuses((prev) => ({ ...prev, [data.agent as string]: "running" }));
+            setStatusMessage(`Running ${(data.agent as string)}...`);
+          }
+        }
         break;
       case "error":
         setAgentStatuses((prev) => {
@@ -196,15 +265,31 @@ export default function ExtractPage() {
         addLog({ ts: new Date().toISOString(), agent: "system", level: "warn", message: `Blocked: ${data.reason}. Fallback: ${data.fallback}` });
         break;
       case "extraction_complete":
-        setExtractionState("complete");
-        setFinalScore(data.final_score as number);
-        setStatusMessage(`Extraction complete. Final score: ${Math.round((data.final_score as number) * 100)}%`);
+        {
+          const failedPhases = Array.isArray(data.failed_phases) ? data.failed_phases : [];
+          const final = typeof data.final_score === "number" ? data.final_score : null;
+          setFinalScore(final);
+          if (failedPhases.length > 0) {
+            setExtractionState("error");
+            setStatusMessage(`Extraction completed with issues in phase ${failedPhases.join(", ")}. The library entry is still registered for review.`);
+          } else {
+            setExtractionState("complete");
+            setStatusMessage(`Extraction complete${final == null ? "" : `. Final score: ${Math.round(final * 100)}%`}`);
+          }
+        }
+        break;
+      case "extraction_cancelled":
+        setExtractionState("idle");
+        setStatusMessage("Extraction cancelled.");
         break;
     }
   }, [addLog]);
 
   const handleEventRef = useRef(handleEvent);
-  handleEventRef.current = handleEvent;
+
+  useEffect(() => {
+    handleEventRef.current = handleEvent;
+  }, [handleEvent]);
 
   useEffect(() => {
     let socket: WebSocket;
@@ -217,9 +302,11 @@ export default function ExtractPage() {
         if (pendingStartRef.current) {
           const { url, name } = pendingStartRef.current;
           pendingStartRef.current = null;
-          socket.send(JSON.stringify({ type: "start_extraction", url, brand_name: name, max_pages: 5 }));
+          socket.send(JSON.stringify({ type: "start_extraction", url, brand_name: name, max_pages: 10, base_url: window.location.origin }));
           setExtractionState("running");
           setStatusMessage("Connected! Starting extraction...");
+        } else {
+          socket.send(JSON.stringify({ type: "get_status" }));
         }
       };
       socket.onclose = () => {
@@ -249,13 +336,18 @@ export default function ExtractPage() {
   function startExtraction() {
     if (!inputUrl.trim()) return;
     const name = inputName.trim() || deriveBrandName(inputUrl);
-    ws?.send(JSON.stringify({ type: "start_extraction", url: inputUrl, brand_name: name, max_pages: 5 }));
     setExtractionState("running");
     setLogs([]);
     setAgentStatuses({});
     setCurrentScore(null);
     setFinalScore(null);
-    setStatusMessage("Starting extraction...");
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ type: "start_extraction", url: inputUrl, brand_name: name, max_pages: 10, base_url: window.location.origin }));
+      setStatusMessage("Starting extraction...");
+    } else {
+      pendingStartRef.current = { url: inputUrl, name };
+      setStatusMessage("Waiting for server connection...");
+    }
   }
 
   function cancelExtraction() {
@@ -284,9 +376,12 @@ export default function ExtractPage() {
         <aside className="flex w-[280px] shrink-0 flex-col border-r border-[#1e293b] bg-[#0f172a]">
           <div className="border-b border-white/5 px-4 py-3">
             <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Agent Pipeline</h2>
+            <p className="mt-1 truncate text-[10px] text-slate-500" title={`${activeProviderLabel} · ${activeModelLabel}`}>
+              {activeProviderLabel} · {modelBadgeText(activeModelLabel)}
+            </p>
           </div>
           <div className="flex-1 overflow-y-auto px-3 py-3">
-            {PIPELINE.map((phase) => {
+            {pipeline.map((phase) => {
               const style = PHASE_STYLES[phase.phase];
               return (
                 <div key={phase.phase} className="mb-4 last:mb-0">
@@ -320,8 +415,11 @@ export default function ExtractPage() {
                                 {agent.id}
                               </span>
                             </div>
-                            <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${modelBadgeCls(agent.model)}`}>
-                              {agent.model}
+                            <span
+                              title={agent.model}
+                              className={`max-w-[96px] shrink-0 truncate rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${modelBadgeCls(agent.model)}`}
+                            >
+                              {modelBadgeText(agent.model)}
                             </span>
                           </div>
                           <p className="mt-1 pl-7 text-[11px] text-slate-500">{agent.role}</p>
@@ -409,10 +507,10 @@ export default function ExtractPage() {
                         python3 scripts/ws_extraction_server.py
                       </code>
                       <p className="mt-1.5 text-[11px] text-amber-600">
-                        The extraction will begin automatically once the server connects. You can also use the CLI directly:
+                        The extraction will begin automatically once the server connects using {activeProviderLabel} · {modelBadgeText(activeModelLabel)}.
                       </p>
                       <code className="mt-1.5 block rounded-lg bg-amber-900/10 px-3 py-2 font-mono text-[11px] text-amber-900">
-                        claude /extract {inputUrl || "https://example.com"}
+                        python3 scripts/ws_extraction_server.py
                       </code>
                     </div>
                   </div>
@@ -436,12 +534,12 @@ export default function ExtractPage() {
               </div>
             </div>
 
-            {(isRunning || extractionState === "complete") && (
+            {(isRunning || extractionState === "complete" || extractionState === "error") && (
               <div className="mt-10 space-y-6">
                 <div>
                   <div className="mb-2 flex items-center justify-between">
                     <span className="text-[12px] font-medium text-[#6e6e73]">
-                      {currentPhase ? `Phase: ${currentPhase}` : extractionState === "complete" ? "Complete" : "Preparing..."}
+                      {currentPhase ? `Phase: ${currentPhase}` : extractionState === "complete" ? "Complete" : extractionState === "error" ? "Completed with issues" : "Preparing..."}
                     </span>
                     <span className="font-mono text-[12px] text-[#6e6e73]">
                       {Math.round(progress * 100)}%
@@ -452,6 +550,8 @@ export default function ExtractPage() {
                       className={`h-full rounded-full transition-all duration-500 ${
                         extractionState === "complete"
                           ? "bg-emerald-500"
+                          : extractionState === "error"
+                          ? "bg-amber-500"
                           : "bg-[#0071e3]"
                       }`}
                       style={{ width: `${Math.round(progress * 100)}%` }}
@@ -472,7 +572,7 @@ export default function ExtractPage() {
                         {Math.round(scoreDisplay * 100)}%
                       </span>
                       <span className="text-[13px] text-[#86868b]">
-                        {extractionState === "complete" ? "Final validation score" : "Current validation score"}
+                        {extractionState === "complete" || extractionState === "error" ? "Final validation score" : "Current validation score"}
                       </span>
                     </div>
                     <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
@@ -503,6 +603,17 @@ export default function ExtractPage() {
                     </p>
                     <p className="mt-1 text-[13px] text-emerald-700">
                       Check the Library page to view the extracted design system.
+                    </p>
+                  </div>
+                )}
+
+                {extractionState === "error" && (
+                  <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                    <p className="text-[14px] font-medium text-amber-800">
+                      Extraction completed with publish issues.
+                    </p>
+                    <p className="mt-1 text-[13px] text-amber-700">
+                      The brand has been registered in the Library page so incomplete artifacts can be reviewed and repaired.
                     </p>
                   </div>
                 )}
@@ -581,5 +692,13 @@ export default function ExtractPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+export default function ExtractPage() {
+  return (
+    <Suspense fallback={null}>
+      <ExtractPageInner />
+    </Suspense>
   );
 }

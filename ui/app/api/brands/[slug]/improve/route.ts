@@ -47,6 +47,7 @@ export async function POST(
   const job = await startImprovementJob(slug, {
     targetScore: typeof body?.targetScore === "number" ? body.targetScore : undefined,
     feedback: typeof body?.feedback === "object" && body.feedback ? body.feedback : undefined,
+    baseUrl: getCurrentBaseUrl(request),
   });
 
   if (!job) {
@@ -57,4 +58,9 @@ export async function POST(
   }
 
   return NextResponse.json({ job });
+}
+
+function getCurrentBaseUrl(request: Request): string {
+  if (process.env.PORTLESS_URL) return process.env.PORTLESS_URL;
+  return new URL(request.url).origin;
 }

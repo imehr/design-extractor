@@ -1,0 +1,815 @@
+{
+  "schema_version": "1.0",
+  "slug": "quantium-com-au",
+  "generated_at": "2026-05-14T05:41:06.713022+00:00",
+  "weighted_total": 0.6628,
+  "critical_fail": true,
+  "overall_status": "fail",
+  "dimensions": [
+    {
+      "name": "pixel_desktop",
+      "score": 0.6034,
+      "threshold": 0.85,
+      "weight": 0.25,
+      "status": "fail",
+      "details": {
+        "viewport": "1280x720",
+        "exact_avg_pct": 60.3,
+        "close_avg_pct": 69.8,
+        "exact_pct": 60.339999999999996,
+        "page_count": 5,
+        "pages": {
+          "about-us": {
+            "exact": 59.3,
+            "close": 70.5,
+            "dims": "1280x5530"
+          },
+          "careers": {
+            "exact": 43.4,
+            "close": 56.5,
+            "dims": "1280x4548"
+          },
+          "genai": {
+            "exact": 67.3,
+            "close": 76.9,
+            "dims": "1280x4344"
+          },
+          "homepage": {
+            "exact": 59.1,
+            "close": 67.6,
+            "dims": "1280x4765"
+          },
+          "perspectives": {
+            "exact": 72.6,
+            "close": 77.6,
+            "dims": "1280x2584"
+          }
+        }
+      }
+    },
+    {
+      "name": "component_completeness",
+      "score": 0.0,
+      "threshold": 0.85,
+      "weight": 0.1,
+      "status": "skipped",
+      "details": {
+        "reason": "no component_validator output found",
+        "looked_in": "/Users/mehran/.claude/design-library/cache/quantium-com-au/validation/components",
+        "auto_run": {
+          "ok": false,
+          "reason": "component_validator timed out after 120s"
+        }
+      }
+    },
+    {
+      "name": "pattern_fidelity",
+      "score": 1.0,
+      "threshold": 0.78,
+      "weight": 0.1,
+      "status": "pass",
+      "details": {
+        "signals_in_tolerance": 9,
+        "signals_total": 9,
+        "screenshot_used": "/Users/mehran/.claude/design-library/cache/quantium-com-au/screenshots/harness/orig-homepage.png",
+        "per_signal_confidence": {
+          "spacing_rhythm": "LOW",
+          "type_scale_ratio": "LOW",
+          "component_density": "HIGH",
+          "alignment_grid": "MEDIUM",
+          "cta_placement": "MEDIUM",
+          "border_radius_language": "MEDIUM",
+          "shadow_elevation": "HIGH",
+          "motion_language": "HIGH",
+          "color_temperature": "HIGH"
+        },
+        "note": "Phase 1: tolerance == non-SKIPPED. Phase 2 will diff source vs replica."
+      }
+    },
+    {
+      "name": "asset_fidelity",
+      "score": 0.9579,
+      "threshold": 1.0,
+      "weight": 0.05,
+      "status": "fail",
+      "details": {
+        "resolved": 296,
+        "total_unique_basenames": 309,
+        "unresolved_sample": [
+          "PG-250x84.png",
+          "hqdefault.jpg",
+          "Q.Panel_REV-1.png",
+          "Quantium2026-1030--scaled.jpg",
+          "Quantium2026-C2-7668-.jpg",
+          "Quantium2026-8651-.jpg",
+          "GenAI-page-1-scaled.jpg",
+          "Quantium2026-C2-2313-.jpg",
+          "Quantium2026-C2-6874-.jpg",
+          "Brian-Hartzer_Executive-photo_sky-bg.jpg",
+          "Careers-page-tile-3.png",
+          "Careers-page-tile-right-1.png",
+          "Careers-page-tile-4.png"
+        ],
+        "assets_dir": "/Users/mehran/.claude/design-library/brands/quantium-com-au/assets",
+        "inventory_present": true
+      }
+    },
+    {
+      "name": "anti_slop",
+      "score": 1.0,
+      "threshold": 1.0,
+      "weight": 0.05,
+      "status": "pass",
+      "details": {
+        "violation_count": 0,
+        "rules_triggered": [],
+        "files_scanned": 125,
+        "whitelist_applied": []
+      }
+    },
+    {
+      "name": "pixel_mobile",
+      "score": 0.547,
+      "threshold": 0.8,
+      "weight": 0.15,
+      "status": "fail",
+      "details": {
+        "viewport": "375x667",
+        "exact_avg_pct": 54.7,
+        "page_count": 5,
+        "skipped_404": [],
+        "pages": {
+          "about-us": {
+            "exact": 40.0,
+            "close": 63.1,
+            "dims": "375x667"
+          },
+          "careers": {
+            "exact": 43.1,
+            "close": 51.2,
+            "dims": "375x667"
+          },
+          "genai": {
+            "exact": 38.1,
+            "close": 67.1,
+            "dims": "375x667"
+          },
+          "homepage": {
+            "exact": 75.1,
+            "close": 75.6,
+            "dims": "375x667"
+          },
+          "perspectives": {
+            "exact": 77.2,
+            "close": 82.3,
+            "dims": "375x667"
+          }
+        }
+      }
+    },
+    {
+      "name": "pixel_tablet",
+      "score": 0.5784,
+      "threshold": 0.82,
+      "weight": 0.1,
+      "status": "fail",
+      "details": {
+        "viewport": "768x1024",
+        "exact_avg_pct": 57.8,
+        "page_count": 5,
+        "skipped_404": [],
+        "pages": {
+          "about-us": {
+            "exact": 49.2,
+            "close": 65.8,
+            "dims": "768x1024"
+          },
+          "careers": {
+            "exact": 49.4,
+            "close": 63.7,
+            "dims": "768x1024"
+          },
+          "genai": {
+            "exact": 57.4,
+            "close": 74.8,
+            "dims": "768x1024"
+          },
+          "homepage": {
+            "exact": 50.8,
+            "close": 59.8,
+            "dims": "768x1024"
+          },
+          "perspectives": {
+            "exact": 82.4,
+            "close": 86.0,
+            "dims": "768x1024"
+          }
+        }
+      }
+    },
+    {
+      "name": "interactive_state",
+      "score": 0.7457,
+      "threshold": 0.8,
+      "weight": 0.1,
+      "status": "fail",
+      "details": {
+        "states": {
+          "idle": {
+            "exact": 76.8,
+            "dims": "224x35"
+          },
+          "hover": {
+            "exact": 76.8,
+            "dims": "224x35"
+          },
+          "focus": {
+            "exact": 70.1,
+            "dims": "224x35"
+          }
+        },
+        "original_selector": "div:nth-of-type(4) > header:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > a:nth-of-type(1)",
+        "original_matchedBy": "header a[href]:not([href=\"#\"])",
+        "replica_selector": "div:nth-of-type(1) > header:nth-of-type(1) > div:nth-of-type(2) > div:nth-of-type(1) > a:nth-of-type(1)",
+        "replica_matchedBy": "header a[href]:not([href=\"#\"])",
+        "exact_avg_pct": 74.6,
+        "homepage": {
+          "original": "https://quantium.com.au/",
+          "replica": "https://design-extractor.localhost/brands/quantium-com-au/replica"
+        }
+      }
+    },
+    {
+      "name": "font_rendering",
+      "score": 0.333,
+      "threshold": 1.0,
+      "weight": 0.1,
+      "status": "critical",
+      "details": {
+        "matched_total": 2,
+        "properties_total": 6,
+        "raw_ratio": 0.333,
+        "elements": {
+          "h1": {
+            "family_match": false,
+            "weight_match": true,
+            "lineheight_match": true,
+            "lineheight_delta_px": 0.0,
+            "matched": 2,
+            "original": {
+              "tag": "h1",
+              "fontFamily": "quantium_promedium",
+              "fontWeight": "400",
+              "lineHeight": "62px",
+              "fontSize": "48px"
+            },
+            "replica": {
+              "tag": "h1",
+              "fontFamily": "QuantiumPro, -apple-system, system-ui, sans-serif",
+              "fontWeight": "400",
+              "lineHeight": "62px",
+              "fontSize": "48px"
+            }
+          },
+          "p": {
+            "family_match": false,
+            "weight_match": false,
+            "lineheight_match": false,
+            "lineheight_delta_px": 10.8,
+            "matched": 0,
+            "original": {
+              "tag": "p",
+              "fontFamily": "\"Helvetica Neue\", Helvetica, Arial, sans-serif",
+              "fontWeight": "400",
+              "lineHeight": "18px",
+              "fontSize": "12px"
+            },
+            "replica": {
+              "tag": "p",
+              "fontFamily": "Roboto, \"Roboto Fallback\", Roboto, sans-serif",
+              "fontWeight": "300",
+              "lineHeight": "28.8px",
+              "fontSize": "24px"
+            }
+          }
+        },
+        "homepage": {
+          "original": "https://quantium.com.au/",
+          "replica": "https://design-extractor.localhost/brands/quantium-com-au/replica"
+        },
+        "original": {
+          "loaded_fonts": [
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "300",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "300",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "300",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "300",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "300",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "300",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "300",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "300",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "300",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "loaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Font Awesome 5 Brands",
+              "status": "loaded",
+              "weight": "normal",
+              "style": "normal"
+            },
+            {
+              "family": "Font Awesome 5 Pro",
+              "status": "unloaded",
+              "weight": "300",
+              "style": "normal"
+            },
+            {
+              "family": "Font Awesome 5 Pro",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Font Awesome 5 Pro",
+              "status": "loaded",
+              "weight": "900",
+              "style": "normal"
+            },
+            {
+              "family": "quantium_prolight",
+              "status": "loaded",
+              "weight": "normal",
+              "style": "normal"
+            },
+            {
+              "family": "quantium_promedium",
+              "status": "loaded",
+              "weight": "normal",
+              "style": "normal"
+            }
+          ]
+        },
+        "replica": {
+          "loaded_fonts": [
+            {
+              "family": "Geist",
+              "status": "unloaded",
+              "weight": "100 900",
+              "style": "normal"
+            },
+            {
+              "family": "Geist",
+              "status": "unloaded",
+              "weight": "100 900",
+              "style": "normal"
+            },
+            {
+              "family": "Geist",
+              "status": "unloaded",
+              "weight": "100 900",
+              "style": "normal"
+            },
+            {
+              "family": "Geist Fallback",
+              "status": "unloaded",
+              "weight": "normal",
+              "style": "normal"
+            },
+            {
+              "family": "Geist Mono",
+              "status": "unloaded",
+              "weight": "100 900",
+              "style": "normal"
+            },
+            {
+              "family": "Geist Mono",
+              "status": "unloaded",
+              "weight": "100 900",
+              "style": "normal"
+            },
+            {
+              "family": "Geist Mono",
+              "status": "unloaded",
+              "weight": "100 900",
+              "style": "normal"
+            },
+            {
+              "family": "Geist Mono Fallback",
+              "status": "unloaded",
+              "weight": "normal",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "loaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "loaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto Fallback",
+              "status": "unloaded",
+              "weight": "normal",
+              "style": "normal"
+            },
+            {
+              "family": "Westpac-bold",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "TomatoGrotesk",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "TomatoGrotesk",
+              "status": "unloaded",
+              "weight": "600",
+              "style": "normal"
+            },
+            {
+              "family": "TomatoGrotesk",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Montserrat",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Montserrat",
+              "status": "unloaded",
+              "weight": "600",
+              "style": "normal"
+            },
+            {
+              "family": "Montserrat",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "QuantiumPro",
+              "status": "unloaded",
+              "weight": "300",
+              "style": "normal"
+            },
+            {
+              "family": "QuantiumPro",
+              "status": "loaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Glider",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Glider",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "__nextjs-Geist",
+              "status": "unloaded",
+              "weight": "400 600",
+              "style": "normal"
+            },
+            {
+              "family": "__nextjs-Geist Mono",
+              "status": "unloaded",
+              "weight": "400 600",
+              "style": "normal"
+            },
+            {
+              "family": "__nextjs-Geist",
+              "status": "unloaded",
+              "weight": "400 600",
+              "style": "normal"
+            },
+            {
+              "family": "__nextjs-Geist Mono",
+              "status": "unloaded",
+              "weight": "400 600",
+              "style": "normal"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

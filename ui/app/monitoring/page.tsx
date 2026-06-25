@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback, Suspense } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  describeExecutionSelection,
+  type ExecutionModePayload,
+} from "@/lib/execution-display";
 
 type AgentStatus = "pending" | "running" | "completed" | "error";
 type ExtractionState = "idle" | "running" | "complete" | "error";
@@ -18,40 +22,40 @@ const PIPELINE = [
     phase: "A",
     label: "Extract",
     agents: [
-      { id: "recon-agent", model: "sonnet", role: "Page discovery" },
-      { id: "dom-extractor", model: "sonnet", role: "Live DOM measurement" },
-      { id: "asset-extractor", model: "sonnet", role: "Download assets" },
+      { id: "recon-agent", model: "selected", role: "Page discovery" },
+      { id: "dom-extractor", model: "selected", role: "Live DOM measurement" },
+      { id: "asset-extractor", model: "selected", role: "Download assets" },
     ],
   },
   {
     phase: "B",
     label: "Build",
     agents: [
-      { id: "replica-builder", model: "sonnet", role: "React/shadcn replicas" },
+      { id: "replica-builder", model: "selected", role: "React/shadcn replicas" },
     ],
   },
   {
     phase: "C",
     label: "Validate",
     agents: [
-      { id: "visual-critic", model: "opus", role: "Visual comparison" },
+      { id: "visual-critic", model: "selected", role: "Visual comparison" },
     ],
   },
   {
     phase: "D",
     label: "Improve",
     agents: [
-      { id: "refinement-agent", model: "sonnet", role: "Patch replicas" },
-      { id: "validation-monitor", model: "opus", role: "Orchestrator loop" },
+      { id: "refinement-agent", model: "selected", role: "Patch replicas" },
+      { id: "validation-monitor", model: "selected", role: "Orchestrator loop" },
     ],
   },
   {
     phase: "E",
     label: "Publish",
     agents: [
-      { id: "documentarian", model: "sonnet", role: "DESIGN.md" },
-      { id: "skill-packager", model: "sonnet", role: "SKILL.md" },
-      { id: "librarian", model: "haiku", role: "Index update" },
+      { id: "documentarian", model: "selected", role: "DESIGN.md" },
+      { id: "skill-packager", model: "selected", role: "SKILL.md" },
+      { id: "librarian", model: "selected", role: "Index update" },
     ],
   },
 ];
@@ -124,18 +128,18 @@ interface SourceFile {
 }
 
 const AGENT_NODES = [
-  { id: "recon-agent", phase: "A", row: 0, label: "recon-agent", model: "sonnet", role: "Page discovery & classification", file: "agents/recon-agent.md", outputs: "page-manifest.json" },
-  { id: "dom-extractor", phase: "A", row: 1, label: "dom-extractor", model: "sonnet", role: "Live DOM measurement (agent-browser eval)", file: "agents/dom-extractor.md", outputs: "dom-extraction/*.json" },
-  { id: "asset-extractor", phase: "A", row: 2, label: "asset-extractor", model: "sonnet", role: "Download fonts, images, SVGs", file: "agents/asset-extractor.md", outputs: "assets/" },
-  { id: "voice-analyst", phase: "A", row: 3, label: "voice-analyst", model: "sonnet", role: "Brand voice & tone analysis", file: "agents/voice-analyst.md", outputs: "voice-analysis.json" },
-  { id: "pattern-analyst", phase: "A", row: 4, label: "pattern-analyst", model: "sonnet", role: "9 measurable + 6 interpretive signals", file: "agents/pattern-analyst.md", outputs: "patterns.json" },
-  { id: "replica-builder", phase: "B", row: 0, label: "replica-builder", model: "sonnet", role: "React/shadcn replica generation", file: "agents/replica-builder.md", outputs: "ui/app/brands/<slug>/replica/*" },
-  { id: "visual-critic", phase: "C", row: 0, label: "visual-critic", model: "opus", role: "Vision-capable structural comparison", file: "agents/visual-critic.md", outputs: "critique JSON, issue lists" },
-  { id: "refinement-agent", phase: "D", row: 0, label: "refinement-agent", model: "sonnet", role: "Patch replicas from visual-critic feedback", file: "agents/refinement-agent.md", outputs: "Updated replica pages/components" },
-  { id: "validation-monitor", phase: "D", row: 1, label: "validation-monitor", model: "opus", role: "Autonomous orchestrator: loop until target", file: "agents/validation-monitor.md", outputs: "Orchestration plan, manifest" },
-  { id: "documentarian", phase: "E", row: 0, label: "documentarian", model: "sonnet", role: "DESIGN.md from Jinja2 template", file: "agents/documentarian.md", outputs: "DESIGN.md" },
-  { id: "skill-packager", phase: "E", row: 1, label: "skill-packager", model: "sonnet", role: "Per-brand SKILL.md with triggers", file: "agents/skill-packager.md", outputs: "skill/SKILL.md" },
-  { id: "librarian", phase: "E", row: 2, label: "librarian", model: "haiku", role: "Library index & apply_design.py", file: "agents/librarian.md", outputs: "~/.claude/design-library/" },
+  { id: "recon-agent", phase: "A", row: 0, label: "recon-agent", model: "selected", role: "Page discovery & classification", file: "agents/recon-agent.md", outputs: "page-manifest.json" },
+  { id: "dom-extractor", phase: "A", row: 1, label: "dom-extractor", model: "selected", role: "Live DOM measurement (agent-browser eval)", file: "agents/dom-extractor.md", outputs: "dom-extraction/*.json" },
+  { id: "asset-extractor", phase: "A", row: 2, label: "asset-extractor", model: "selected", role: "Download fonts, images, SVGs", file: "agents/asset-extractor.md", outputs: "assets/" },
+  { id: "voice-analyst", phase: "A", row: 3, label: "voice-analyst", model: "selected", role: "Brand voice & tone analysis", file: "agents/voice-analyst.md", outputs: "voice-analysis.json" },
+  { id: "pattern-analyst", phase: "A", row: 4, label: "pattern-analyst", model: "selected", role: "9 measurable + 6 interpretive signals", file: "agents/pattern-analyst.md", outputs: "patterns.json" },
+  { id: "replica-builder", phase: "B", row: 0, label: "replica-builder", model: "selected", role: "React/shadcn replica generation", file: "agents/replica-builder.md", outputs: "ui/app/brands/<slug>/replica/*" },
+  { id: "visual-critic", phase: "C", row: 0, label: "visual-critic", model: "selected", role: "Vision-capable structural comparison", file: "agents/visual-critic.md", outputs: "critique JSON, issue lists" },
+  { id: "refinement-agent", phase: "D", row: 0, label: "refinement-agent", model: "selected", role: "Patch replicas from visual-critic feedback", file: "agents/refinement-agent.md", outputs: "Updated replica pages/components" },
+  { id: "validation-monitor", phase: "D", row: 1, label: "validation-monitor", model: "selected", role: "Autonomous orchestrator: loop until target", file: "agents/validation-monitor.md", outputs: "Orchestration plan, manifest" },
+  { id: "documentarian", phase: "E", row: 0, label: "documentarian", model: "selected", role: "DESIGN.md from Jinja2 template", file: "agents/documentarian.md", outputs: "DESIGN.md" },
+  { id: "skill-packager", phase: "E", row: 1, label: "skill-packager", model: "selected", role: "Per-brand SKILL.md with triggers", file: "agents/skill-packager.md", outputs: "skill/SKILL.md" },
+  { id: "librarian", phase: "E", row: 2, label: "librarian", model: "selected", role: "Library index & apply_design.py", file: "agents/librarian.md", outputs: "~/.claude/design-library/" },
 ];
 
 const DAG_EDGES: { from: string; to: string; label?: string; dashed?: boolean }[] = [
@@ -197,22 +201,24 @@ function getPhaseProgress(agentStatuses: Record<string, AgentStatus>): number {
   return total === 0 ? 0 : (done + running * 0.5) / total;
 }
 
-function getCurrentPhase(agentStatuses: Record<string, AgentStatus>): string | null {
-  for (const phase of PIPELINE) {
-    for (const agent of phase.agents) {
-      if (agentStatuses[agent.id] === "running") return `${phase.phase}: ${phase.label}`;
-    }
-  }
-  for (const phase of PIPELINE) {
-    for (const agent of phase.agents) {
-      if (agentStatuses[agent.id] === "error") return `${phase.phase}: ${phase.label} (error)`;
-    }
-  }
-  return null;
-}
-
 function modelBadgeCls(model: string) {
   return MODEL_STYLES[model] ?? "border-slate-400/40 bg-slate-500/15 text-slate-300";
+}
+
+function modelBadgeText(model: string) {
+  const tail = model.split("/").filter(Boolean).pop() ?? model;
+  return tail.length > 18 ? `${tail.slice(0, 15)}...` : tail;
+}
+
+function applyModelToPipeline(model: string) {
+  return PIPELINE.map((phase) => ({
+    ...phase,
+    agents: phase.agents.map((agent) => ({ ...agent, model })),
+  }));
+}
+
+function applyModelToAgentNodes(model: string) {
+  return AGENT_NODES.map((node) => ({ ...node, model }));
 }
 
 function StatusIcon({ status }: { status: AgentStatus }) {
@@ -241,19 +247,6 @@ function StatusIcon({ status }: { status: AgentStatus }) {
   }
 }
 
-function modelBadge(model: string) {
-  const styles: Record<string, string> = {
-    opus: "border-red-200 bg-red-50 text-red-700",
-    sonnet: "border-blue-200 bg-blue-50 text-blue-700",
-    haiku: "border-green-200 bg-green-50 text-green-700",
-  };
-  return (
-    <span className={`inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${styles[model] ?? "border-gray-200 bg-gray-50 text-gray-700"}`}>
-      {model}
-    </span>
-  );
-}
-
 function ScoreBar({ score }: { score: number }) {
   const pct = Math.round(score * 100);
   const color = pct >= 80 ? "bg-green-500" : pct >= 60 ? "bg-amber-500" : "bg-red-400";
@@ -269,13 +262,12 @@ function ScoreBar({ score }: { score: number }) {
 
 function CodePreviewPanel({ file, onClose }: { file: string | null; onClose: () => void }) {
   const [source, setSource] = useState<SourceFile | null>(null);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loading = Boolean(file) && source?.path !== file && !error;
 
   useEffect(() => {
-    if (!file) { setSource(null); return; }
-    setLoading(true);
-    setError(null);
+    if (!file) return;
+    let cancelled = false;
     fetch(`/api/monitoring/source?file=${encodeURIComponent(file)}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -283,10 +275,20 @@ function CodePreviewPanel({ file, onClose }: { file: string | null; onClose: () 
       })
       .then((data) => {
         if (data.error) throw new Error(data.error);
-        setSource(data);
+        if (!cancelled) {
+          setError(null);
+          setSource(data);
+        }
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch((e) => {
+        if (!cancelled) {
+          setSource(null);
+          setError(e.message);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [file]);
 
   if (!file) return null;
@@ -345,6 +347,9 @@ function ExtractionTab({
   setExtractionState,
   agentStatuses,
   logs,
+  pipeline,
+  activeProviderLabel,
+  activeModelLabel,
   inputUrl,
   setInputUrl,
   inputName,
@@ -362,6 +367,9 @@ function ExtractionTab({
   setExtractionState: (s: ExtractionState) => void;
   agentStatuses: Record<string, AgentStatus>;
   logs: LogEntry[];
+  pipeline: typeof PIPELINE;
+  activeProviderLabel: string;
+  activeModelLabel: string;
   inputUrl: string;
   setInputUrl: (v: string) => void;
   inputName: string;
@@ -384,7 +392,6 @@ function ExtractionTab({
   const isRunning = extractionState === "running";
   const scoreDisplay = finalScore ?? currentScore;
   const progress = getPhaseProgress(agentStatuses);
-  const currentPhase = getCurrentPhase(agentStatuses);
   const uniqueAgents = Array.from(new Set(logs.map((l) => l.agent)));
   const filteredLogs = agentFilter === "all" ? logs : logs.filter((l) => l.agent === agentFilter);
 
@@ -532,6 +539,9 @@ function ExtractionTab({
               <h2 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">Agent Pipeline</h2>
               <span className="font-mono text-[11px] text-slate-500">{Math.round(progress * 100)}%</span>
             </div>
+            <p className="mt-1 truncate text-[10px] text-slate-500" title={`${activeProviderLabel} · ${activeModelLabel}`}>
+              {activeProviderLabel} · {modelBadgeText(activeModelLabel)}
+            </p>
             <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
               <div
                 className={`h-full rounded-full transition-all duration-500 ${
@@ -542,7 +552,7 @@ function ExtractionTab({
             </div>
           </div>
           <div className="flex-1 overflow-y-auto px-3 py-3">
-            {PIPELINE.map((phase) => {
+            {pipeline.map((phase) => {
               const style = PHASE_STYLES[phase.phase];
               return (
                 <div key={phase.phase} className="mb-4 last:mb-0">
@@ -576,8 +586,11 @@ function ExtractionTab({
                                 {agent.id}
                               </span>
                             </div>
-                            <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${modelBadgeCls(agent.model)}`}>
-                              {agent.model}
+                            <span
+                              title={agent.model}
+                              className={`max-w-[96px] shrink-0 truncate rounded-full border px-1.5 py-0.5 text-[9px] font-medium ${modelBadgeCls(agent.model)}`}
+                            >
+                              {modelBadgeText(agent.model)}
                             </span>
                           </div>
                           <p className="mt-1 pl-7 text-[11px] text-slate-500">{agent.role}</p>
@@ -665,8 +678,17 @@ function ExtractionTab({
   );
 }
 
-function AgentDAGTab({ experiments, onViewSource }: { experiments: ExperimentEntry[]; onViewSource: (file: string) => void }) {
+function AgentDAGTab({
+  experiments,
+  activeModelLabel,
+  onViewSource,
+}: {
+  experiments: ExperimentEntry[];
+  activeModelLabel: string;
+  onViewSource: (file: string) => void;
+}) {
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
+  const agentNodes = useMemo(() => applyModelToAgentNodes(activeModelLabel), [activeModelLabel]);
   const phases = ["A", "B", "C", "D", "E"];
   const COL_W = 220;
   const GAP = 60;
@@ -675,7 +697,7 @@ function AgentDAGTab({ experiments, onViewSource }: { experiments: ExperimentEnt
   const PAD_X = 40;
   const PAD_Y = 60;
 
-  const nodesByPhase = phases.map((p) => AGENT_NODES.filter((n) => n.phase === p));
+  const nodesByPhase = phases.map((p) => agentNodes.filter((n) => n.phase === p));
   const colHeights = nodesByPhase.map((nodes) => nodes.length * (NODE_H + NODE_GAP) - NODE_GAP);
   const maxH = Math.max(...colHeights);
 
@@ -683,7 +705,7 @@ function AgentDAGTab({ experiments, onViewSource }: { experiments: ExperimentEnt
   const totalH = PAD_Y * 2 + maxH + 30;
 
   const getNodeCenter = (id: string) => {
-    const node = AGENT_NODES.find((n) => n.id === id)!;
+    const node = agentNodes.find((n) => n.id === id)!;
     const phaseIdx = phases.indexOf(node.phase);
     const phaseNodes = nodesByPhase[phaseIdx];
     const rowIdx = phaseNodes.indexOf(node);
@@ -694,10 +716,6 @@ function AgentDAGTab({ experiments, onViewSource }: { experiments: ExperimentEnt
     return { x, y, node };
   };
 
-  const connectedEdges = DAG_EDGES.filter((e) => {
-    if (!hoveredNode) return true;
-    return e.from === hoveredNode || e.to === hoveredNode;
-  });
   const isEdgeDimmed = (edge: typeof DAG_EDGES[0]) => hoveredNode !== null && edge.from !== hoveredNode && edge.to !== hoveredNode;
 
   return (
@@ -779,7 +797,7 @@ function AgentDAGTab({ experiments, onViewSource }: { experiments: ExperimentEnt
             );
           })}
 
-          {AGENT_NODES.map((node) => {
+          {agentNodes.map((node) => {
             const { x, y } = getNodeCenter(node.id);
             const isHovered = hoveredNode === node.id;
             const isConnected = hoveredNode ? DAG_EDGES.some((e) => (e.from === hoveredNode && e.to === node.id) || (e.to === hoveredNode && e.from === node.id)) : true;
@@ -804,7 +822,7 @@ function AgentDAGTab({ experiments, onViewSource }: { experiments: ExperimentEnt
                 </text>
                 <rect x={x + COL_W / 2 - 56} y={y - NODE_H / 2 + 6} width={38} height={16} rx={8} fill={node.model === "opus" ? "#fef2f2" : node.model === "haiku" ? "#f0fdf4" : "#eff6ff"} stroke={node.model === "opus" ? "#fca5a5" : node.model === "haiku" ? "#86efac" : "#93c5fd"} strokeWidth="0.8" />
                 <text x={x + COL_W / 2 - 37} y={y - NODE_H / 2 + 17} className="text-[8px] font-medium" textAnchor="middle" fill={node.model === "opus" ? "#b91c1c" : node.model === "haiku" ? "#15803d" : "#1d4ed8"}>
-                  {node.model}
+                  {modelBadgeText(node.model)}
                 </text>
                 {lastRun?.score != null && (
                   <text x={x + COL_W / 2 - 8} y={y + 16} className="text-[8px] font-medium" textAnchor="end" fill={lastRun.score >= 0.8 ? "#15803d" : lastRun.score >= 0.5 ? "#b45309" : "#b91c1c"}>
@@ -825,7 +843,7 @@ function AgentDAGTab({ experiments, onViewSource }: { experiments: ExperimentEnt
           <div className="grid gap-3 md:grid-cols-5 text-xs">
             {phases.map((p) => {
               const meta = PHASE_META[p];
-              const agents = AGENT_NODES.filter((n) => n.phase === p);
+              const agents = agentNodes.filter((n) => n.phase === p);
               return (
                 <div key={p} className="rounded-xl bg-[#f5f5f7] p-3">
                   <p className={`text-[11px] font-semibold uppercase tracking-wider ${meta.accent === "text-blue-700" ? "text-blue-700" : meta.accent === "text-green-700" ? "text-green-700" : meta.accent === "text-amber-700" ? "text-amber-700" : meta.accent === "text-purple-700" ? "text-purple-700" : "text-gray-700"}`}>
@@ -1049,11 +1067,11 @@ function FeedbackTab({ entries }: { entries: Record<string, unknown>[] }) {
   );
 }
 
-function JobProgressTab({ slug, job, onViewSource }: { slug: string | null; job: Record<string, unknown> | null; onViewSource: (file: string) => void }) {
+function JobProgressTab({ slug, job }: { slug: string | null; job: Record<string, unknown> | null }) {
   if (!slug) {
     return (
       <div className="rounded-xl bg-[#f5f5f7] p-12 text-center">
-        <p className="text-sm text-[#86868b]">No job selected. Navigate from a brand page's "Improve Quality" button, or select a brand below.</p>
+        <p className="text-sm text-[#86868b]">No job selected. Navigate from a brand page&apos;s &quot;Improve Quality&quot; button, or select a brand below.</p>
       </div>
     );
   }
@@ -1064,11 +1082,11 @@ function JobProgressTab({ slug, job, onViewSource }: { slug: string | null; job:
   const iteration = job?.current_iteration as number | null;
   const maxIter = job?.max_iterations as number | null;
   const history = (job?.history as number[]) ?? [];
-  const summary = job?.last_claude_summary as string | null;
-  const logPath = job?.claude_log_path as string | null;
+  const summary = (job?.last_model_summary ?? job?.last_claude_summary) as string | null;
+  const logPath = (job?.model_log_path ?? job?.claude_log_path) as string | null;
+  const modelProvider = job?.model_provider as string | null;
   const blocked = job?.blocked_reason as Record<string, string> | null;
   const pagesNeedingWork = (job?.pages_needing_work as unknown[]) ?? [];
-  const scoreDir = job?.score_direction as string | null;
 
   const statusColors: Record<string, string> = {
     running: "text-blue-700 bg-blue-50 border-blue-200",
@@ -1165,14 +1183,17 @@ function JobProgressTab({ slug, job, onViewSource }: { slug: string | null; job:
 
           {summary && (
             <div className="rounded-2xl border border-[#d2d2d7]/40 p-5">
-              <h3 className="mb-2 text-sm font-semibold text-[#1d1d1f]">Last Claude Summary</h3>
+              <h3 className="mb-2 text-sm font-semibold text-[#1d1d1f]">Last Model Summary</h3>
+              {modelProvider && (
+                <p className="mb-2 text-xs text-[#86868b]">{modelProvider}</p>
+              )}
               <pre className="text-xs text-[#4a4a4f] whitespace-pre-wrap leading-5">{summary}</pre>
             </div>
           )}
 
           {logPath && (
             <div className="rounded-xl bg-[#f5f5f7] px-4 py-3">
-              <p className="text-[12px] text-[#6e6e73]">Claude log: <code className="text-[#1d1d1f]">{logPath}</code></p>
+              <p className="text-[12px] text-[#6e6e73]">Model log: <code className="text-[#1d1d1f]">{logPath}</code></p>
             </div>
           )}
         </>
@@ -1190,6 +1211,8 @@ export default function MonitoringPageWrapper() {
 }
 
 function MonitoringPage() {
+  const searchParams = useSearchParams();
+  const initialJobSlug = searchParams.get("job");
   const [skillsData, setSkillsData] = useState<SkillsRegistry | null>(null);
   const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
   const [feedback, setFeedback] = useState<Record<string, unknown>[]>([]);
@@ -1206,32 +1229,30 @@ function MonitoringPage() {
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [statusMessage, setStatusMessage] = useState("Ready. Enter a URL to begin extraction.");
   const [resumableJob, setResumableJob] = useState<{ slug: string; jobs: { status?: string; agent?: string }[] } | null>(null);
-  const [brandJobSlug, setBrandJobSlug] = useState<string | null>(null);
+  const [brandJobSlug] = useState<string | null>(initialJobSlug);
   const [brandJob, setBrandJob] = useState<Record<string, unknown> | null>(null);
-  const [activeTab, setActiveTab] = useState("extraction");
+  const [activeTab, setActiveTab] = useState(initialJobSlug ? "job-progress" : "extraction");
+  const [executionSelection, setExecutionSelection] = useState<ExecutionModePayload | null>(null);
 
-  const searchParams = useSearchParams();
-  const wsRef = useState<WebSocket | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const pendingStartRef = useRef<{ url: string; name: string } | null>(null);
+  const { providerLabel: activeProviderLabel, modelLabel: activeModelLabel } =
+    describeExecutionSelection(executionSelection);
+  const pipeline = useMemo(() => applyModelToPipeline(activeModelLabel), [activeModelLabel]);
 
   useEffect(() => {
     fetch("/api/monitoring/skills").then((r) => r.json()).then((data) => setSkillsData(data)).catch(() => {});
     fetch("/api/monitoring/changelog").then((r) => r.json()).then((data) => setChangelog(Array.isArray(data) ? data : [])).catch(() => {});
     fetch("/api/monitoring/feedback").then((r) => r.json()).then((data) => setFeedback(Array.isArray(data) ? data : [])).catch(() => {});
     fetch("/api/monitoring/experiments").then((r) => r.json()).then((data) => setExperiments(Array.isArray(data) ? data : [])).catch(() => {});
+    fetch("/api/execution/mode", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((data: ExecutionModePayload) => setExecutionSelection(data))
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
-    const jobSlug = searchParams.get("job");
-    if (jobSlug) {
-      setBrandJobSlug(jobSlug);
-      setActiveTab("job-progress");
-    }
-  }, [searchParams]);
-
-  useEffect(() => {
     if (!brandJobSlug) return;
-    let interval: ReturnType<typeof setInterval>;
     const poll = () => {
       fetch(`/api/brands/${brandJobSlug}/jobs`)
         .then((r) => r.json())
@@ -1243,7 +1264,7 @@ function MonitoringPage() {
         .catch(() => {});
     };
     poll();
-    interval = setInterval(poll, 3000);
+    const interval = setInterval(poll, 3000);
     return () => clearInterval(interval);
   }, [brandJobSlug]);
 
@@ -1262,7 +1283,7 @@ function MonitoringPage() {
         break;
       case "agent_log":
       case "claude_output":
-        addLog({ ts: new Date().toISOString(), agent: (data.agent as string) ?? "system", level: "info", message: data.message as string });
+        addLog({ ts: new Date().toISOString(), agent: (data.agent as string) ?? "system", level: "info", message: (data.message ?? data.text) as string });
         break;
       case "error":
         setAgentStatuses((prev) => {
@@ -1288,7 +1309,10 @@ function MonitoringPage() {
   }, [addLog]);
 
   const handleEventRef = useRef(handleEvent);
-  handleEventRef.current = handleEvent;
+
+  useEffect(() => {
+    handleEventRef.current = handleEvent;
+  }, [handleEvent]);
 
   useEffect(() => {
     let socket: WebSocket;
@@ -1319,7 +1343,7 @@ function MonitoringPage() {
           handleEventRef.current(data);
         } catch {}
       };
-      wsRef[1](socket);
+      wsRef.current = socket;
     };
 
     connect();
@@ -1349,7 +1373,7 @@ function MonitoringPage() {
   function startExtraction() {
     if (!inputUrl.trim()) return;
     const name = inputName.trim() || deriveBrandName(inputUrl);
-    const ws = wsRef[0];
+    const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       setExtractionState("running");
       setLogs([]);
@@ -1372,14 +1396,14 @@ function MonitoringPage() {
   }
 
   function cancelExtraction() {
-    const ws = wsRef[0];
+    const ws = wsRef.current;
     ws?.send(JSON.stringify({ type: "cancel" }));
     setExtractionState("idle");
     setStatusMessage("Extraction cancelled.");
   }
 
   function resumeExtraction() {
-    const ws = wsRef[0];
+    const ws = wsRef.current;
     if (!inputUrl.trim()) return;
     const name = inputName.trim() || deriveBrandName(inputUrl);
     if (ws && ws.readyState === WebSocket.OPEN) {
@@ -1442,6 +1466,9 @@ function MonitoringPage() {
               setExtractionState={setExtractionState}
               agentStatuses={agentStatuses}
               logs={logs}
+              pipeline={pipeline}
+              activeProviderLabel={activeProviderLabel}
+              activeModelLabel={activeModelLabel}
               inputUrl={inputUrl}
               setInputUrl={handleUrlChange}
               inputName={inputName}
@@ -1457,11 +1484,15 @@ function MonitoringPage() {
           </TabsContent>
 
           <TabsContent value="job-progress">
-            <JobProgressTab slug={brandJobSlug} job={brandJob} onViewSource={handleViewSource} />
+            <JobProgressTab slug={brandJobSlug} job={brandJob} />
           </TabsContent>
 
           <TabsContent value="agent-dag">
-            <AgentDAGTab experiments={experiments} onViewSource={handleViewSource} />
+            <AgentDAGTab
+              experiments={experiments}
+              activeModelLabel={activeModelLabel}
+              onViewSource={handleViewSource}
+            />
           </TabsContent>
 
           <TabsContent value="skills-progress">

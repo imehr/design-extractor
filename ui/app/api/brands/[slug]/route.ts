@@ -3,6 +3,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import os from "os";
 import { getBrandDetail } from "@/lib/library";
+import { getBrandArtifactsSummary } from "@/lib/artifacts";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +89,13 @@ export async function GET(
     // ignore
   }
 
+  // Repo artifacts (brands/<slug>/ in the repo, served via /artifacts route)
+  const artifacts = await getBrandArtifactsSummary(slug);
+
   // Flatten: spread summary fields to top level for the page component
   const { summary, ...rest } = brand;
-  return NextResponse.json({ ...summary, ...rest, files, localFiles });
+  return NextResponse.json(
+    { ...summary, ...rest, files, localFiles, artifacts },
+    { headers: { "Cache-Control": "no-store, max-age=0" } }
+  );
 }

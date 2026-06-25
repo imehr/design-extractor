@@ -106,15 +106,18 @@ export default function WoolworthsHomePage() {
 
               {/* Overlay text */}
               <div className="absolute inset-0 flex flex-col justify-end p-8">
-                <div className="max-w-[320px]">
-                  <h2
-                    className="mb-2 text-2xl font-bold leading-tight text-[#25251F]"
-                    style={{ fontFamily: "'Glider', 'Inter', sans-serif" }}
+                <div className="max-w-[360px]">
+                  <h1
+                    className="mb-2 text-[32px] font-bold text-[#25251F]"
+                    style={{
+                      fontFamily: "'Glider', 'Inter', sans-serif",
+                      lineHeight: "38px",
+                    }}
                   >
                     {slide.heading}
-                  </h2>
+                  </h1>
                   {slide.subtext && (
-                    <p className="mb-3 text-sm text-[#616C71]">{slide.subtext}</p>
+                    <p className="mb-3 text-base text-[#616C71]">{slide.subtext}</p>
                   )}
                   <Button
                     className="h-10 rounded bg-[#178841] px-6 text-sm font-medium text-white hover:bg-[#126b34]"
@@ -165,7 +168,7 @@ export default function WoolworthsHomePage() {
               >
                 Welcome to Woolworths
               </h3>
-              <p className="mb-4 text-sm text-[#616C71]">
+              <p className="mb-4 text-base leading-5 text-[#616C71]">
                 Get the most out of your shop.
               </p>
               <Button

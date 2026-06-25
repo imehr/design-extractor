@@ -1,0 +1,55 @@
+===== BEFORE (no rubric_report) =====
+length: 778 chars
+Fix the homepage replica page to improve its match score from 22.6% toward 85.0%.
+
+File to edit: ui/app/brands/woolworths-com-au/replica/page.tsx
+Original screenshot: /tmp/eval/woolworths-com-au/desktop-original-homepage.png
+Replica screenshot: /tmp/eval/woolworths-com-au/desktop-replica-homepage.png
+
+
+Steps:
+1. Read the replica TSX file
+2. View both screenshots to see visual differences
+3. Fix the specific component issues listed above — exact measurements are provided
+4. Make surgical fixes only — do NOT refactor or restructure
+
+Rules:
+- Edit ONLY the listed file and shared brand components under ui/components/brands/
+- Do not modify unrelated files, docs, or other brands
+- Make edits directly — no plans, no questions
+- Reply with a short summary of what you changed
+
+===== AFTER (with rubric_report) =====
+length: 2746 chars
+Fix the homepage replica page to improve its match score from 22.6% toward 85.0%.
+
+File to edit: ui/app/brands/woolworths-com-au/replica/page.tsx
+Original screenshot: /tmp/eval/woolworths-com-au/desktop-original-homepage.png
+Replica screenshot: /tmp/eval/woolworths-com-au/desktop-replica-homepage.png
+
+
+Steps:
+1. Read the replica TSX file
+2. View both screenshots to see visual differences
+3. Fix the specific component issues listed above — exact measurements are provided
+4. Make surgical fixes only — do NOT refactor or restructure
+
+Rules:
+- Edit ONLY the listed file and shared brand components under ui/components/brands/
+- Do not modify unrelated files, docs, or other brands
+- Make edits directly — no plans, no questions
+- Reply with a short summary of what you changed
+
+## RUBRIC DIAGNOSIS — fix these specifically
+- pixel_desktop (score 0.45): homepage at 22.6% on this page. Compare original screenshot vs replica.
+- component_completeness (score 0.00, status critical): page homepage has 0 missing and 8 extra components that don't pair to source. Compare DOM extraction at cache/<slug>/dom-extraction/homepage.json.
+- asset_fidelity (score 0.00): 8 source assets unresolved. Examples: waw-logo-2236.webp, 2636-everyday-market.svg, everyday-insurance-logo-2236.svg, everyday-rewards-logo-2236.svg, everyday-mobile-logo-2236.svg, gift-cards-logo-2236.png, woolworths-wapple-green-2236.svg, icon-header-logo-only.png. Check that downloaded filenames preserve original suffixes.
+- pixel_mobile (score 0.77): homepage at 55.8% on this page. Compare original screenshot vs replica.
+- pixel_tablet (score 0.77): homepage at 47.6% on this page. Compare original screenshot vs replica.
+- interactive_state (score 0.00): CTA missing on original side (replica has one). Selectors tried: ['button[class*="primary" i]', '[class*="btn-primary" i]', 'a[class*="btn-primary" i]', 'button[role="button"]:not([aria-hidden="true"])', 'header a[href]:not([href="#"])', 'main a[class*="btn" i]']. Working selector on replica: div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(1).
+- font_rendering (score 0.67): (possible measurement artefact — see loaded_fonts in rubric details) h1 should be <h1> at Times 32px/700 — replica currently <h1> Glider, Inter, sans-serif 32px/700. Line-height delta 0.4px.
+- font_rendering (score 0.67): (possible measurement artefact — see loaded_fonts in rubric details) p should be <p> at Times 16px/400 — replica currently <p> Roboto, "Roboto Fallback", -apple-system, system-ui, sans-serif 16px/400. Line-height delta 0.8px.
+
+Address the items in the RUBRIC DIAGNOSIS block FIRST. Each fixed item should measurably improve the named dimension on the next rubric run.
+
+===== SIZE DELTA: 1968 chars =====

@@ -1,0 +1,668 @@
+{
+  "schema_version": "1.0",
+  "slug": "woolworths-com-au",
+  "generated_at": "2026-05-14T05:31:22.266415+00:00",
+  "weighted_total": 0.5209,
+  "critical_fail": true,
+  "overall_status": "fail",
+  "dimensions": [
+    {
+      "name": "pixel_desktop",
+      "score": 0.4476,
+      "threshold": 0.85,
+      "weight": 0.25,
+      "status": "fail",
+      "details": {
+        "viewport": "1280x720",
+        "exact_avg_pct": 44.8,
+        "close_avg_pct": 52.8,
+        "exact_pct": 44.760000000000005,
+        "page_count": 5,
+        "pages": {
+          "contact-us": {
+            "exact": 42.9,
+            "close": 44.3,
+            "dims": "1280x720"
+          },
+          "help": {
+            "exact": 52.8,
+            "close": 62.3,
+            "dims": "1280x720"
+          },
+          "homepage": {
+            "exact": 22.6,
+            "close": 44.1,
+            "dims": "1280x720"
+          },
+          "recipes": {
+            "exact": 55.5,
+            "close": 58.2,
+            "dims": "1280x720"
+          },
+          "specials": {
+            "exact": 50.0,
+            "close": 55.0,
+            "dims": "1280x720"
+          }
+        }
+      }
+    },
+    {
+      "name": "component_completeness",
+      "score": 0.0,
+      "threshold": 0.85,
+      "weight": 0.1,
+      "status": "critical",
+      "details": {
+        "matched": 0,
+        "missing": 0,
+        "extra": 58,
+        "page_count": 5,
+        "pages": [
+          {
+            "page": "homepage",
+            "matched": 0,
+            "missing": 0,
+            "extra": 8
+          },
+          {
+            "page": "specials",
+            "matched": 0,
+            "missing": 0,
+            "extra": 13
+          },
+          {
+            "page": "recipes",
+            "matched": 0,
+            "missing": 0,
+            "extra": 3
+          },
+          {
+            "page": "contact-us",
+            "matched": 0,
+            "missing": 0,
+            "extra": 10
+          },
+          {
+            "page": "help",
+            "matched": 0,
+            "missing": 0,
+            "extra": 24
+          }
+        ],
+        "auto_run": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "name": "pattern_fidelity",
+      "score": 1.0,
+      "threshold": 0.78,
+      "weight": 0.1,
+      "status": "pass",
+      "details": {
+        "signals_in_tolerance": 9,
+        "signals_total": 9,
+        "screenshot_used": "/Users/mehran/.claude/design-library/cache/woolworths-com-au/screenshots/harness/orig-homepage.png",
+        "per_signal_confidence": {
+          "spacing_rhythm": "HIGH",
+          "type_scale_ratio": "LOW",
+          "component_density": "HIGH",
+          "alignment_grid": "MEDIUM",
+          "cta_placement": "MEDIUM",
+          "border_radius_language": "MEDIUM",
+          "shadow_elevation": "HIGH",
+          "motion_language": "HIGH",
+          "color_temperature": "HIGH"
+        },
+        "note": "Phase 1: tolerance == non-SKIPPED. Phase 2 will diff source vs replica."
+      }
+    },
+    {
+      "name": "asset_fidelity",
+      "score": 0.0,
+      "threshold": 1.0,
+      "weight": 0.05,
+      "status": "critical",
+      "details": {
+        "resolved": 0,
+        "total_unique_basenames": 8,
+        "unresolved_sample": [
+          "waw-logo-2236.webp",
+          "2636-everyday-market.svg",
+          "everyday-insurance-logo-2236.svg",
+          "everyday-rewards-logo-2236.svg",
+          "everyday-mobile-logo-2236.svg",
+          "gift-cards-logo-2236.png",
+          "woolworths-wapple-green-2236.svg",
+          "icon-header-logo-only.png"
+        ],
+        "assets_dir": "/Users/mehran/.claude/design-library/brands/woolworths-com-au/assets",
+        "inventory_present": false
+      }
+    },
+    {
+      "name": "anti_slop",
+      "score": 1.0,
+      "threshold": 1.0,
+      "weight": 0.05,
+      "status": "pass",
+      "details": {
+        "violation_count": 0,
+        "rules_triggered": [],
+        "files_scanned": 6,
+        "whitelist_applied": []
+      }
+    },
+    {
+      "name": "pixel_mobile",
+      "score": 0.766,
+      "threshold": 0.8,
+      "weight": 0.15,
+      "status": "fail",
+      "details": {
+        "viewport": "375x667",
+        "exact_avg_pct": 76.6,
+        "page_count": 5,
+        "skipped_404": [],
+        "pages": {
+          "contact-us": {
+            "exact": 87.0,
+            "close": 88.5,
+            "dims": "375x667"
+          },
+          "help": {
+            "exact": 86.5,
+            "close": 88.7,
+            "dims": "375x667"
+          },
+          "homepage": {
+            "exact": 55.8,
+            "close": 62.0,
+            "dims": "375x667"
+          },
+          "recipes": {
+            "exact": 86.9,
+            "close": 88.1,
+            "dims": "375x667"
+          },
+          "specials": {
+            "exact": 66.8,
+            "close": 67.9,
+            "dims": "375x667"
+          }
+        }
+      }
+    },
+    {
+      "name": "pixel_tablet",
+      "score": 0.7742,
+      "threshold": 0.82,
+      "weight": 0.1,
+      "status": "fail",
+      "details": {
+        "viewport": "768x1024",
+        "exact_avg_pct": 77.4,
+        "page_count": 5,
+        "skipped_404": [],
+        "pages": {
+          "contact-us": {
+            "exact": 82.6,
+            "close": 84.2,
+            "dims": "768x1024"
+          },
+          "help": {
+            "exact": 92.0,
+            "close": 93.8,
+            "dims": "768x1024"
+          },
+          "homepage": {
+            "exact": 47.6,
+            "close": 55.7,
+            "dims": "768x1024"
+          },
+          "recipes": {
+            "exact": 92.8,
+            "close": 94.0,
+            "dims": "768x1024"
+          },
+          "specials": {
+            "exact": 72.1,
+            "close": 74.7,
+            "dims": "768x1024"
+          }
+        }
+      }
+    },
+    {
+      "name": "interactive_state",
+      "score": 0.0,
+      "threshold": 0.8,
+      "weight": 0.1,
+      "status": "fail",
+      "details": {
+        "reason": "CTA missing on original side (replica has one)",
+        "selectors_tried": [
+          "button[class*=\"primary\" i]",
+          "[class*=\"btn-primary\" i]",
+          "a[class*=\"btn-primary\" i]",
+          "button[role=\"button\"]:not([aria-hidden=\"true\"])",
+          "header a[href]:not([href=\"#\"])",
+          "main a[class*=\"btn\" i]"
+        ],
+        "original_selector": null,
+        "original_attempts": [
+          {
+            "sel": "button[class*=\"primary\" i]",
+            "count": 0,
+            "reason": "no element matched"
+          },
+          {
+            "sel": "[class*=\"btn-primary\" i]",
+            "count": 0,
+            "reason": "no element matched"
+          },
+          {
+            "sel": "a[class*=\"btn-primary\" i]",
+            "count": 0,
+            "reason": "no element matched"
+          },
+          {
+            "sel": "button[role=\"button\"]:not([aria-hidden=\"true\"])",
+            "count": 0,
+            "reason": "no element matched"
+          },
+          {
+            "sel": "header a[href]:not([href=\"#\"])",
+            "count": 0,
+            "reason": "no element matched"
+          },
+          {
+            "sel": "main a[class*=\"btn\" i]",
+            "count": 0,
+            "reason": "no element matched"
+          }
+        ],
+        "original_error": "no selector resolved",
+        "replica_selector": "div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1) > button:nth-of-type(1)",
+        "replica_matchedBy": "button[class*=\"primary\" i]",
+        "original_url": "https://www.woolworths.com.au/",
+        "replica_url": "https://design-extractor.localhost/brands/woolworths-com-au/replica"
+      }
+    },
+    {
+      "name": "font_rendering",
+      "score": 0.667,
+      "threshold": 1.0,
+      "weight": 0.1,
+      "status": "fail",
+      "details": {
+        "matched_total": 4,
+        "properties_total": 6,
+        "raw_ratio": 0.667,
+        "elements": {
+          "h1": {
+            "family_match": false,
+            "weight_match": true,
+            "lineheight_match": true,
+            "lineheight_delta_px": 0.4,
+            "matched": 2,
+            "original": {
+              "tag": "h1",
+              "fontFamily": "Times",
+              "fontWeight": "700",
+              "lineHeight": "normal",
+              "fontSize": "32px"
+            },
+            "replica": {
+              "tag": "h1",
+              "fontFamily": "Glider, Inter, sans-serif",
+              "fontWeight": "700",
+              "lineHeight": "38px",
+              "fontSize": "32px"
+            }
+          },
+          "p": {
+            "family_match": false,
+            "weight_match": true,
+            "lineheight_match": true,
+            "lineheight_delta_px": 0.8,
+            "matched": 2,
+            "original": {
+              "tag": "p",
+              "fontFamily": "Times",
+              "fontWeight": "400",
+              "lineHeight": "normal",
+              "fontSize": "16px"
+            },
+            "replica": {
+              "tag": "p",
+              "fontFamily": "Roboto, \"Roboto Fallback\", -apple-system, system-ui, sans-serif",
+              "fontWeight": "400",
+              "lineHeight": "20px",
+              "fontSize": "16px"
+            }
+          }
+        },
+        "homepage": {
+          "original": "https://www.woolworths.com.au/",
+          "replica": "https://design-extractor.localhost/brands/woolworths-com-au/replica"
+        },
+        "original": {
+          "loaded_fonts": []
+        },
+        "replica": {
+          "loaded_fonts": [
+            {
+              "family": "Geist",
+              "status": "unloaded",
+              "weight": "100 900",
+              "style": "normal"
+            },
+            {
+              "family": "Geist",
+              "status": "unloaded",
+              "weight": "100 900",
+              "style": "normal"
+            },
+            {
+              "family": "Geist",
+              "status": "unloaded",
+              "weight": "100 900",
+              "style": "normal"
+            },
+            {
+              "family": "Geist Fallback",
+              "status": "unloaded",
+              "weight": "normal",
+              "style": "normal"
+            },
+            {
+              "family": "Geist Mono",
+              "status": "unloaded",
+              "weight": "100 900",
+              "style": "normal"
+            },
+            {
+              "family": "Geist Mono",
+              "status": "unloaded",
+              "weight": "100 900",
+              "style": "normal"
+            },
+            {
+              "family": "Geist Mono",
+              "status": "unloaded",
+              "weight": "100 900",
+              "style": "normal"
+            },
+            {
+              "family": "Geist Mono Fallback",
+              "status": "unloaded",
+              "weight": "normal",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "loaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "loaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto",
+              "status": "loaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Roboto Fallback",
+              "status": "unloaded",
+              "weight": "normal",
+              "style": "normal"
+            },
+            {
+              "family": "Westpac-bold",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "TomatoGrotesk",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "TomatoGrotesk",
+              "status": "unloaded",
+              "weight": "600",
+              "style": "normal"
+            },
+            {
+              "family": "TomatoGrotesk",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "Montserrat",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Montserrat",
+              "status": "unloaded",
+              "weight": "600",
+              "style": "normal"
+            },
+            {
+              "family": "Montserrat",
+              "status": "unloaded",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "QuantiumPro",
+              "status": "unloaded",
+              "weight": "300",
+              "style": "normal"
+            },
+            {
+              "family": "QuantiumPro",
+              "status": "unloaded",
+              "weight": "500",
+              "style": "normal"
+            },
+            {
+              "family": "Glider",
+              "status": "unloaded",
+              "weight": "400",
+              "style": "normal"
+            },
+            {
+              "family": "Glider",
+              "status": "error",
+              "weight": "700",
+              "style": "normal"
+            },
+            {
+              "family": "__nextjs-Geist",
+              "status": "unloaded",
+              "weight": "400 600",
+              "style": "normal"
+            },
+            {
+              "family": "__nextjs-Geist Mono",
+              "status": "unloaded",
+              "weight": "400 600",
+              "style": "normal"
+            },
+            {
+              "family": "__nextjs-Geist",
+              "status": "unloaded",
+              "weight": "400 600",
+              "style": "normal"
+            },
+            {
+              "family": "__nextjs-Geist Mono",
+              "status": "unloaded",
+              "weight": "400 600",
+              "style": "normal"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { TweaksPanel } from "@/components/brands/tweaks-panel";
+import "@/app/brands/[slug]/replica/tweaks.css";
 
 export default function ExampleComReplicaLayout({
   children,
@@ -18,5 +20,10 @@ export default function ExampleComReplicaLayout({
     };
   }, []);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <TweaksPanel />
+    </>
+  );
 }

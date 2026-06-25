@@ -49,6 +49,7 @@ export default function RootLayout({
                 Monitoring
               </Link>
               <Link href="/docs" className="hover:text-[#1d1d1f]">Docs</Link>
+              <Link href="/settings" className="hover:text-[#1d1d1f]">Settings</Link>
             </nav>
           </div>
           <span className="text-[10px] tracking-wide text-[#86868b]">v0.3.0</span>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { TweaksPanel } from "@/components/brands/tweaks-panel";
+import "@/app/brands/[slug]/replica/tweaks.css";
 
 export default function CircleKReplicaLayout({
   children,
@@ -18,5 +20,10 @@ export default function CircleKReplicaLayout({
     };
   }, []);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <TweaksPanel />
+    </>
+  );
 }

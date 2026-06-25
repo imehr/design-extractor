@@ -1,0 +1,24 @@
+## Provenance
+
+| Field | Value |
+|-------|-------|
+| Brand slug | `quantium-com-au` |
+| Source URL | [https://quantium.com.au](https://quantium.com.au) |
+| Extracted at | 2026-05-14T00:49:15.060579+00:00 |
+| Extractor | design-extractor - publish_brand.py via design_md_writer.py |
+| DESIGN.md spec | [google-labs-code/design.md](https://github.com/google-labs-code/design.md/blob/main/docs/spec.md) |
+| Nearest philosophy | Sagmeister Walsh Joyful (0.96); Experimental Jetset Conceptual (0.94); Resn Interactive Storytelling (0.89) |
+| EVAL score | pending |
+
+## Mandatory identity rules
+
+- Use the extracted logo asset or text wordmark in the header: `https://quantium.com/wp-content/themes/_quantium-sv/img/logo.svg`.
+- Use the extracted white/reversed logo asset in dark footers when available: `https://quantium.com/wp-content/themes/_quantium-sv/img/logo.svg`.
+- Preserve the live header navigation labels: Industries, Solutions, GenAI, About us, About Quantium, Our locations, Our purpose and values, Corporate responsibility, FAQs, Careers.
+- Preserve the live footer structure, not a generic legal-link row:
+- Column 1: Industries, FMCG / CPG, Retail, Retail Old, Banking and wealth, Property, Consumer services, Insurance, Health, Public sector, Solutions, Q
+- Column 2: Industries FMCG / CPG Retail Retail Old Banking and wealth Property Consumer services Insurance Health Public sector, Banking and wealth, Consumer services, Public sector, Solutions Q Q.Checkout Q.Promotions Q.Shelf Q.Shopper Q.Supply Q.Panel Q.Refinery Q.Audience Q.Credit Q.Checkup Q.Dose Q.Quail, Q.Promotions, Our locations, Perspectives, Corporate responsibility, CommBank iQ, Quantium Telstra, Sydney (HQ) Bay 12, 2 Locomotive Street, Eveleigh NSW, 2015 Australia Phone: +61 2 9292 6400
+- Footer about text: Industries FMCG / CPG Retail Retail Old Banking and wealth Property Consumer services Insurance Health Public sector.
+- Footer acknowledgement/country text must be carried into generated pages when present: No acknowledgement text captured on the source.
+- Footer copyright/source row: Preserve the source footer verification/source row when present.
+- Test cases, replicas, dashboards, slides, posters, and design-system showcases must reuse these logo/header/footer details before adding scenario-specific content.

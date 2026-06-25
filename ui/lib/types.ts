@@ -25,9 +25,19 @@ export interface BrandDetail {
   skill_md: string | null;
   metadata: Record<string, unknown> | null;
   validation_report: Record<string, unknown> | null;
+  rubric_report: Record<string, unknown> | null;
+  component_manifest: Record<string, unknown> | null;
+  component_report: Record<string, unknown> | null;
   has_replica: boolean;
   has_logo: boolean;
   has_screenshots: boolean;
+  scene_matrix: string[];
+  /**
+   * Relative path (under brands/<slug>/) to a captured PNG of the
+   * rendered replica homepage. Served via /api/brands/<slug>/file/<path>.
+   * Null when no captured screenshot exists on disk.
+   */
+  replica_screenshot: string | null;
 }
 
 export const CATEGORIES = [

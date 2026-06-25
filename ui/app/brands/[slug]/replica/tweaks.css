@@ -1,0 +1,43 @@
+/*
+ * tweaks.css — applied only when the TweaksPanel is enabled.
+ * The panel sets `data-tweaks-active="1"` on <html> so these rules
+ * never affect the pixel-perfect default replica appearance.
+ *
+ * CSS custom properties (set by tweaks-panel.tsx on :root):
+ *   --tweak-primary-hue   (deg)    hue rotation applied to primary surfaces
+ *   --tweak-font-scale    (number) heading scale multiplier
+ *   --tweak-density       (number) section padding multiplier
+ *   --tweak-radius-scale  (number) border-radius multiplier
+ */
+
+html[data-tweaks-active="1"] [data-replica-primary],
+html[data-tweaks-active="1"] [data-replica-primary] svg,
+html[data-tweaks-active="1"] [data-replica-primary] img {
+  filter: hue-rotate(var(--tweak-primary-hue, 0deg));
+}
+
+/* Font scale: applied via zoom on each heading element so the
+ * existing computed font-size is preserved when scale === 1.
+ * (Setting font-size: 1em would collapse to the parent's size.) */
+html[data-tweaks-active="1"] h1,
+html[data-tweaks-active="1"] h2,
+html[data-tweaks-active="1"] h3 {
+  zoom: var(--tweak-font-scale, 1);
+}
+
+html[data-tweaks-active="1"] section,
+html[data-tweaks-active="1"] [data-replica-section] {
+  padding-top: calc(var(--replica-section-pad, 4rem) * var(--tweak-density, 1));
+  padding-bottom: calc(var(--replica-section-pad, 4rem) * var(--tweak-density, 1));
+}
+
+html[data-tweaks-active="1"] [data-replica-radius],
+html[data-tweaks-active="1"] [data-replica-radius] > * {
+  border-radius: calc(var(--replica-radius, 0.5rem) * var(--tweak-radius-scale, 1));
+}
+
+/* Make replica-wide elements that expose --replica-* tokens
+ * respond to the tweak variables automatically. */
+html[data-tweaks-active="1"] {
+  --tweak-primary-hue-applied: var(--tweak-primary-hue, 0deg);
+}

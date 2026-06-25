@@ -19,6 +19,9 @@ export interface ImprovementJobState {
   assisted_capture_steps: string[];
   feedback: Record<string, unknown>;
   history: number[];
+  last_model_summary: string | null;
+  model_log_path: string | null;
+  model_provider: string | null;
   last_claude_summary: string | null;
   claude_log_path: string | null;
   updated_at: string;
@@ -55,11 +58,18 @@ export async function readJobState(
 
 export async function startImprovementJob(
   slug: string,
-  options: { targetScore?: number; feedback?: Record<string, unknown> } = {}
+  options: {
+    targetScore?: number;
+    feedback?: Record<string, unknown>;
+    baseUrl?: string;
+  } = {}
 ): Promise<ImprovementJobState | null> {
   const projectRoot = path.resolve(process.cwd(), "..");
   const scriptPath = path.join(projectRoot, "scripts", "run_improvement_job.py");
   const jobId = randomUUID().replace(/-/g, "").slice(0, 12);
+  const baseUrl = normalizeBaseUrl(
+    options.baseUrl ?? process.env.PORTLESS_URL ?? "http://localhost:5173"
+  );
   const args = [
     scriptPath,
     "--brand",
@@ -67,10 +77,10 @@ export async function startImprovementJob(
     "--job-id",
     jobId,
     "--base-url",
-    "http://localhost:5173",
+    baseUrl,
     "--target",
     String(options.targetScore ?? 80),
-    "--claude-timeout",
+    "--model-timeout",
     "900",
   ];
 
@@ -96,4 +106,16 @@ export async function startImprovementJob(
   }
 
   return null;
+}
+
+function normalizeBaseUrl(value: string): string {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      throw new Error("Unsupported protocol");
+    }
+    return url.origin;
+  } catch {
+    return "http://localhost:5173";
+  }
 }

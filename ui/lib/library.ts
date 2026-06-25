@@ -25,6 +25,7 @@ export async function getBrandDetail(
   if (!summary) return null;
 
   const brandDir = path.join(LIBRARY_ROOT, "brands", slug);
+  const cacheDir = path.join(LIBRARY_ROOT, "cache", slug);
 
   try {
     await fs.access(brandDir);
@@ -52,12 +53,98 @@ export async function getBrandDetail(
     }
   };
 
+  const readJsonFrom = async (
+    root: string,
+    relativePath: string
+  ): Promise<Record<string, unknown> | null> => {
+    try {
+      const text = await fs.readFile(path.join(root, relativePath), "utf-8");
+      return JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  };
+
   const fileExists = async (relativePath: string): Promise<boolean> => {
     try {
       await fs.access(path.join(brandDir, relativePath));
       return true;
     } catch {
       return false;
+    }
+  };
+
+  const reactReplicaExists = async (): Promise<boolean> => {
+    try {
+      await fs.access(
+        path.join(process.cwd(), "app", "brands", slug, "replica", "page.tsx")
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const listSceneMatrix = async (): Promise<string[]> => {
+    const dir = path.join(brandDir, "scene-matrix");
+    try {
+      const entries = await fs.readdir(dir);
+      return entries
+        .filter((name) => name.toLowerCase().endsWith(".png"))
+        .sort();
+    } catch {
+      return [];
+    }
+  };
+
+  /**
+   * Resolve a relative path (under brands/<slug>/) for the captured
+   * replica homepage thumbnail, trying multiple known locations in order.
+   * Returns null when no PNG exists.
+   *
+   * Order:
+   *   1. brands/<slug>/replica-screenshots/homepage.png
+   *      (written by scripts/capture_replica_screenshot.py)
+   *   2. cache/<slug>/validation/screenshots/replica/homepage.png
+   *      (written by run_validation_loop.py)
+   *   3. null
+   *
+   * The returned path is relative to brandDir so the existing
+   * /api/brands/<slug>/file/<path> route serves it directly.
+   */
+  const findReplicaScreenshot = async (): Promise<string | null> => {
+    const captured = "replica-screenshots/homepage.png";
+    try {
+      await fs.access(path.join(brandDir, captured));
+      return captured;
+    } catch {
+      // fall through
+    }
+
+    // Fall back to a validation capture in the cache dir. Surface it via a
+    // symlink-like relative path: the file API rejects path traversal, so we
+    // place a soft-link into the brand dir on first hit. To stay additive and
+    // avoid mutating disk on a read, return null here and let the backfill
+    // script populate the canonical path.
+    try {
+      await fs.access(
+        path.join(cacheDir, "validation/screenshots/replica/homepage.png")
+      );
+      // Best-effort copy into the canonical brand location so the file API can serve it
+      // without changing path-traversal semantics. If the copy fails, just give up.
+      try {
+        const target = path.join(brandDir, "replica-screenshots");
+        await fs.mkdir(target, { recursive: true });
+        await fs.copyFile(
+          path.join(cacheDir, "validation/screenshots/replica/homepage.png"),
+          path.join(target, "homepage.png")
+        );
+        return captured;
+      } catch {
+        return null;
+      }
+    } catch {
+      return null;
     }
   };
 
@@ -68,9 +155,16 @@ export async function getBrandDetail(
     skill_md,
     metadata,
     validation_report,
-    has_replica,
+    rubric_report,
+    component_manifest,
+    brand_component_report,
+    cache_component_report,
+    has_html_replica,
+    has_react_replica,
     has_logo,
     has_screenshots,
+    scene_matrix,
+    replica_screenshot,
   ] = await Promise.all([
     readText("DESIGN.md"),
     readJson("design-tokens.json"),
@@ -78,9 +172,16 @@ export async function getBrandDetail(
     readText("skill/SKILL.md"),
     readJson("metadata.json"),
     readJson("validation/report.json"),
+    readJson("validation/rubric-report.json"),
+    readJson("component-manifest.json"),
+    readJson("validation/component-report.json"),
+    readJsonFrom(cacheDir, "validation/component-report.json"),
     fileExists("replica/index.html"),
+    reactReplicaExists(),
     fileExists("assets/logo.svg"),
     fileExists("screenshots/reference"),
+    listSceneMatrix(),
+    findReplicaScreenshot(),
   ]);
 
   return {
@@ -91,9 +192,14 @@ export async function getBrandDetail(
     skill_md,
     metadata,
     validation_report,
-    has_replica,
+    rubric_report,
+    component_manifest,
+    component_report: cache_component_report ?? brand_component_report,
+    has_replica: has_html_replica || has_react_replica,
     has_logo,
     has_screenshots,
+    scene_matrix,
+    replica_screenshot,
   };
 }
 

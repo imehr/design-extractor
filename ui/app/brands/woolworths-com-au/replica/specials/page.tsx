@@ -72,12 +72,15 @@ export default function SpecialsPage() {
         {/* Heading */}
         <div className="bg-white px-6 pb-2 pt-6">
           <div className="mx-auto max-w-[1280px]">
-            <h2
+            <h1
               className="text-[32px] font-medium"
-              style={{ fontFamily: "var(--font-roboto), -apple-system, system-ui, sans-serif" }}
+              style={{
+                fontFamily: "var(--font-roboto), -apple-system, system-ui, sans-serif",
+                lineHeight: "38px",
+              }}
             >
               All Specials and Offers
-            </h2>
+            </h1>
           </div>
         </div>
 
@@ -138,7 +141,7 @@ export default function SpecialsPage() {
                 >
                   {PROMO_BANNER.heading}
                 </h3>
-                <p className="mt-2 text-sm text-white/90">{PROMO_BANNER.text}</p>
+                <p className="mt-2 text-base leading-6 text-white/90">{PROMO_BANNER.text}</p>
                 <Button
                   className="mt-4 rounded-[4px] bg-white font-bold text-[#178841] hover:bg-white/90"
                 >

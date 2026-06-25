@@ -1,13 +1,28 @@
 "use client";
 
-import { QtHeader } from "@/components/brands/quantium-com-au/qt-header";
-import { QtFooter } from "@/components/brands/quantium-com-au/qt-footer";
+import { QuantiumHeader } from "@/components/brands/quantium-com-au/quantium-com-au-header";
+import { QuantiumFooter } from "@/components/brands/quantium-com-au/quantium-com-au-footer";
 import Link from "next/link";
 
 const QUANTIUM_FONT = "'QuantiumPro', -apple-system, system-ui, sans-serif";
 const ROBOTO_FONT = "var(--font-roboto), 'Roboto', sans-serif";
 
-/* ---------- Data from DOM extraction ---------- */
+/* ---------- Images from DOM extraction ---------- */
+
+const HERO_PARTNER_LOGOS = [
+  { src: "/brands/quantium-com-au/images/logo-Woolworths_Group.svg", alt: "Woolworths Group" },
+  { src: "/brands/quantium-com-au/images/logo-Commonwealth_Bank.svg", alt: "Commonwealth Bank" },
+  { src: "/brands/quantium-com-au/images/logo-Telstra.svg", alt: "Telstra" },
+  { src: "/brands/quantium-com-au/images/logo-Discovery.svg", alt: "Discovery" },
+  { src: "/brands/quantium-com-au/images/logo-Vitality.svg", alt: "Vitality" },
+  { src: "/brands/quantium-com-au/images/Gates-foundation.png", alt: "Gates Foundation" },
+  { src: "/brands/quantium-com-au/images/logo-nhs.svg", alt: "NHS" },
+  { src: "/brands/quantium-com-au/images/logo-Walmart.svg", alt: "Walmart" },
+  { src: "/brands/quantium-com-au/images/logo-ASDA.svg", alt: "ASDA" },
+  { src: "/brands/quantium-com-au/images/logo-quantium.png", alt: "Quantium" },
+  { src: "/brands/quantium-com-au/images/img-discovery-health.png", alt: "Discovery Health" },
+  { src: "/brands/quantium-com-au/images/logo-iress.png", alt: "Iress" },
+];
 
 const PARTNER_LOGOS = [
   { src: "/brands/quantium-com-au/images/logo-Woolworths_Group.svg", alt: "Woolworths Group" },
@@ -15,163 +30,96 @@ const PARTNER_LOGOS = [
   { src: "/brands/quantium-com-au/images/logo-Telstra.svg", alt: "Telstra" },
   { src: "/brands/quantium-com-au/images/logo-Discovery.svg", alt: "Discovery" },
   { src: "/brands/quantium-com-au/images/logo-Vitality.svg", alt: "Vitality" },
+  { src: "/brands/quantium-com-au/images/Gates-foundation.png", alt: "Gates Foundation" },
   { src: "/brands/quantium-com-au/images/logo-nhs.svg", alt: "NHS" },
   { src: "/brands/quantium-com-au/images/logo-Walmart.svg", alt: "Walmart" },
   { src: "/brands/quantium-com-au/images/logo-ASDA.svg", alt: "ASDA" },
-];
-
-const WHY_CHOOSE_US = [
-  {
-    num: "01",
-    title: "Commercial outcomes first",
-    description:
-      "We start with your business objectives, not the technology.",
-  },
-  {
-    num: "02",
-    title: "Two decades deploying AI at scale",
-    description:
-      "Deep experience across industries means faster, proven outcomes.",
-  },
-  {
-    num: "03",
-    title: "Proven approaches across industries",
-    description:
-      "We bring cross-industry expertise to every engagement.",
-  },
-];
-
-const HOW_WE_WORK = [
-  {
-    title: "Built for business impact",
-    description:
-      "Every engagement starts with a clear commercial objective. We align our AI capabilities to your most pressing business challenges.",
-  },
-  {
-    title: "Systems embedded in your operations",
-    description:
-      "We don't build prototypes that sit on a shelf. Our solutions integrate into your existing workflows and systems from the start.",
-  },
-  {
-    title: "Capability built to last",
-    description:
-      "We transfer knowledge and build internal capability so your team can maintain and extend AI systems long after our engagement ends.",
-  },
-];
-
-const WHAT_WE_DELIVER = [
-  {
-    title: "Customer intelligence",
-    description:
-      "Deep understanding of customer behaviour, preferences, and lifetime value to drive personalised experiences at scale.",
-  },
-  {
-    title: "Smarter operations",
-    description:
-      "AI-optimised supply chains, pricing, and resource allocation that improve efficiency and reduce waste.",
-  },
-  {
-    title: "GenAI in production",
-    description:
-      "Enterprise-grade generative AI deployed safely at scale with governance and measurable ROI.",
-  },
-  {
-    title: "Risk management",
-    description:
-      "Real-time fraud detection, compliance, and risk mitigation systems that protect your business.",
-  },
-];
-
-const IMPACT_CASES = [
-  {
-    stat: "Real-time fraud prevention",
-    title: "Real-time fraud prevention that protects customers and reduces losses",
-    image: "/brands/quantium-com-au/images/logo-Commonwealth_Bank.svg",
-  },
-  {
-    stat: "Personalised health",
-    title: "Personalised health strategies that reduce costs and improve outcomes",
-    image: "/brands/quantium-com-au/images/img-discovery-health.png",
-  },
-  {
-    stat: "Market intelligence",
-    title: "Market intelligence that transforms investment decisions",
-    image: "/brands/quantium-com-au/images/logo-iress.png",
-  },
 ];
 
 /* ---------- Page component ---------- */
 
 export default function QuantiumHomePage() {
   return (
-    <div
-      className="min-h-screen bg-white"
-      style={{ fontFamily: QUANTIUM_FONT }}
-    >
-      <QtHeader />
+    <div className="min-h-screen bg-white" style={{ fontFamily: QUANTIUM_FONT }}>
+      <QuantiumHeader />
+
+      {/* ===== Alert Banner (from DOM hero) ===== */}
+      <div
+        className="flex w-full items-center justify-center px-4 py-4"
+        style={{ backgroundColor: "black" }}
+      >
+        <span
+          className="text-center text-[16px] text-white md:text-[18px]"
+          style={{ fontFamily: ROBOTO_FONT }}
+        >
+          For an update on Quantium&apos;s COVID-19 response and business continuity plans, please{" "}
+          <Link href="https://quantium.com/covid-19" className="underline hover:text-white/80">
+            click here
+          </Link>
+        </span>
+      </div>
 
       {/* ===== Section 1: Hero ===== */}
       <section
         className="relative w-full"
+        style={{ backgroundColor: "rgb(0, 0, 6)" }}
         data-component="hero"
       >
-        <div className="grid min-h-[520px] grid-cols-1 md:grid-cols-2">
-          {/* Left: text on white */}
-          <div className="flex flex-col justify-center bg-white py-20 pl-[100px] pr-12">
-            <h1
-              className="mb-6 text-[48px] font-medium leading-[1.1] tracking-tight text-[#000006]"
-              style={{ fontFamily: QUANTIUM_FONT }}
-            >
-              Enterprise AI
-              <br />
-              for complex business
-              <br />
-              challenges
-            </h1>
-            <p
-              className="mb-8 max-w-[420px] text-[18px] font-light leading-relaxed text-[#666]"
-              style={{ fontFamily: ROBOTO_FONT }}
-            >
-              Cross-industry expertise built over 23 years.
-            </p>
-            <div>
-              <Link
-                href="#talk-to-us"
-                className="inline-flex h-[48px] items-center justify-center rounded-full bg-[#000006] px-8 text-[15px] font-medium text-white transition-colors hover:bg-[#333]"
-                style={{ fontFamily: ROBOTO_FONT }}
-              >
-                Talk to us
-              </Link>
-            </div>
-          </div>
+        <div className="mx-auto max-w-[1280px] px-6 py-20 md:px-[100px] md:pb-24 md:pt-28">
+          <h1
+            className="mb-6 max-w-[600px] text-[36px] font-normal leading-tight text-white md:text-[48px] md:leading-[62px]"
+            style={{ fontFamily: QUANTIUM_FONT }}
+          >
+            Enterprise AI
+            <br />
+            for complex business
+            <br />
+            challenges
+          </h1>
+          <p
+            className="mb-8 max-w-[520px] text-[18px] font-light leading-relaxed text-white md:text-[24px] md:leading-[28.8px]"
+            style={{ fontFamily: ROBOTO_FONT }}
+          >
+            Cross-industry expertise built over 23 years.
+          </p>
+          <Link
+            href="https://quantium.com/contact/"
+            className="inline-flex h-auto items-center justify-center rounded-none border-2 border-white bg-white px-[30px] py-[18px] text-[20px] font-medium text-[rgb(0,0,6)] transition-colors hover:bg-white/90"
+            style={{ fontFamily: QUANTIUM_FONT }}
+          >
+            Talk to us
+          </Link>
 
-          {/* Right: hero photo */}
-          <div className="relative overflow-hidden">
-            <img
-              src="/brands/quantium-com-au/images/hero-bg-1.jpg"
-              alt="Quantium team in office with large Quantium branding on wall"
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+          {/* Partner logos from hero section images */}
+          <div className="mt-16 flex flex-wrap items-center gap-8 md:gap-10">
+            {HERO_PARTNER_LOGOS.map((logo) => (
+              <img
+                key={logo.alt}
+                src={logo.src}
+                alt={logo.alt}
+                className="h-[28px] w-auto object-contain opacity-60 grayscale transition-all hover:opacity-100 hover:grayscale-0 md:h-[32px]"
+              />
+            ))}
           </div>
         </div>
       </section>
 
       {/* ===== Section 2: Trusted partners ===== */}
-      <section className="w-full bg-white py-16">
-        <div className="mx-auto max-w-[1200px] px-[100px]">
-          <p
-            className="mb-10 text-center text-[16px] font-normal text-[#666]"
-            style={{ fontFamily: ROBOTO_FONT }}
+      <section className="w-full bg-white py-16 md:py-20">
+        <div className="mx-auto max-w-[1200px] px-6 md:px-[100px]">
+          <h2
+            className="mb-12 text-[32px] font-medium leading-tight tracking-tight text-[rgb(0,0,6)] md:text-[48px] md:leading-[62px]"
+            style={{ fontFamily: QUANTIUM_FONT }}
           >
             Trusted partners to leading organisations
-          </p>
-          <div className="flex items-center justify-between gap-x-8">
+          </h2>
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-6 md:justify-between md:gap-x-10">
             {PARTNER_LOGOS.map((logo) => (
               <img
                 key={logo.alt}
                 src={logo.src}
                 alt={logo.alt}
-                className="h-[32px] w-auto object-contain opacity-50 grayscale transition-all hover:opacity-100 hover:grayscale-0"
+                className="h-[28px] w-auto object-contain opacity-50 grayscale transition-all hover:opacity-100 hover:grayscale-0 md:h-[36px]"
               />
             ))}
           </div>
@@ -179,229 +127,128 @@ export default function QuantiumHomePage() {
       </section>
 
       {/* ===== Section 3: Why clients choose us ===== */}
-      <section className="w-full bg-[#0B0D12] py-24">
-        <div className="mx-auto max-w-[1200px] px-[100px]">
+      <section
+        className="w-full py-16 md:py-24"
+        style={{ backgroundColor: "rgb(11, 13, 18)" }}
+      >
+        <div className="mx-auto max-w-[1200px] px-6 md:px-[100px]">
           <h2
-            className="mb-16 text-[42px] font-medium leading-tight tracking-tight text-white"
+            className="mb-12 text-[32px] font-medium leading-tight tracking-tight text-white md:mb-16 md:text-[48px] md:leading-[62px]"
             style={{ fontFamily: QUANTIUM_FONT }}
           >
             Why clients choose us
           </h2>
           <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
-            {WHY_CHOOSE_US.map((item) => (
-              <div
-                key={item.num}
-                className="border-t border-white/20 pt-8"
+            <div className="border-t border-white/20 pt-8">
+              <span
+                className="mb-4 block text-[14px] font-medium tracking-wider text-[#F25648]"
+                style={{ fontFamily: ROBOTO_FONT }}
               >
-                <span
-                  className="mb-4 block text-[14px] font-medium tracking-wider text-[#F25648]"
-                  style={{ fontFamily: ROBOTO_FONT }}
-                >
-                  {item.num}
-                </span>
-                <h3
-                  className="mb-4 text-[22px] font-medium leading-snug text-white"
-                  style={{ fontFamily: QUANTIUM_FONT }}
-                >
-                  {item.title}
-                </h3>
-                <p
-                  className="text-[16px] font-light leading-relaxed text-white/70"
-                  style={{ fontFamily: ROBOTO_FONT }}
-                >
-                  {item.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== Section 4: How we work ===== */}
-      <section className="w-full bg-white py-24">
-        <div className="mx-auto max-w-[1200px] px-[100px]">
-          <h2
-            className="mb-16 text-[42px] font-medium leading-tight tracking-tight text-[#000006]"
-            style={{ fontFamily: QUANTIUM_FONT }}
-          >
-            How we work
-          </h2>
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
-            {HOW_WE_WORK.map((item) => (
-              <div
-                key={item.title}
-                className="border-t border-[#000006] pt-8"
+                01
+              </span>
+              <h3
+                className="mb-4 text-[20px] font-medium leading-snug text-white md:text-[22px]"
+                style={{ fontFamily: QUANTIUM_FONT }}
               >
-                <h3
-                  className="mb-4 text-[20px] font-medium leading-snug text-[#000006]"
-                  style={{ fontFamily: QUANTIUM_FONT }}
-                >
-                  {item.title}
-                </h3>
-                <p
-                  className="text-[16px] font-light leading-relaxed text-[#666]"
-                  style={{ fontFamily: ROBOTO_FONT }}
-                >
-                  {item.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ===== Section 5: What we deliver ===== */}
-      <section className="w-full bg-white">
-        <div className="grid grid-cols-1 md:grid-cols-2">
-          {/* Left: photo */}
-          <div className="relative min-h-[480px] overflow-hidden">
-            <img
-              src="/brands/quantium-com-au/images/hero-bg-2.jpg"
-              alt=""
-              className="absolute inset-0 h-full w-full object-cover"
-            />
-          </div>
-
-          {/* Right: list */}
-          <div className="flex flex-col justify-center py-20 pl-16 pr-[100px]">
-            <h2
-              className="mb-10 text-[42px] font-medium leading-tight tracking-tight text-[#000006]"
-              style={{ fontFamily: QUANTIUM_FONT }}
-            >
-              What we deliver
-            </h2>
-            <div className="flex flex-col">
-              {WHAT_WE_DELIVER.map((item) => (
-                <Link
-                  key={item.title}
-                  href="#"
-                  className="group flex items-center justify-between border-t border-[#E5E5E5] py-5 transition-colors hover:text-[#F25648]"
-                >
-                  <span
-                    className="text-[18px] font-medium text-[#000006] transition-colors group-hover:text-[#F25648]"
-                    style={{ fontFamily: QUANTIUM_FONT }}
-                  >
-                    {item.title}
-                  </span>
-                  <svg
-                    className="size-5 shrink-0 text-[#000006] transition-colors group-hover:text-[#F25648]"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </Link>
-              ))}
-              <div className="border-t border-[#E5E5E5]" />
+                Commercial outcomes first
+              </h3>
+              <p
+                className="text-[16px] font-light leading-relaxed text-white/70"
+                style={{ fontFamily: ROBOTO_FONT }}
+              >
+                We start with your strategic priorities: profitability, cost pressures, market
+                position. We combine AI with your proprietary data and existing systems, getting more
+                value from your technology investments and moving fast to commercial value.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ===== Section 6: Impact we've delivered ===== */}
-      <section className="w-full bg-[#0B0D12] py-24">
-        <div className="mx-auto max-w-[1200px] px-[100px]">
+      {/* ===== Section 4: How we work ===== */}
+      <section className="w-full bg-white py-16 md:py-24">
+        <div className="mx-auto max-w-[1200px] px-6 md:px-[100px]">
           <h2
-            className="mb-16 text-[42px] font-medium leading-tight tracking-tight text-white"
+            className="mb-12 text-[32px] font-medium leading-tight tracking-tight text-[rgb(0,0,6)] md:mb-16 md:text-[48px] md:leading-[62px]"
             style={{ fontFamily: QUANTIUM_FONT }}
           >
-            Impact we&apos;ve delivered
+            How we work
           </h2>
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-            {IMPACT_CASES.map((item) => (
-              <div
-                key={item.title}
-                className="group cursor-pointer overflow-hidden rounded-lg bg-white transition-colors"
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-3">
+            <div className="border-t border-[rgb(0,0,6)] pt-8">
+              <h3
+                className="mb-4 text-[20px] font-medium leading-snug text-[rgb(0,0,6)]"
+                style={{ fontFamily: QUANTIUM_FONT }}
               >
-                {/* Image / logo area */}
-                <div className="flex h-[160px] items-center justify-center bg-[#F5F5F5] p-8">
-                  <img
-                    src={item.image}
-                    alt=""
-                    className="h-[40px] w-auto object-contain"
-                  />
-                </div>
-                {/* Text */}
-                <div className="p-6">
-                  <h3
-                    className="text-[16px] font-normal leading-snug text-[#000006]"
-                    style={{ fontFamily: QUANTIUM_FONT }}
-                  >
-                    {item.title}
-                  </h3>
-                  <div
-                    className="mt-4 flex items-center gap-2 text-[14px] font-medium text-[#F25648]"
-                    style={{ fontFamily: ROBOTO_FONT }}
-                  >
-                    Read more
-                    <svg
-                      className="size-4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                  </div>
-                </div>
+                Built for business impact
+              </h3>
+              <p
+                className="text-[16px] font-light leading-relaxed text-[rgb(0,0,6)]/70"
+                style={{ fontFamily: ROBOTO_FONT }}
+              >
+                Commercial outcomes drive every decision. Systems designed, deployed, and tracked
+                against the results that matter to your business.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== Section 5: Perspectives ===== */}
+      <section className="w-full bg-white py-16 md:py-24">
+        <div className="mx-auto max-w-[1200px] px-6 md:px-[100px]">
+          <h2
+            className="mb-8 max-w-[700px] text-[28px] font-medium leading-tight tracking-tight text-[rgb(0,0,6)] md:mb-10 md:text-[36px] md:leading-[48px]"
+            style={{ fontFamily: QUANTIUM_FONT }}
+          >
+            Your AI can do more than your organisation knows how to ask for
+          </h2>
+          <p
+            className="mb-12 max-w-[700px] text-[16px] font-light leading-relaxed text-[rgb(0,0,6)]/70 md:text-[18px]"
+            style={{ fontFamily: ROBOTO_FONT }}
+          >
+            The organisations seeing lasting impact with AI are not the ones who made perfect
+            technology bets. They are the ones who built in a way that lets them adapt. Here, we
+            share where to focus investment and how to build for flexibility.
+          </p>
+
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            <article className="group cursor-pointer border-t border-[#E5E5E5] pt-6">
+              <h3
+                className="mb-3 text-[18px] font-medium leading-snug text-[rgb(0,0,6)] transition-colors group-hover:text-[#F25648]"
+                style={{ fontFamily: QUANTIUM_FONT }}
+              >
+                Stop building for stability
+              </h3>
+              <p
+                className="text-[15px] font-light leading-relaxed text-[rgb(0,0,6)]/60"
+                style={{ fontFamily: ROBOTO_FONT }}
+              >
+                The organisations seeing lasting impact with AI are not the ones who made perfect
+                technology bets. They are the ones who built in a way that lets them adapt.
+              </p>
+              <div
+                className="mt-4 flex items-center gap-2 text-[14px] font-medium text-[#F25648]"
+                style={{ fontFamily: ROBOTO_FONT }}
+              >
+                Read more
+                <svg
+                  className="size-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
               </div>
-            ))}
+            </article>
           </div>
         </div>
       </section>
 
-      {/* ===== Section 7: Complex challenges CTA ===== */}
-      <section className="relative w-full overflow-hidden">
-        <div className="absolute inset-0">
-          <img
-            src="/brands/quantium-com-au/images/hero-bg-3.jpg"
-            alt=""
-            className="h-full w-full object-cover"
-          />
-          <div className="absolute inset-0 bg-[#000006]/70" />
-        </div>
-        <div className="relative mx-auto flex min-h-[480px] max-w-[1200px] items-center px-[100px] py-24">
-          <div className="max-w-[600px]">
-            <h2
-              className="mb-6 text-[48px] font-medium leading-[1.1] tracking-tight text-white"
-              style={{ fontFamily: QUANTIUM_FONT }}
-            >
-              Complex challenges
-              <br />
-              need experienced
-              <br />
-              partners
-            </h2>
-            <p
-              className="mb-8 text-[18px] font-light leading-relaxed text-white/80"
-              style={{ fontFamily: ROBOTO_FONT }}
-            >
-              Quantium brings two decades of enterprise AI expertise to your most complex business problems.
-            </p>
-            <Link
-              href="#talk-to-us"
-              className="inline-flex h-[48px] items-center justify-center rounded-full bg-[#F25648] px-8 text-[15px] font-medium text-white transition-colors hover:bg-[#D94A3E]"
-              style={{ fontFamily: ROBOTO_FONT }}
-            >
-              Talk to us
-            </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== Section 8: Footer ===== */}
-      <QtFooter />
+      {/* ===== Footer ===== */}
+      <QuantiumFooter />
     </div>
   );
 }

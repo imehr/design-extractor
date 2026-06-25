@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { TweaksPanel } from "@/components/brands/tweaks-panel";
+import "@/app/brands/[slug]/replica/tweaks.css";
 
 export default function WestpacReplicaLayout({
   children,
@@ -19,5 +21,10 @@ export default function WestpacReplicaLayout({
     };
   }, []);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <TweaksPanel />
+    </>
+  );
 }

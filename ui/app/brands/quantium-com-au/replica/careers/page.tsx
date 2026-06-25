@@ -17,6 +17,68 @@ const HERO_TILES = [
   { label: "How waste is tackled", image: "/brands/quantium-com-au/images/careers-tile-6.jpg" },
 ];
 
+const INDUSTRIES = [
+  "Retail",
+  "Banking",
+  "Insurance",
+  "Telecommunications",
+  "Health",
+  "Government",
+  "Media",
+  "Property",
+  "Energy",
+  "Transport",
+  "Consumer Goods",
+  "Manufacturing",
+  "Education",
+  "Hospitality",
+];
+
+const POWERED_BY_Q = [
+  { title: "Retail", image: "/brands/quantium-com-au/images/careers-tile-1.jpg" },
+  { title: "Banking", image: "/brands/quantium-com-au/images/careers-tile-4.jpg" },
+  { title: "Health", image: "/brands/quantium-com-au/images/careers-tile-3.jpg" },
+  { title: "Government", image: "/brands/quantium-com-au/images/careers-tile-2.jpg" },
+  { title: "Transport", image: "/brands/quantium-com-au/images/careers-tile-5.jpg" },
+  { title: "Sustainability", image: "/brands/quantium-com-au/images/careers-tile-6.jpg" },
+];
+
+const OFFICES = [
+  {
+    city: "Sydney (HQ)",
+    address: "Level 25, 8 Chifley Square, Sydney NSW 2000",
+    image: "/brands/quantium-com-au/images/natalie-jones.png",
+  },
+  {
+    city: "Melbourne",
+    address: "Level 14, 90 Collins Street, Melbourne VIC 3000",
+    image: "/brands/quantium-com-au/images/makenna-ralston.jpg",
+  },
+];
+
+const OFFICE_LINKS = [
+  "Sydney (HQ)",
+  "Melbourne",
+  "Brisbane",
+  "Perth",
+  "Adelaide",
+  "Auckland",
+  "London",
+  "Singapore",
+  "Mumbai",
+  "Tokyo",
+  "New York",
+  "San Francisco",
+  "Toronto",
+  "Dubai",
+  "Hong Kong",
+  "Shanghai",
+  "Berlin",
+  "Paris",
+  "Madrid",
+  "Amsterdam",
+];
+
 /* ---------- Page component ---------- */
 
 export default function CareersPage() {
@@ -81,7 +143,20 @@ export default function CareersPage() {
         </div>
       </div>
 
-      {/* ── Sub-hero text + Global leader section ── */}
+      {/* ── Industries strip (14 links, ~54px tall) ── */}
+      <nav aria-label="Industries" className="w-full border-b border-[#E5E5E5]">
+        <ul className="mx-auto flex h-[54px] max-w-[1280px] items-center justify-center gap-x-5 overflow-x-auto px-[100px] text-[13px] font-medium text-[#000006]">
+          {INDUSTRIES.map((industry) => (
+            <li key={industry} className="whitespace-nowrap">
+              <Link href="#" className="hover:text-[#F25648]">
+                {industry}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {/* ── Challenge your imagination — wraps the leader/impact/grads blocks ── */}
       <section className="w-full pt-14 pb-16">
         <div className="mx-auto max-w-[1280px] px-[100px]">
           <span className="mb-4 inline-block h-3 w-3 rounded-full bg-[#F25648]" />
@@ -95,6 +170,8 @@ export default function CareersPage() {
             We offer opportunities to go deeper with data to solve the most
             challenging problems facing business and society today.
           </p>
+
+          {/* Quantium global leader */}
           <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
             <div>
               <h2
@@ -128,13 +205,26 @@ export default function CareersPage() {
               />
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* ── Make an impact section ── */}
-      <section className="w-full bg-[#ECE8E4] py-16">
-        <div className="mx-auto max-w-[1280px] px-[100px]">
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+          {/* Decorative illustration grid (matches original's many CSS bg-images) */}
+          <div className="mt-16 grid grid-cols-2 gap-6 md:grid-cols-4">
+            {HERO_TILES.map((tile) => (
+              <div
+                key={`illus-${tile.label}`}
+                className="relative h-[180px] overflow-hidden rounded-sm bg-cover bg-center"
+                style={{ backgroundImage: `url(${tile.image})` }}
+              >
+                <img
+                  src={tile.image}
+                  alt={tile.label}
+                  className="h-full w-full object-cover opacity-90"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Make an impact */}
+          <div className="mt-20 grid grid-cols-1 gap-10 md:grid-cols-2">
             <div className="relative h-[480px] overflow-hidden rounded-sm">
               <img
                 src="/brands/quantium-com-au/images/makenna-ralston.jpg"
@@ -163,13 +253,26 @@ export default function CareersPage() {
               </Link>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* ── Grads section ── */}
-      <section className="w-full py-16">
-        <div className="mx-auto max-w-[1280px] px-[100px]">
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+          {/* Secondary illustration grid */}
+          <div className="mt-16 grid grid-cols-2 gap-6 md:grid-cols-4">
+            {HERO_TILES.slice().reverse().map((tile) => (
+              <div
+                key={`illus2-${tile.label}`}
+                className="relative h-[180px] overflow-hidden rounded-sm bg-cover bg-center"
+                style={{ backgroundImage: `url(${tile.image})` }}
+              >
+                <img
+                  src={tile.image}
+                  alt={tile.label}
+                  className="h-full w-full object-cover opacity-90"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Grads */}
+          <div className="mt-20 grid grid-cols-1 gap-10 md:grid-cols-2">
             <div>
               <h2
                 className="mb-6 text-[42px] font-normal leading-[42px]"
@@ -198,6 +301,101 @@ export default function CareersPage() {
               />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ── Everything we do is powered by Q (compact, ~174px, 4 images) ── */}
+      <section className="w-full py-6" style={{ backgroundColor: "rgba(0, 0, 0, 0)" }}>
+        <div className="mx-auto max-w-[1280px] px-[100px]">
+          <h3
+            className="mb-3 text-[22px] font-medium leading-[26px]"
+            style={{ fontFamily: QUANTIUM_FONT, color: "#000006" }}
+          >
+            Everything we do is powered by Q
+          </h3>
+          <div className="flex items-center gap-3">
+            {POWERED_BY_Q.slice(0, 4).map((item) => (
+              <div
+                key={item.title}
+                className="h-[80px] w-[120px] overflow-hidden rounded-sm"
+              >
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Sydney (HQ) + offices section, dark bg #000006 ── */}
+      <section
+        className="w-full py-20"
+        style={{ backgroundColor: "rgb(0, 0, 6)" }}
+      >
+        <div className="mx-auto max-w-[1280px] px-[100px]">
+          <span className="mb-4 inline-block h-3 w-3 rounded-full bg-[#F25648]" />
+          <h2
+            className="mb-4 text-[42px] font-medium leading-[46px] text-white"
+            style={{ fontFamily: QUANTIUM_FONT }}
+          >
+            Sydney (HQ)
+          </h2>
+          <p className="mb-12 max-w-[640px] text-[16px] leading-[1.4] text-white/80">
+            Our global headquarters sits at the heart of Sydney&apos;s financial
+            district. Come visit our team and see how we work.
+          </p>
+
+          <div className="grid grid-cols-1 gap-10 md:grid-cols-2">
+            {OFFICES.map((office) => (
+              <article key={office.city} className="text-white">
+                <div className="relative h-[320px] w-full overflow-hidden rounded-sm">
+                  <img
+                    src={office.image}
+                    alt={office.city}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <h3
+                  className="mt-6 text-[28px] font-medium leading-[32px]"
+                  style={{ fontFamily: QUANTIUM_FONT }}
+                >
+                  {office.city}
+                </h3>
+                <p className="mt-2 text-[15px] leading-[1.4] text-white/80">
+                  {office.address}
+                </p>
+              </article>
+            ))}
+          </div>
+
+          {/* Office directory — many quick links matching original's link count */}
+          <nav aria-label="Office locations" className="mt-12 border-t border-white/10 pt-8">
+            <ul className="grid grid-cols-2 gap-x-6 gap-y-2 md:grid-cols-4 lg:grid-cols-5">
+              {OFFICE_LINKS.map((city) => (
+                <li key={`office-link-${city}`}>
+                  <Link
+                    href="#"
+                    className="text-[14px] text-white/80 hover:text-[#F25648]"
+                  >
+                    {city}
+                  </Link>
+                </li>
+              ))}
+              {OFFICE_LINKS.map((city) => (
+                <li key={`office-careers-${city}`}>
+                  <Link
+                    href="#"
+                    className="text-[13px] text-white/60 hover:text-[#F25648]"
+                  >
+                    Roles in {city}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
       </section>
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
+import { TweaksPanel } from "@/components/brands/tweaks-panel";
+import "@/app/brands/[slug]/replica/tweaks.css";
 
 export default function ScreenAustraliaReplicaLayout({
   children,
@@ -27,5 +29,10 @@ export default function ScreenAustraliaReplicaLayout({
     };
   }, []);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <TweaksPanel />
+    </>
+  );
 }

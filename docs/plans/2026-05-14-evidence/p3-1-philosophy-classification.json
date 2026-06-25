@@ -1,0 +1,24 @@
+{
+  "slug": "quantium-com-au",
+  "source_tokens": "/Users/mehran/.claude/design-library/brands/quantium-com-au/design-tokens.json",
+  "top3": [
+    {
+      "name": "Sagmeister Walsh Joyful",
+      "family": "minimalism",
+      "similarity": 0.9571,
+      "rationale": "3 accents vs max 5; polychrome; high contrast; display font humanist-sans vs target humanist-sans"
+    },
+    {
+      "name": "Experimental Jetset Conceptual",
+      "family": "minimalism",
+      "similarity": 0.9357,
+      "rationale": "3 accents vs max 3; polychrome; high contrast; display font humanist-sans vs target humanist-sans"
+    },
+    {
+      "name": "Resn Interactive Storytelling",
+      "family": "motion-poetics",
+      "similarity": 0.8929,
+      "rationale": "3 accents vs max 4; polychrome; high contrast; display font humanist-sans vs target humanist-sans"
+    }
+  ]
+}

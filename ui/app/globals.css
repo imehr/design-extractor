@@ -129,6 +129,16 @@
 }
 
 :root {
+  /* design-extractor tool surface (separate namespace from any extracted brand).
+     OKLCH used per huashu-design recommendation; do NOT confuse with brand tokens. */
+  --app-bg: oklch(0.985 0.003 240);
+  --app-surface: oklch(1 0 0);
+  --app-fg: oklch(0.205 0.01 240);
+  --app-muted: oklch(0.62 0.012 240);
+  --app-border: oklch(0.92 0.005 240);
+  --app-accent: oklch(0.58 0.17 252);
+  --app-accent-fg: oklch(0.985 0 0);
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

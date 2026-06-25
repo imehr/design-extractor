@@ -1,0 +1,397 @@
+--- /tmp/quantium-design-md-old.md	2026-05-14 10:49:14
++++ /Users/mehran/.claude/design-library/brands/quantium-com-au/DESIGN.md	2026-05-14 10:49:15
+@@ -1,121 +1,304 @@
++---
++version: alpha
++name: Quantium
++description: Quantium design system - extracted from https://quantium.com.au
++colors:
++  primary: '#FF0000'
++  surface: '#FFFFFF'
++  on-surface: '#000000'
++  accent: '#FF0000'
++  border: '#33475B'
++  muted: '#ECE8E4'
++  footer: '#000006'
++typography:
++  display:
++    fontFamily: quantium_promedium
++    fontSize: 48px
++    fontWeight: 400
++    lineHeight: 62px
++    letterSpacing: '0'
++  body:
++    fontFamily: quantium_prolight
++    fontSize: 20px
++    fontWeight: 500
++    lineHeight: 30px
++    letterSpacing: normal
++rounded:
++  none: 0px
++  sm: 4px
++  md: 8px
++  lg: 16px
++  pill: 9999px
++spacing:
++  xs: 4px
++  sm: 8px
++  md: 16px
++  lg: 24px
++  xl: 40px
++components:
++  button-primary:
++    backgroundColor: '{colors.primary}'
++    textColor: '{colors.surface}'
++    typography: '{typography.body}'
++    rounded: '{rounded.pill}'
++    padding: 12px 24px
++  button-secondary:
++    backgroundColor: transparent
++    textColor: '{colors.primary}'
++    typography: '{typography.body}'
++    rounded: '{rounded.pill}'
++    padding: 12px 24px
++  card:
++    backgroundColor: '{colors.surface}'
++    rounded: '{rounded.md}'
++    padding: '{spacing.lg}'
++  nav-link:
++    textColor: '{colors.on-surface}'
++    typography: '{typography.body}'
++  input:
++    backgroundColor: '{colors.surface}'
++    textColor: '{colors.on-surface}'
++    rounded: '{rounded.md}'
++    padding: 8px 16px
++  hero:
++    backgroundColor: '{colors.muted}'
++    textColor: '{colors.on-surface}'
++    typography: '{typography.display}'
++    padding: 40px 24px
++  footer:
++    backgroundColor: '{colors.footer}'
++    textColor: '{colors.surface}'
++    padding: 40px 24px
++---
++
+ # Quantium Design System
+ 
+-> Extracted from [https://quantium.com](https://quantium.com) on 2026-05-01
++## Overview
+ 
++Quantium presents a focused, modern visual identity. The design language leads with
++typography and restrained colour, anchored by a primary brand colour (`#FF0000`) that
++guides interactive elements, headings, and calls-to-action.
+ 
+-## Mandatory identity rules
++**Vibe keywords:** professional, data-driven, modern, trustworthy, clean
+ 
+-- Use the extracted logo asset or text wordmark in the header: `https://quantium.com/wp-content/themes/_quantium-sv/img/logo.svg`.
+-- Use the extracted white/reversed logo asset in dark footers when available: `https://quantium.com/wp-content/themes/_quantium-sv/img/logo.svg`.
+-- Preserve the live header navigation labels: Industries, Solutions, GenAI, About us, About Quantium, Our locations, Our purpose and values, Corporate responsibility, FAQs, Careers.
+-- Preserve the live footer structure, not a generic legal-link row:
+-- Column 1: Industries, FMCG / CPG, Retail, Retail Old, Banking and wealth, Property, Consumer services, Insurance, Health, Public sector, Solutions, Q
+-- Footer about text: No long-form footer about text on the source; do not invent one.
+-- Footer acknowledgement/country text must be carried into generated pages when present: No acknowledgement text captured on the source.
+-- Footer copyright/source row: Preserve the source footer verification/source row when present.
+-- Test cases, replicas, dashboards, slides, posters, and design-system showcases must reuse these logo/header/footer details before adding scenario-specific content.
++**Signature detail:** Display headings use `{typography.display}` (quantium_promedium) at elevated
++weight (600+) with tight tracking; body copy uses `{typography.body}` (quantium_prolight) at 400-500
++weight for maximum legibility across dense information layouts.
+ 
++**Forbidden zones:**
++- Emoji characters as icons - use SVG or Lucide React only
++- Cyber-neon gradients or AI-purple (`#0D1117`-style) backgrounds not present in source
++- Inter as a display/heading font unless it was extracted from the source
++- More than three levels of heading hierarchy on a single page
++- Bare `border-l-N` accent cards not present in the source DOM extraction
+ 
+-## 1. Visual Theme & Atmosphere
++**Logo-first rule:** The extracted logo asset must appear in the header. A reversed/white
++variant appears in the footer. Never substitute a text wordmark when an SVG asset exists.
+ 
+-Quantium presents a clean, modern identity. The design language uses a focused color palette anchored by its primary brand color (`#0091ae`). Typography establishes clear hierarchy with quantium_promedium for headings paired with quantium_prolight for body text.
++## Colors
+ 
+-## 2. Colour Palette & Roles
++| Token | Value | Usage |
++|-------|-------|-------|
++| `{colors.primary}` | `#FF0000` | Primary actions, headings, links, interactive elements |
++| `{colors.surface}` | `#FFFFFF` | Page and card backgrounds |
++| `{colors.on-surface}` | `#000000` | Body text rendered on surface backgrounds |
++| `{colors.accent}` | `#FF0000` | Hover, highlight, secondary interactive states |
++| `{colors.border}` | `#33475B` | Dividers, input outlines, subtle separators |
++| `{colors.muted}` | `#ECE8E4` | Section fills, alternating rows, disabled states |
++| `{colors.footer}` | `#000006` | Footer background and dark hero sections |
+ 
+-| Role | Value | Usage |
+-|------|-------|-------|
+-| primary | `#0091ae` | Headings, links, CTAs, interactive elements |
+-| accent | `#0091ae` | General use |
+-| dark | `#000006` | General use |
+-| footerDark | `#000006` | Footer background, dark sections |
+-| backgroundLight | `#ece8e4` | Section backgrounds, alternating rows |
+-| text | `#000000` | Body copy, paragraphs |
+-| backgrounds | `#ffffff` | General use |
+-| backgrounds_2 | `#000000` | General use |
+-| text_2 | `#000006` | General use |
+-| text_3 | `#33475b` | General use |
+-| text_4 | `#0091ae` | General use |
+-| text_5 | `#ffffff` | General use |
+-| h1_text | `#000006` | General use |
+-| footer_text | `#ffffff` | General use |
+-| footer_footer_bg | `#000006` | General use |
+-| hero_hero_bg | `#ece8e4` | General use |
++All colours are SRGB `#RRGGBB`. Do not introduce colours outside this palette without
++a matching token entry and explicit design rationale.
+ 
+-## 3. Typography Rules
++## Typography
+ 
+-### Display Font: quantium_promedium
+-- **H1 (Section heading):** 48px / 56px / weight 600
+-- **H2 (Hero heading):** 64px / 80px / weight 600
+-- Color: Primary blue `#0091ae`
++### Display - `{typography.display}`
+ 
+-### Body Font: quantium_prolight
+-- **Body:** 16px / weight 400 / color `#000000`
+-- **Nav links:** 16px / weight 400
++- **Font family:** quantium_promedium
++- **Sizes:** hero headings 48-72px; section headings 32-48px
++- **Weight:** 400 (semi-bold to bold)
++- **Line height:** 62px
++- **Letter spacing:** 0
++- **Usage:** All `<h1>`-`<h3>` elements; card headlines; hero copy
+ 
+-## 4. Layout Principles
++### Body - `{typography.body}`
+ 
+-- **Max content width:** 1200px
+-- **Content padding:** 40px (sides)
+-- **Header height:** 174px
+-- **Hero height:** 151px
+-- **Footer:** Dark background `rgb(0, 0, 6)`
++- **Font family:** quantium_prolight
++- **Baseline size:** 20px
++- **Weight:** 500
++- **Line height:** 30px (~24px at 16px base)
++- **Letter spacing:** normal
++- **Usage:** Body copy, nav labels, captions, UI labels, inputs
+ 
+-## 5. Component Patterns
++**Line-length rule:** Constrain body paragraphs to 65ch max-width. Do not use the
++display font for body copy or the body font for primary headings.
+ 
+-### Header
+-- Sticky white bar with logo left, centered nav, search right
+-- Dark ticker bar below nav for contextual data (share price, etc.)
+-- Active nav item: underlined in primary blue
++## Layout
+ 
+-### Hero Banner
+-- Full-width background image with gradient overlay
+-- Heading positioned bottom-left in white quantium_promedium
+-- Optional subtitle in white/90% opacity
++- **Max content width:** `1200px` - apply `max-w-[1200px] mx-auto`
++- **Horizontal padding:** `0px` at desktop; reduce to `16px` below 768px
++- **Header height:** `174px` (sticky)
++- **Hero height:** `2920px`; full viewport on landing pages
++- **Grid:** 12-column at >=1280px; 8-column at 768-1279px; 4-column below 768px
++- **Breakpoints:** 768px (tablet), 1024px (desktop), 1280px (wide)
++- **Section rhythm:** 80px vertical padding at desktop; 40px below 768px
+ 
+-### Content Sections
+-- Alternating white and light backgrounds
+-- Section headings in primary blue quantium_promedium
+-- Card-based layouts for content groups
++## Elevation & Depth
+ 
+-### Footer
+-- Dark navy background (`#000006`)
+-- Multi-column layout: brand info, addresses, link groups
+-- Acknowledgement of Country section with indigenous artwork
++This brand uses a predominantly **flat** visual approach. Elevation is suggested through
++surface-colour contrast rather than heavy drop shadows.
+ 
+-## 6. Buttons & Interactive Elements
++| Level | Usage | Shadow |
++|-------|-------|--------|
++| 0 - flat | Page surface, hero sections | none |
++| 1 - low | Cards, information panels | `0 1px 3px rgba(0,0,0,0.08)` |
++| 2 - raised | Modals, dropdowns, drawers | `0 4px 12px rgba(0,0,0,0.12)` |
+ 
+-- **Primary button:** `#0091ae` background, white text, 8px border-radius
+-- **Padding:** 5px 24px
+-- **Font:** quantium_prolight 16px weight 600
+-- **Hover:** Darker shade of primary
++Do not exceed blur-radius 16px or spread 4px unless those shadow values appear in the
++source DOM extraction.
+ 
+-## 7. Do's and Don'ts
++## Shapes
+ 
++| Token | Value | Usage |
++|-------|-------|-------|
++| `{rounded.none}` | `0px` | Tables, full-bleed images, dividers |
++| `{rounded.sm}` | `4px` | Badges, tags, chip elements |
++| `{rounded.md}` | `8px` | Cards, inputs, small modals |
++| `{rounded.lg}` | `16px` | Large modals, panels, image containers |
++| `{rounded.pill}` | `9999px` | Primary and secondary buttons, search bars |
++
++Use `{rounded.pill}` for primary calls-to-action. Use `{rounded.md}` for cards and
++containers. Use `{rounded.none}` for full-bleed sections and data tables.
++
++## Components
++
++### `button-primary`
++
++```
++  backgroundColor: {colors.primary}
++  textColor: {colors.surface}
++  typography: {typography.body}
++  rounded: {rounded.pill}
++  padding: 12px 24px
++```
++
++### `button-secondary`
++
++```
++  backgroundColor: transparent
++  textColor: {colors.primary}
++  typography: {typography.body}
++  rounded: {rounded.pill}
++  padding: 12px 24px
++```
++
++### `card`
++
++```
++  backgroundColor: {colors.surface}
++  rounded: {rounded.md}
++  padding: {spacing.lg}
++```
++
++### `nav-link`
++
++```
++  textColor: {colors.on-surface}
++  typography: {typography.body}
++```
++
++### `input`
++
++```
++  backgroundColor: {colors.surface}
++  textColor: {colors.on-surface}
++  rounded: {rounded.md}
++  padding: 8px 16px
++```
++
++### `hero`
++
++```
++  backgroundColor: {colors.muted}
++  textColor: {colors.on-surface}
++  typography: {typography.display}
++  padding: 40px 24px
++```
++
++### `footer`
++
++```
++  backgroundColor: {colors.footer}
++  textColor: {colors.surface}
++  padding: 40px 24px
++```
++
++## Do's and Don'ts
++
+ ### Do
+-- Use quantium_promedium for ALL headings, never for body text
+-- Maintain 40px side padding at desktop
+-- Use primary blue for interactive elements and section headings
+-- Use full-width hero images with bottom-left text positioning
++- Use `{typography.display}` (quantium_promedium) for all `<h1>`-`<h3>` headings
++- Apply `{colors.primary}` (`#FF0000`) to interactive elements, links, and primary CTAs
++- Maintain `0px` horizontal padding on content wrappers at desktop
++- Use `{rounded.pill}` on primary buttons; `{rounded.md}` on cards and inputs
++- Reference the extracted logo SVG asset - never a bare text substitution
++- Capture screenshots at 375px, 768px, and 1280px before declaring a replica done
+ 
+ ### Don't
+-- Mix heading font into body copy
+-- Use colors outside the defined palette
+-- Stack more than 3 levels of heading hierarchy
+-- Center hero text (always bottom-left on inner pages)
++- Use `{typography.body}` (quantium_prolight) for headings or vice-versa
++- Introduce colours outside the documented `colors.*` palette without a matching token addition
++- Stack more than three heading levels on a single page
++- Use emoji as icon elements (SVG/Lucide React only)
++- Apply cyber-neon gradients, AI-purple (`#0D1117`) hero backgrounds, or `border-l-N`
++  accent cards unless those patterns are confirmed in the source DOM extraction
++- Report a task as done without browser screenshot evidence
+ 
+-## 8. Responsive Behaviour
++## Agent Prompt Guide
+ 
+-- Content max-width: 1200px with 40px padding
+-- Below 768px: single column, reduced heading sizes
+-- Hero maintains aspect ratio, text stays bottom-left
++When generating new pages, replicas, or components for Quantium:
+ 
+-## 9. Agent Prompt Guide
++1. **Typography first:** Set `{typography.display}` (quantium_promedium) on all headings
++   and `{typography.body}` (quantium_prolight) on body copy before applying any other styles.
+ 
+-When replicating this brand:
+-1. Use `quantium_promedium` for all headings (font-weight: 600)
+-2. Use `quantium_prolight` for all body text
+-3. Primary blue: `#0091ae`
+-4. Content area: `max-w-[1200px] px-[40px]`
+-5. Hero: `relative w-full` with exact height from measurements, `absolute bottom-0 left-0` for text
+-6. Footer: `bg-[#000006]` with white text
+-7. Buttons: `rounded-lg bg-[#0091ae] text-white px-6`
++2. **Colour discipline:** Use only the documented `colors.*` palette tokens. Primary CTA -> `{colors.primary}`
++   (`#FF0000`). Page surface -> `{colors.surface}`. Body text -> `{colors.on-surface}`.
++
++3. **Layout wrapper:** `max-w-[1200px] mx-auto px-[0px]` on every content section.
++
++4. **Button template:**
++   ```tsx
++   <Button className="rounded-full bg-[#FF0000] text-white px-6 py-3 font-semibold hover:opacity-90">
++     Label
++   </Button>
++   ```
++
++5. **Footer template:** Use `{colors.footer}` (`#000006`) background with
++   `{colors.surface}` text. Preserve extracted navigation labels - do not invent
++   generic footer link columns.
++
++6. **Evidence requirement:** Run `agent-browser screenshot` at 1280x800 and 375x667 after
++   each component change. Compare against originals in `brands/quantium-com-au/screenshots/`.
++
++## Provenance
++
++| Field | Value |
++|-------|-------|
++| Brand slug | `quantium-com-au` |
++| Source URL | [https://quantium.com.au](https://quantium.com.au) |
++| Extracted at | 2026-05-14T00:49:15.060579+00:00 |
++| Extractor | design-extractor - publish_brand.py via design_md_writer.py |
++| DESIGN.md spec | [google-labs-code/design.md](https://github.com/google-labs-code/design.md/blob/main/docs/spec.md) |
++| Nearest philosophy | pending (Phase 3.1 classifier) |
++| EVAL score | pending |
++
++## Mandatory identity rules
++
++- Use the extracted logo asset or text wordmark in the header: `https://quantium.com/wp-content/themes/_quantium-sv/img/logo.svg`.
++- Use the extracted white/reversed logo asset in dark footers when available: `https://quantium.com/wp-content/themes/_quantium-sv/img/logo.svg`.
++- Preserve the live header navigation labels: Industries, Solutions, GenAI, About us, About Quantium, Our locations, Our purpose and values, Corporate responsibility, FAQs, Careers.
++- Preserve the live footer structure, not a generic legal-link row:
++- Column 1: Industries, FMCG / CPG, Retail, Retail Old, Banking and wealth, Property, Consumer services, Insurance, Health, Public sector, Solutions, Q
++- Column 2: Industries FMCG / CPG Retail Retail Old Banking and wealth Property Consumer services Insurance Health Public sector, Banking and wealth, Consumer services, Public sector, Solutions Q Q.Checkout Q.Promotions Q.Shelf Q.Shopper Q.Supply Q.Panel Q.Refinery Q.Audience Q.Credit Q.Checkup Q.Dose Q.Quail, Q.Promotions, Our locations, Perspectives, Corporate responsibility, CommBank iQ, Quantium Telstra, Sydney (HQ) Bay 12, 2 Locomotive Street, Eveleigh NSW, 2015 Australia Phone: +61 2 9292 6400
++- Footer about text: Industries FMCG / CPG Retail Retail Old Banking and wealth Property Consumer services Insurance Health Public sector.
++- Footer acknowledgement/country text must be carried into generated pages when present: No acknowledgement text captured on the source.
++- Footer copyright/source row: Preserve the source footer verification/source row when present.
++- Test cases, replicas, dashboards, slides, posters, and design-system showcases must reuse these logo/header/footer details before adding scenario-specific content.

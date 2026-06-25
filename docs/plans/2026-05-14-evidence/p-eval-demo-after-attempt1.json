@@ -1,0 +1,177 @@
+{
+  "schema_version": "1.0",
+  "slug": "woolworths-com-au",
+  "generated_at": "2026-05-14T04:17:19.047036+00:00",
+  "weighted_total": 0.3941,
+  "critical_fail": true,
+  "overall_status": "fail",
+  "dimensions": [
+    {
+      "name": "pixel_desktop",
+      "score": 0.7398,
+      "threshold": 0.85,
+      "weight": 0.25,
+      "status": "fail",
+      "details": {
+        "viewport": "1280x720",
+        "exact_avg_pct": 74.0,
+        "close_avg_pct": 82.0,
+        "exact_pct": 73.97999999999999,
+        "page_count": 5,
+        "pages": {
+          "contact-us": {
+            "exact": 89.5,
+            "close": 91.1,
+            "dims": "1280x720"
+          },
+          "help": {
+            "exact": 80.4,
+            "close": 92.5,
+            "dims": "1280x720"
+          },
+          "homepage": {
+            "exact": 43.2,
+            "close": 62.1,
+            "dims": "1280x720"
+          },
+          "recipes": {
+            "exact": 91.2,
+            "close": 92.5,
+            "dims": "1280x720"
+          },
+          "specials": {
+            "exact": 65.6,
+            "close": 71.6,
+            "dims": "1280x720"
+          }
+        }
+      }
+    },
+    {
+      "name": "component_completeness",
+      "score": 0.0,
+      "threshold": 0.85,
+      "weight": 0.1,
+      "status": "skipped",
+      "details": {
+        "reason": "no component_validator output found",
+        "looked_in": "/Users/mehran/.claude/design-library/cache/woolworths-com-au/validation/components"
+      }
+    },
+    {
+      "name": "pattern_fidelity",
+      "score": 1.0,
+      "threshold": 0.78,
+      "weight": 0.1,
+      "status": "pass",
+      "details": {
+        "signals_in_tolerance": 9,
+        "signals_total": 9,
+        "screenshot_used": "/Users/mehran/.claude/design-library/cache/woolworths-com-au/screenshots/harness/orig-homepage.png",
+        "per_signal_confidence": {
+          "spacing_rhythm": "HIGH",
+          "type_scale_ratio": "LOW",
+          "component_density": "HIGH",
+          "alignment_grid": "MEDIUM",
+          "cta_placement": "MEDIUM",
+          "border_radius_language": "MEDIUM",
+          "shadow_elevation": "HIGH",
+          "motion_language": "HIGH",
+          "color_temperature": "HIGH"
+        },
+        "note": "Phase 1: tolerance == non-SKIPPED. Phase 2 will diff source vs replica."
+      }
+    },
+    {
+      "name": "asset_fidelity",
+      "score": 0.0,
+      "threshold": 1.0,
+      "weight": 0.05,
+      "status": "skipped",
+      "details": {
+        "reason": "no source assets found in dom-extraction"
+      }
+    },
+    {
+      "name": "anti_slop",
+      "score": 1.0,
+      "threshold": 1.0,
+      "weight": 0.05,
+      "status": "pass",
+      "details": {
+        "violation_count": 0,
+        "rules_triggered": [],
+        "files_scanned": 6,
+        "whitelist_applied": []
+      }
+    },
+    {
+      "name": "pixel_mobile",
+      "score": 0.0,
+      "threshold": 0.8,
+      "weight": 0.15,
+      "status": "fail",
+      "details": {
+        "error": "TimeoutExpired: Command '['agent-browser', '--session', 'eval-pixel-mobile', 'open', 'https://design-extractor.localhost/brands/woolworths-com-au/replica/contact-us']' timed out after 120 seconds",
+        "trace": [
+          "  File \"/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py\", line 1267, in _check_timeout",
+          "    raise TimeoutExpired(",
+          "    ...<2 lines>...",
+          "            stderr=b''.join(stderr_seq) if stderr_seq else None)",
+          "subprocess.TimeoutExpired: Command '['agent-browser', '--session', 'eval-pixel-mobile', 'open', 'https://design-extractor.localhost/brands/woolworths-com-au/replica/contact-us']' timed out after 120 seconds"
+        ]
+      }
+    },
+    {
+      "name": "pixel_tablet",
+      "score": 0.0,
+      "threshold": 0.82,
+      "weight": 0.1,
+      "status": "fail",
+      "details": {
+        "error": "TimeoutExpired: Command '['agent-browser', '--session', 'eval-pixel-tablet', 'open', 'https://design-extractor.localhost/brands/woolworths-com-au/replica/contact-us']' timed out after 120 seconds",
+        "trace": [
+          "  File \"/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py\", line 1267, in _check_timeout",
+          "    raise TimeoutExpired(",
+          "    ...<2 lines>...",
+          "            stderr=b''.join(stderr_seq) if stderr_seq else None)",
+          "subprocess.TimeoutExpired: Command '['agent-browser', '--session', 'eval-pixel-tablet', 'open', 'https://design-extractor.localhost/brands/woolworths-com-au/replica/contact-us']' timed out after 120 seconds"
+        ]
+      }
+    },
+    {
+      "name": "interactive_state",
+      "score": 0.0,
+      "threshold": 0.8,
+      "weight": 0.1,
+      "status": "fail",
+      "details": {
+        "error": "TimeoutExpired: Command '['agent-browser', '--session', 'eval-interactive-repl', 'open', 'https://design-extractor.localhost/brands/woolworths-com-au/replica']' timed out after 120 seconds",
+        "trace": [
+          "  File \"/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py\", line 1267, in _check_timeout",
+          "    raise TimeoutExpired(",
+          "    ...<2 lines>...",
+          "            stderr=b''.join(stderr_seq) if stderr_seq else None)",
+          "subprocess.TimeoutExpired: Command '['agent-browser', '--session', 'eval-interactive-repl', 'open', 'https://design-extractor.localhost/brands/woolworths-com-au/replica']' timed out after 120 seconds"
+        ]
+      }
+    },
+    {
+      "name": "font_rendering",
+      "score": 0.0,
+      "threshold": 1.0,
+      "weight": 0.1,
+      "status": "fail",
+      "details": {
+        "error": "TimeoutExpired: Command '['agent-browser', '--session', 'eval-font-repl', 'open', 'https://design-extractor.localhost/brands/woolworths-com-au/replica']' timed out after 120 seconds",
+        "trace": [
+          "  File \"/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/subprocess.py\", line 1267, in _check_timeout",
+          "    raise TimeoutExpired(",
+          "    ...<2 lines>...",
+          "            stderr=b''.join(stderr_seq) if stderr_seq else None)",
+          "subprocess.TimeoutExpired: Command '['agent-browser', '--session', 'eval-font-repl', 'open', 'https://design-extractor.localhost/brands/woolworths-com-au/replica']' timed out after 120 seconds"
+        ]
+      }
+    }
+  ]
+}

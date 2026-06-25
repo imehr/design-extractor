@@ -1,0 +1,43 @@
+{
+  "slug": "<file>",
+  "violations": [
+    {
+      "file": "/tmp/test-slop-sample.tsx",
+      "line": 7,
+      "rule": "cyber-neon-gradient",
+      "snippet": "<div style={{ background: \"linear-gradient(135deg, #0FFFFE 0%, #FF00AA 100%)\" }}>",
+      "severity": "high"
+    },
+    {
+      "file": "/tmp/test-slop-sample.tsx",
+      "line": 12,
+      "rule": "emoji-as-icon",
+      "snippet": "<i>\ud83d\ude80</i>",
+      "severity": "high"
+    },
+    {
+      "file": "/tmp/test-slop-sample.tsx",
+      "line": 14,
+      "rule": "inter-display-font",
+      "snippet": "<h1 style={{ fontFamily: \"Inter\", fontWeight: 700 }}>Hero</h1>",
+      "severity": "low"
+    },
+    {
+      "file": "/tmp/test-slop-sample.tsx",
+      "line": 15,
+      "rule": "github-dark-hero",
+      "snippet": "<div style={{ backgroundColor: \"#0D1117\" }}>dark hero</div>",
+      "severity": "medium"
+    },
+    {
+      "file": "/tmp/test-slop-sample.tsx",
+      "line": 16,
+      "rule": "border-l-accent",
+      "snippet": "<div className=\"card rounded-lg border-l-4 border-blue-500 p-6\">accent card</div>",
+      "severity": "medium"
+    }
+  ],
+  "violation_count": 5,
+  "files_scanned": 1,
+  "whitelist_applied": []
+}
