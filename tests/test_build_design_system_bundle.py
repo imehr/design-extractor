@@ -141,3 +141,74 @@ def test_build_raises_when_manifest_invalid(brand_root, tmp_path, monkeypatch):
     monkeypatch.setattr(bds, "build_manifest", lambda slug, data: {"schemaVersion": "bad"})
     with pytest.raises(ValueError, match="manifest failed v1 validation"):
         bds.build(brand_root, out_dir=tmp_path / "ds")
+
+
+# ── 3.2 tokens.css ────────────────────────────────────────────────────────────
+
+def _measured(**values):
+    """Build a MeasuredTokens where each kwarg is {token: value}."""
+    return bds.MeasuredTokens({k: {"value": v, "sources": ["test"], "confidence": "HIGH", "count": 5}
+                               for k, v in values.items()})
+
+
+def test_tokens_css_has_required_tokens_declared():
+    css = bds.render_tokens_css(_measured())
+    required = ["--bg", "--surface", "--fg", "--muted", "--border", "--accent",
+                "--font-display", "--font-body",
+                "--text-xs", "--text-sm", "--text-base", "--text-lg", "--text-xl",
+                "--text-2xl", "--text-3xl", "--text-4xl", "--container-max"]
+    root = css.split("}")[0]
+    for tok in required:
+        assert f"{tok}:" in root, f"missing declared token {tok}"
+
+
+def test_tokens_css_every_var_resolves_to_declared_token():
+    css = bds.render_tokens_css(_measured())
+    declared = {m.group(1) for m in __import__("re").finditer(r"(--[a-zA-Z0-9_-]+)\s*:", css)}
+    for m in __import__("re").finditer(r"var\(\s*(--[a-zA-Z0-9_-]+)", css):
+        assert m.group(1) in declared, f"var({m.group(1)}) references undeclared token"
+
+
+def test_tokens_css_unmeasured_a2_uses_od_fallback_verbatim():
+    # Only identity colors measured; A2 tokens must fall back verbatim.
+    mt = _measured(**{"--bg": "#ffffff", "--accent": "#0066cc"})
+    css = bds.render_tokens_css(mt)
+    assert "--accent-hover: color-mix(in oklab, var(--accent), black 8%);" in css
+    assert "--accent-active: color-mix(in oklab, var(--accent), black 14%);" in css
+    assert "--accent-on: #ffffff;" in css
+    assert "--success: #16a34a;" in css
+    assert "--radius-pill: 9999px;" in css
+    assert "--ease-standard: cubic-bezier(0.2, 0, 0, 1);" in css
+    assert "--elev-ring: 0 0 0 1px var(--border);" in css
+
+
+def test_tokens_css_measured_value_wins_over_fallback():
+    mt = _measured(**{"--space-4": "24px", "--radius-md": "4px"})
+    css = bds.render_tokens_css(mt)
+    assert "--space-4: 24px;" in css
+    assert "--radius-md: 4px;" in css
+    assert "--space-4: 16px;" not in css  # OD fallback not used
+
+
+def test_tokens_css_has_dark_mode_block():
+    css = bds.render_tokens_css(_measured())
+    assert '[data-theme="dark"] {' in css
+
+
+def test_tokens_css_includes_every_schema_token():
+    css = bds.render_tokens_css(_measured())
+    for spec in bds.TOKEN_SCHEMA:
+        assert f"{spec['name']}:" in css, f"missing {spec['name']}"
+
+
+def test_tokens_css_b_slot_aliased_when_unmeasured():
+    css = bds.render_tokens_css(_measured())  # nothing measured for b-slots
+    assert "--surface-warm: var(--surface);" in css
+    assert "--fg-2: var(--fg);" in css
+
+
+def test_tokens_css_appends_site_specific_extras():
+    mt = _measured(**{"--bg": "#fff", "--brand-glow": "0 0 12px red"})
+    css = bds.render_tokens_css(mt)
+    assert "--brand-glow: 0 0 12px red;" in css
+

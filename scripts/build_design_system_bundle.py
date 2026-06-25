@@ -217,6 +217,34 @@ def _coerce_measured(measured, cache_dir: Path, slug: str):
 
 # ── Token value resolution ────────────────────────────────────────────────────
 
+# Last-resort neutral defaults for A1 tokens with no OD fallback AND no measured
+# value. These are only used so the runtime contract ("every tokens.css must
+# declare every A1 token") holds for brands that did not surface a value; they
+# are NEVER substituted for measured data or A2 fallbacks.
+_A1_IDENTITY_DEFAULTS = {
+    "--bg": "#ffffff",
+    "--surface": "#f5f5f5",
+    "--fg": "#111111",
+    "--muted": "#666666",
+    "--border": "#dddddd",
+    "--accent": "#0066cc",
+    "--font-display": 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+    "--font-body": 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+}
+_A1_STRUCTURE_DEFAULTS = {
+    "--text-xs": "12px", "--text-sm": "14px", "--text-base": "16px",
+    "--text-lg": "18px", "--text-xl": "20px", "--text-2xl": "24px",
+    "--text-3xl": "32px", "--text-4xl": "48px",
+    "--leading-body": "1.6", "--leading-tight": "1.2",
+    "--tracking-display": "-0.02em",
+    "--section-y-desktop": "96px", "--section-y-tablet": "64px", "--section-y-phone": "48px",
+    "--container-max": "1200px",
+    "--container-gutter-desktop": "32px",
+    "--container-gutter-tablet": "24px",
+    "--container-gutter-phone": "16px",
+}
+
+
 def token_value(measured, name: str) -> str:
     """Measured value when present, else OD fallback, else a B-slot alias.
 
@@ -235,6 +263,16 @@ def token_value(measured, name: str) -> str:
     if spec.get("aliasTo"):
         return spec["aliasTo"]
     return ""
+
+
+def _token_value_for_css(measured, name: str) -> str:
+    """Like :func:`token_value` but falls back to a neutral default so the
+    emitted ``:root`` always declares every required token (A1-structure layout
+    tokens have no OD fallback)."""
+    v = token_value(measured, name)
+    if v:
+        return v
+    return _A1_IDENTITY_DEFAULTS.get(name) or _A1_STRUCTURE_DEFAULTS.get(name, "initial")
 
 
 def token_confidence(measured, name: str) -> str:
@@ -295,8 +333,40 @@ def build_manifest(slug: str, data: dict) -> dict:
 
 # ── Stub emitters (replaced in later tasks) ───────────────────────────────────
 
-def render_tokens_css(measured) -> str:  # pragma: no cover - replaced in 3.2
-    return "/* tokens.css stub — populated in task 3.2 */\n"
+def render_tokens_css(measured) -> str:
+    """Emit ``tokens.css``: one ``:root`` declaring every TOKEN_SCHEMA token in
+    canonical order (surface → text → border → accent → semantic → typography →
+    spacing → radius → elevation → focus → motion → layout), followed by
+    site-specific Layer-C extras and a best-effort dark-mode block.
+
+    Value precedence: measured value > OD A2 fallback (verbatim) > B-slot alias
+    > neutral A1 default. Measured values always win; unmeasured A2 tokens use
+    the OD fallback byte-for-byte.
+    """
+    lines = [":root {"]
+    for spec in TOKEN_SCHEMA:
+        lines.append(f"  {spec['name']}: {_token_value_for_css(measured, spec['name'])};")
+    for name, value in _site_specific_extras(measured):
+        lines.append(f"  {name}: {value};")
+    lines.append("}")
+    lines.append("")
+    lines.append('[data-theme="dark"] {')
+    lines.append("  /* Best-effort dark-mode overrides — no measured dark palette. */")
+    lines.append("}")
+    return "\n".join(lines) + "\n"
+
+
+def _site_specific_extras(measured) -> list[tuple[str, str]]:
+    """Measured tokens not in TOKEN_SCHEMA (Layer C extensions), sorted by name."""
+    extras: list[tuple[str, str]] = []
+    for name, prov in measured.to_dict().items():
+        if name in _SCHEMA_BY_NAME:
+            continue
+        value = prov.get("value") if isinstance(prov, dict) else None
+        if value:
+            extras.append((name, str(value)))
+    extras.sort(key=lambda kv: kv[0])
+    return extras
 
 
 def render_design_tokens_json(measured, *, generated_at: str = "") -> str:  # 3.3
