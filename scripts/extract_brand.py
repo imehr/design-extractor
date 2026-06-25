@@ -1397,6 +1397,78 @@ def capture_raw_css_for_page(
         return {}
 
 
+# JS probe that gathers per-element computed-style samples for the measured-token
+# analyzer (scripts/measured_tokens.py::analyze). Walks a representative set of
+# selectors and records the OD-relevant computed properties. The analyzer itself
+# is pure Python and consumes these dicts — this probe only collects them.
+JS_CAPTURE_MEASURED_SAMPLES = """JSON.stringify((() => {
+    const samples = [];
+    const selectors = [
+        'html','body','h1','h2','h3','h4','h5','h6','p','a','button',
+        'header','footer','nav','main','section','article',
+        '.container','[class*="container"]','[class*="card"]','[class*="badge"]',
+        '[class*="btn"]','[class*="tag"]','input','small','span','li'
+    ];
+    const MAX = 400;
+    for (const sel of selectors) {
+        let els;
+        try { els = document.querySelectorAll(sel); } catch(e) { continue; }
+        for (const el of els) {
+            if (samples.length >= MAX) break;
+            const r = el.getBoundingClientRect();
+            if (r.width === 0 && r.height === 0) continue;
+            const cs = getComputedStyle(el);
+            const tag = el.tagName.toLowerCase();
+            const cls = (el.className && el.className.toString) ? el.className.toString().split(/\\s+/)[0] : '';
+            samples.push({
+                selector: (cls ? tag + '.' + cls : tag).substring(0, 100),
+                tag: tag,
+                color: cs.color,
+                backgroundColor: cs.backgroundColor,
+                borderColor: (cs.borderTopColor && cs.borderTopColor !== 'rgba(0, 0, 0, 0)') ? cs.borderTopColor : '',
+                fontSize: cs.fontSize,
+                fontFamily: cs.fontFamily,
+                lineHeight: cs.lineHeight,
+                letterSpacing: cs.letterSpacing,
+                paddingTop: cs.paddingTop, paddingRight: cs.paddingRight,
+                paddingBottom: cs.paddingBottom, paddingLeft: cs.paddingLeft,
+                marginTop: cs.marginTop, marginRight: cs.marginRight,
+                marginBottom: cs.marginBottom, marginLeft: cs.marginLeft,
+                gap: cs.gap, rowGap: cs.rowGap, columnGap: cs.columnGap,
+                borderRadius: cs.borderRadius,
+                boxShadow: cs.boxShadow === 'none' ? 'none' : cs.boxShadow,
+                width: Math.round(r.width),
+                maxWidth: cs.maxWidth
+            });
+        }
+        if (samples.length >= MAX) break;
+    }
+    return { samples: samples, count: samples.length, url: window.location.href };
+})())"""
+
+
+def capture_measured_samples_for_page(page_slug: str, slug: str, dirs: dict, session: str) -> dict:
+    """Gather per-element computed-style samples for the measured-token analyzer.
+
+    Writes ``cache/<slug>/dom-extraction/<page>-samples.json``. Non-fatal — a
+    failure never aborts DOM extraction.
+    """
+    samples_path = dirs["dom_extraction"] / f"{page_slug}-samples.json"
+    try:
+        result = run_cmd(
+            agent_browser_cmd(["eval", JS_CAPTURE_MEASURED_SAMPLES], session=session),
+            timeout=DOM_EXTRACT_TIMEOUT,
+        )
+        payload = parse_eval_json((result.stdout or "").strip()) or {}
+        samples = payload.get("samples", []) if isinstance(payload, dict) else []
+        with open(samples_path, "w") as f:
+            json.dump({"samples": samples, "count": len(samples), "url": payload.get("url", "")}, f, indent=2)
+        return {"samples": samples}
+    except Exception as e:  # noqa: BLE001 — sample capture is non-fatal
+        warn(f"{page_slug}: measured-sample capture failed ({e})")
+        return {}
+
+
 @close_agent_browser_session_after(dom_extract_session_name)
 def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bool, skip_existing: bool) -> None:
     """Extract DOM content and measurements from a single page."""
@@ -1760,6 +1832,10 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
     # Raw CSS probe (root vars, @media, @keyframes, @font-face, @layer, @supports).
     # Non-fatal: a CSS capture failure must never abort an otherwise-good extraction.
     capture_raw_css_for_page(page_slug, slug, dirs, session, headed)
+
+    # Per-element computed-style samples → feed the measured-token analyzer.
+    # Non-fatal: failures never abort extraction.
+    capture_measured_samples_for_page(page_slug, slug, dirs, session)
 
 
 def extract_all_dom(
