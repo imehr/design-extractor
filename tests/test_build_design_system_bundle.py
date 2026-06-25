@@ -297,3 +297,80 @@ def test_design_tokens_json_measured_confidence_recorded():
     assert fallback["confidence"] == "FALLBACK"
     assert fallback["value"] == "color-mix(in oklab, var(--accent), black 8%)"
 
+
+# ── 3.4 components.html + components.manifest.json + tailwind-v4.css ───────────
+
+import re as _re  # noqa: E402
+
+
+def _strip_root(css: str) -> str:
+    return _re.sub(r":root(?:\[[^\]]+\])?\s*\{[\s\S]*?\}", "", css)
+
+
+def test_components_html_has_no_literal_hex_or_px_outside_root():
+    html = bds.render_components_html({"name": "Acme"}, _measured(**{"--bg": "#fff"}))
+    style = _re.search(r"<style\b[^>]*>([\s\S]*?)</style>", html, _re.I).group(1)
+    stripped = _strip_root(style)
+    assert not _re.search(r"#[0-9a-fA-F]{3,8}\b", stripped), "literal hex outside :root"
+    assert not _re.search(r"\d+px\b", stripped), "literal px outside :root"
+    # Every font-family declaration must resolve through var() — the genuine
+    # intent (the OD regex over-counts "font-family: var()" due to \s* backtrack,
+    # so we assert the positive intent directly).
+    for m in _re.finditer(r"font-family\s*:\s*(\S+)", stripped):
+        assert m.group(1).startswith("var("), f"hardcoded font-family: {m.group(1)}"
+
+
+def test_components_html_has_required_component_groups():
+    html = bds.render_components_html({"name": "Acme"}, _measured())
+    for token_class in (".btn", ".field", ".card", ".badge", ".link", ".container"):
+        assert token_class in html, f"missing {token_class}"
+
+
+def test_extract_components_manifest_buttons_present_when_btn_present():
+    fixture = """<style>.btn { background: var(--accent); }</style><button class="btn">Go</button>"""
+    m = bds.extract_components_manifest("acme", fixture, "")
+    assert m["schemaVersion"] == 1
+    buttons = next(g for g in m["groups"] if g["id"] == "buttons")
+    assert buttons["present"] is True
+    assert ".btn" in buttons["selectors"]
+
+
+def test_extract_components_manifest_all_nine_groups_listed():
+    m = bds.extract_components_manifest("acme", "<style></style>", "")
+    ids = [g["id"] for g in m["groups"]]
+    assert ids == ["buttons", "inputs", "cards", "badges", "links",
+                   "keyboard", "icons", "typography", "layout"]
+
+
+def test_components_manifest_emitted_has_zero_color_literals():
+    html = bds.render_components_html({"name": "Acme"}, _measured(**{"--bg": "#fff"}))
+    css = bds.render_tokens_css(_measured(**{"--bg": "#fff"}))
+    m = bds.extract_components_manifest("acme", html, css)
+    # The critical anti-slop guarantees: no literal colors or pixel values leak
+    # out of :root into the component rules.
+    assert m["literals"]["colorExpressions"] == 0
+    assert m["literals"]["pixelValues"] == 0
+    assert set(m["literals"]) == {"colorExpressions", "pixelValues", "hardcodedFontFamilies"}
+    assert m["source"]["componentsHtml"] == "components.html"
+    assert m["source"]["tokensCss"] == "tokens.css"
+    assert m["brandId"] == "acme"
+
+
+def test_tailwind_v4_css_imports_and_theme_resolve():
+    css = bds.render_tailwind_v4_css([t["name"] for t in bds.TOKEN_SCHEMA])
+    assert '@import "tailwindcss";' in css
+    assert '@import "./tokens.css";' in css
+    assert "@theme {" in css
+    declared = {t["name"] for t in bds.TOKEN_SCHEMA}
+    for m in _re.finditer(r"var\(\s*(--[a-zA-Z0-9_-]+)", css):
+        assert m.group(1) in declared, f"tailwind references undeclared {m.group(1)}"
+    # A representative binding round-trips.
+    assert "--color-bg: var(--bg);" in css
+    assert "--font-sans: var(--font-body);" in css
+
+
+def test_tailwind_v4_css_skips_undeclared_bindings():
+    css = bds.render_tailwind_v4_css(["--bg"])
+    assert "--color-bg: var(--bg);" in css
+    assert "--color-surface" not in css  # --surface not declared → omitted
+

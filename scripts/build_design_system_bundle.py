@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import importlib.util as _iutil
 import json
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -509,15 +510,455 @@ def _summarize(measured) -> dict:
 
 
 def render_components_html(data: dict, measured) -> str:  # 3.4
-    return "<!doctype html>\n<title>components stub</title>\n"
+    return _render_components_html(data, measured)
 
 
-def render_components_manifest_json(brand_id: str, fixture_html: str, tokens_css: str) -> str:  # 3.4
-    return json.dumps({"schemaVersion": 1, "brandId": brand_id}, indent=2) + "\n"
+# ── components.manifest.json — faithful port of components-manifest.ts ────────
+
+COMPONENTS_MANIFEST_SCHEMA_VERSION = 1
+
+COMPONENT_GROUPS: list[dict] = [
+    {"id": "buttons", "label": "Buttons and calls to action",
+     "selectors": [r"\bbutton\b", r"\.btn(?:\b|[-_:])", r"\[type=[\"\x27]?(?:button|submit|reset)"],
+     "classes": [r"^btn(?:$|-)", r"button", r"cta"],
+     "elements": [r"^button$"]},
+    {"id": "inputs", "label": "Form fields and controls",
+     "selectors": [r"\binput\b", r"\btextarea\b", r"\bselect\b", r"\.field(?:\b|[-_:])", r"\blabel\b"],
+     "classes": [r"^field(?:$|-)", r"input", r"control", r"form"],
+     "elements": [r"^(input|textarea|select|label|form)$"]},
+    {"id": "cards", "label": "Cards and panels",
+     "selectors": [r"\.card(?:\b|[-_:])", r"\.panel(?:\b|[-_:])", r"\.tile(?:\b|[-_:])"],
+     "classes": [r"^card(?:$|-)", r"^panel(?:$|-)", r"^tile(?:$|-)"],
+     "elements": []},
+    {"id": "badges", "label": "Badges, chips, and status labels",
+     "selectors": [r"\.badge(?:\b|[-_:])", r"\.chip(?:\b|[-_:])", r"\.tag(?:\b|[-_:])", r"\.pill(?:\b|[-_:])"],
+     "classes": [r"^badge(?:$|-)", r"^chip(?:$|-)", r"^tag(?:$|-)", r"^pill(?:$|-)", r"status"],
+     "elements": []},
+    {"id": "links", "label": "Links and inline actions",
+     "selectors": [r"\ba\b", r"\.link(?:\b|[-_:])"],
+     "classes": [r"^link(?:$|-)"],
+     "elements": [r"^a$"]},
+    {"id": "keyboard", "label": "Keyboard hints",
+     "selectors": [r"\bkbd\b", r"\.kbd(?:\b|[-_:])"],
+     "classes": [r"^kbd(?:$|-)", r"keyboard", r"shortcut"],
+     "elements": [r"^kbd$"]},
+    {"id": "icons", "label": "Icon slots",
+     "selectors": [r"\.icon(?:\b|[-_:])", r"\[aria-hidden=[\"\x27]true[\"\x27]\]"],
+     "classes": [r"^icon(?:$|-)"],
+     "elements": [r"^svg$"]},
+    {"id": "typography", "label": "Typography scale and text utilities",
+     "selectors": [r"\bh[1-6]\b", r"\.lead(?:\b|[-_:])", r"\.eyebrow(?:\b|[-_:])", r"\.body-(?:muted|sm|small)\b"],
+     "classes": [r"^lead$", r"^eyebrow$", r"^body-(?:muted|sm|small)$", r"caption"],
+     "elements": [r"^h[1-6]$", r"^p$"]},
+    {"id": "layout", "label": "Layout primitives",
+     "selectors": [r"\.container(?:\b|[-_:])", r"\.stack-\d+\b", r"\.row-(?:between|center|start|end)\b",
+                   r"\bsection\b", r"\bmain\b", r"\bnav\b"],
+     "classes": [r"^container$", r"^stack-\d+$", r"^row-(?:between|center|start|end)$", r"grid", r"layout"],
+     "elements": [r"^(main|section|nav|header|footer)$"]},
+]
 
 
-def render_tailwind_v4_css(declared_names) -> str:  # 3.4
-    return "/* tailwind-v4.css stub — populated in task 3.4 */\n"
+def _ci(pattern: str):
+    return re.compile(pattern, re.IGNORECASE)
+
+
+for _g in COMPONENT_GROUPS:
+    _g["_selector_re"] = [_ci(p) for p in _g["selectors"]]
+    _g["_class_re"] = [_ci(p) for p in _g["classes"]]
+    _g["_element_re"] = [_ci(p) for p in _g["elements"]]
+
+
+def extract_components_manifest(brand_id: str, fixture_html: str, tokens_css: str) -> dict:
+    """Faithful port of ``extractComponentsManifest`` (components-manifest.ts)."""
+    style_blocks = _extract_style_blocks(fixture_html)
+    css = "\n\n".join(style_blocks)
+    selectors = _extract_css_selectors(css)
+    selector_token_references = _extract_selector_token_references(css)
+    classes = _extract_html_classes(fixture_html)
+    elements = _extract_html_elements(fixture_html)
+    declared_tokens = _parse_token_names(tokens_css or _extract_first_root_body(css) or "")
+    referenced_tokens = _extract_token_references(fixture_html)
+
+    groups = []
+    for definition in COMPONENT_GROUPS:
+        groups.append(_build_group_manifest(definition, {
+            "selectors": selectors,
+            "selectorTokenReferences": selector_token_references,
+            "classes": classes,
+            "elements": elements,
+            "referencedTokens": referenced_tokens,
+        }))
+
+    return {
+        "schemaVersion": COMPONENTS_MANIFEST_SCHEMA_VERSION,
+        "brandId": brand_id,
+        "source": ({"componentsHtml": "components.html", "tokensCss": "tokens.css"}
+                   if tokens_css else {"componentsHtml": "components.html"}),
+        "fixture": {
+            **_optional_text("title", _extract_title(fixture_html)),
+            **_optional_text("description", _extract_meta_description(fixture_html)),
+            "styleBlockCount": len(style_blocks),
+            "selectorCount": len(selectors),
+            "classCount": len(classes),
+            "elementCount": len(elements),
+        },
+        "tokens": {
+            "declared": declared_tokens,
+            "referenced": referenced_tokens,
+            "unusedDeclared": [t for t in declared_tokens if t not in referenced_tokens],
+            "undeclaredReferenced": ([] if not declared_tokens
+                                     else [t for t in referenced_tokens if t not in declared_tokens]),
+        },
+        "selectors": selectors,
+        "classes": classes,
+        "elements": elements,
+        "groups": groups,
+        "literals": _count_literals(_strip_root_blocks(_strip_css_comments(css))),
+    }
+
+
+def render_components_manifest_json(brand_id: str, fixture_html: str, tokens_css: str) -> str:
+    return json.dumps(extract_components_manifest(brand_id, fixture_html, tokens_css), indent=2) + "\n"
+
+
+def _build_group_manifest(definition, inventory) -> dict:
+    sel_matchers = definition["_selector_re"]
+    cls_matchers = definition["_class_re"]
+    el_matchers = definition["_element_re"]
+
+    selectors = [s for s in inventory["selectors"]
+                 if any(rx.search(s) for rx in sel_matchers)]
+    classes = [c for c in inventory["classes"]
+               if any(rx.search(c) for rx in cls_matchers)]
+    elements = [e for e in inventory["elements"]
+                if any(rx.search(e) for rx in el_matchers)]
+    token_refs = _unique_sorted(
+        ref for sel in selectors for ref in inventory["selectorTokenReferences"].get(sel, [])
+    )
+    return {
+        "id": definition["id"],
+        "label": definition["label"],
+        "present": bool(selectors or classes or elements),
+        "selectors": selectors,
+        "classes": classes,
+        "elements": elements,
+        "tokenReferences": [t for t in token_refs if t in inventory["referencedTokens"]],
+    }
+
+
+def _extract_style_blocks(html: str) -> list[str]:
+    blocks: list[str] = []
+    for m in re.finditer(r"<style\b[^>]*>([\s\S]*?)</style>", html, re.IGNORECASE):
+        blocks.append((m.group(1) or "").strip())
+    return blocks
+
+
+def _extract_css_selectors(css: str) -> list[str]:
+    selectors: set[str] = set()
+    commentless = _strip_container_at_rule_headers(_strip_css_comments(css))
+    for m in re.finditer(r"(?:^|[{}])\s*([^@{}][^{}]*?)\s*\{", commentless):
+        raw = (m.group(1) or "").strip()
+        if not raw:
+            continue
+        if ":root" in raw:
+            continue
+        if re.match(r"^(?:from|to|\d+(?:\.\d+)?%)$", raw, re.IGNORECASE):
+            continue
+        for sel in _split_selector_list(raw):
+            norm = _normalize_selector(sel)
+            if norm and not norm.startswith("@"):
+                selectors.add(norm)
+    return sorted(selectors)
+
+
+def _extract_selector_token_references(css: str) -> dict[str, list[str]]:
+    by_selector: dict[str, set[str]] = {}
+    commentless = _strip_container_at_rule_headers(_strip_css_comments(css))
+    for m in re.finditer(r"(?:^|[{}])\s*([^@{}][^{}]*?)\s*\{([^{}]*)\}", commentless):
+        raw = (m.group(1) or "").strip()
+        body = m.group(2) or ""
+        if not raw or ":root" in raw:
+            continue
+        if re.match(r"^(?:from|to|\d+(?:\.\d+)?%)$", raw, re.IGNORECASE):
+            continue
+        refs = _extract_token_references(body)
+        if not refs:
+            continue
+        for sel in _split_selector_list(raw):
+            norm = _normalize_selector(sel)
+            if not norm or norm.startswith("@"):
+                continue
+            bucket = by_selector.setdefault(norm, set())
+            for r in refs:
+                bucket.add(r)
+    return {sel: sorted(refs) for sel, refs in sorted(by_selector.items())}
+
+
+def _split_selector_list(selector_list: str) -> list[str]:
+    selectors: list[str] = []
+    depth = 0
+    start = 0
+    for i, ch in enumerate(selector_list):
+        if ch in "([":
+            depth += 1
+        elif ch in ")]":
+            depth = max(0, depth - 1)
+        elif ch == "," and depth == 0:
+            selectors.append(selector_list[start:i])
+            start = i + 1
+    selectors.append(selector_list[start:])
+    return selectors
+
+
+def _normalize_selector(selector: str) -> str:
+    return re.sub(r"\s+", " ", selector.strip())
+
+
+def _extract_html_classes(html: str) -> list[str]:
+    classes: set[str] = set()
+    for m in re.finditer(r"\bclass\s*=\s*([\"\x27])(.*?)\1", html, re.IGNORECASE | re.DOTALL):
+        for cn in (m.group(2) or "").split():
+            if cn:
+                classes.add(cn)
+    return sorted(classes)
+
+
+def _extract_html_elements(html: str) -> list[str]:
+    elements: set[str] = set()
+    for m in re.finditer(r"<\s*([a-z][a-z0-9-]*)\b", html, re.IGNORECASE):
+        el = (m.group(1) or "").lower()
+        if el and not el.startswith("!"):
+            elements.add(el)
+    return sorted(elements)
+
+
+def _parse_token_names(css: str) -> list[str]:
+    tokens: set[str] = set()
+    for m in re.finditer(r"(--[a-zA-Z0-9_-]+)\s*:", _strip_css_comments(css)):
+        tokens.add(m.group(1))
+    return sorted(tokens)
+
+
+def _extract_token_references(source: str) -> list[str]:
+    tokens: set[str] = set()
+    for m in re.finditer(r"var\(\s*(--[a-zA-Z0-9_-]+)", source):
+        tokens.add(m.group(1))
+    return sorted(tokens)
+
+
+def _extract_first_root_body(css: str):
+    m = re.search(r":root(?!\[)\s*\{([\s\S]*?)\}", _strip_css_comments(css))
+    return m.group(1) if m else None
+
+
+def _strip_root_blocks(css: str) -> str:
+    return re.sub(r":root(?:\[[^\]]+\])?\s*\{[\s\S]*?\}", "", css)
+
+
+def _strip_css_comments(css: str) -> str:
+    return re.sub(r"/\*[\s\S]*?\*/", "", css)
+
+
+def _strip_container_at_rule_headers(css: str) -> str:
+    return re.sub(r"@(media|supports|container|layer)\b[^{]*\{", "{", css, flags=re.IGNORECASE)
+
+
+def _count_literals(css: str) -> dict:
+    return {
+        "colorExpressions": _count_matches(
+            css, r"(?:#[0-9a-f]{3,8}\b|rgba?\([^)]*\)|hsla?\([^)]*\)|oklch\([^)]*\)|color-mix\([^)]*\))",
+            re.IGNORECASE),
+        "pixelValues": _count_matches(css, r"(?<![\w-])-?\d*\.?\d+px\b"),
+        "hardcodedFontFamilies": _count_matches(css, r"\bfont-family\s*:\s*(?!var\()", re.IGNORECASE),
+    }
+
+
+def _count_matches(source: str, pattern, flags: int = 0) -> int:
+    return len(re.findall(pattern, source, flags))
+
+
+def _unique_sorted(values) -> list[str]:
+    return sorted(set(values))
+
+
+def _extract_title(html: str):
+    m = re.search(r"<title\b[^>]*>([\s\S]*?)</title>", html, re.IGNORECASE)
+    if not m:
+        return None
+    value = re.sub(r"\s+", " ", (m.group(1) or "").strip())
+    return _decode_basic_entities(value) if value else None
+
+
+def _extract_meta_description(html: str):
+    m = re.search(
+        r"<meta\b(?=[^>]*\bname\s*=\s*[\"']description[\"'])(?=[^>]*\bcontent\s*=\s*([\"'])([\s\S]*?)\1)[^>]*>",
+        html, re.IGNORECASE)
+    if not m:
+        return None
+    value = re.sub(r"\s+", " ", (m.group(2) or "").strip())
+    return _decode_basic_entities(value) if value else None
+
+
+def _decode_basic_entities(value: str) -> str:
+    return (value.replace("&quot;", '"').replace("&#39;", "'").replace("&amp;", "&")
+            .replace("&lt;", "<").replace("&gt;", ">"))
+
+
+def _optional_text(key: str, value):
+    return {key: value} if value is not None else {}
+
+
+# ── tailwind-v4.css — port of renderTailwindV4Css + TAILWIND_V4_THEME_BINDINGS ─
+
+TAILWIND_V4_THEME_BINDINGS: list[tuple[str, str]] = [
+    ("--color-bg", "--bg"), ("--color-surface", "--surface"), ("--color-surface-warm", "--surface-warm"),
+    ("--color-fg", "--fg"), ("--color-fg-2", "--fg-2"), ("--color-muted", "--muted"),
+    ("--color-meta", "--meta"), ("--color-border", "--border"), ("--color-border-soft", "--border-soft"),
+    ("--color-accent", "--accent"), ("--color-accent-on", "--accent-on"),
+    ("--color-accent-hover", "--accent-hover"), ("--color-accent-active", "--accent-active"),
+    ("--color-success", "--success"), ("--color-warn", "--warn"), ("--color-danger", "--danger"),
+    ("--font-display", "--font-display"), ("--font-body", "--font-body"),
+    ("--font-sans", "--font-body"), ("--font-mono", "--font-mono"),
+    ("--text-xs", "--text-xs"), ("--text-sm", "--text-sm"), ("--text-base", "--text-base"),
+    ("--text-lg", "--text-lg"), ("--text-xl", "--text-xl"), ("--text-2xl", "--text-2xl"),
+    ("--text-3xl", "--text-3xl"), ("--text-4xl", "--text-4xl"),
+    ("--leading-body", "--leading-body"), ("--leading-tight", "--leading-tight"),
+    ("--tracking-display", "--tracking-display"),
+    ("--spacing-1", "--space-1"), ("--spacing-2", "--space-2"), ("--spacing-3", "--space-3"),
+    ("--spacing-4", "--space-4"), ("--spacing-5", "--space-5"), ("--spacing-6", "--space-6"),
+    ("--spacing-8", "--space-8"), ("--spacing-12", "--space-12"),
+    ("--spacing-section-desktop", "--section-y-desktop"),
+    ("--spacing-section-tablet", "--section-y-tablet"),
+    ("--spacing-section-phone", "--section-y-phone"),
+    ("--radius-sm", "--radius-sm"), ("--radius-md", "--radius-md"),
+    ("--radius-lg", "--radius-lg"), ("--radius-pill", "--radius-pill"),
+    ("--shadow-flat", "--elev-flat"), ("--shadow-ring", "--elev-ring"),
+    ("--shadow-raised", "--elev-raised"), ("--shadow-focus-ring", "--focus-ring"),
+    ("--duration-fast", "--motion-fast"), ("--duration-base", "--motion-base"),
+    ("--ease-standard", "--ease-standard"),
+    ("--container-max", "--container-max"),
+    ("--spacing-container-desktop", "--container-gutter-desktop"),
+    ("--spacing-container-tablet", "--container-gutter-tablet"),
+    ("--spacing-container-phone", "--container-gutter-phone"),
+]
+
+
+def render_tailwind_v4_css(declared_names) -> str:
+    """Port of ``renderTailwindV4Css``. Emits ``@theme`` bindings for every
+    declared OD token."""
+    declared = set(declared_names)
+    lines = [
+        "/* Derived from tokens.css. Keep tokens.css as the source of truth. */",
+        '@import "tailwindcss";',
+        '@import "./tokens.css";',
+        "",
+        "@theme {",
+    ]
+    for tw_name, od_token in TAILWIND_V4_THEME_BINDINGS:
+        if od_token in declared:
+            lines.append(f"  {tw_name}: var({od_token});")
+    lines += ["}", ""]
+    return "\n".join(lines)
+
+
+# ── components.html fixture ───────────────────────────────────────────────────
+
+_COMPONENT_CSS = """
+    /* Buttons */
+    .btn { background: var(--accent); color: var(--accent-on); border-radius: var(--radius-md);
+           padding: var(--space-2) var(--space-4); font-family: var(--font-body);
+           font-size: var(--text-base); box-shadow: var(--elev-ring);
+           transition: background var(--motion-fast) var(--ease-standard); }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:active { background: var(--accent-active); }
+    .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+    button[type="submit"] { font-family: var(--font-body); }
+    /* Inputs */
+    .field { background: var(--surface); color: var(--fg); border-radius: var(--radius-sm);
+             padding: var(--space-2) var(--space-3); box-shadow: var(--elev-ring);
+             font-family: var(--font-body); font-size: var(--text-base); }
+    input, textarea, select { font-family: var(--font-body); color: var(--fg); }
+    label { color: var(--muted); font-size: var(--text-sm); }
+    /* Cards */
+    .card { background: var(--surface); border-radius: var(--radius-lg); padding: var(--space-4);
+            box-shadow: var(--elev-raised); }
+    .card-title { color: var(--fg); font-family: var(--font-display); font-size: var(--text-lg); }
+    /* Badges */
+    .badge, .tag { background: var(--accent); color: var(--accent-on);
+                   border-radius: var(--radius-pill); padding: var(--space-1) var(--space-2);
+                   font-size: var(--text-xs); }
+    .badge--success { background: var(--success); color: var(--accent-on); }
+    /* Links */
+    a, .link { color: var(--accent); text-decoration: underline; }
+    a:hover { color: var(--accent-hover); }
+    /* Keyboard */
+    kbd, .kbd { font-family: var(--font-mono); background: var(--surface); color: var(--fg);
+                border-radius: var(--radius-sm); padding: var(--space-1) var(--space-2);
+                box-shadow: var(--elev-ring); }
+    /* Icons */
+    .icon[aria-hidden="true"] { color: var(--muted); }
+    /* Typography */
+    h1, h2, h3 { font-family: var(--font-display); color: var(--fg); }
+    h1 { font-size: var(--text-3xl); }
+    h2 { font-size: var(--text-2xl); }
+    h3 { font-size: var(--text-lg); }
+    p { font-family: var(--font-body); color: var(--fg); font-size: var(--text-base); }
+    .body-muted { color: var(--muted); font-size: var(--text-sm); }
+    .lead { color: var(--fg); font-size: var(--text-lg); }
+    /* Layout */
+    .container { max-width: var(--container-max); margin-inline: auto;
+                 padding-inline: var(--container-gutter-desktop); }
+    .stack-4 { display: flex; flex-direction: column; gap: var(--space-4); }
+    .row-between { display: flex; justify-content: space-between; align-items: center;
+                   gap: var(--space-3); }
+    section { padding-block: var(--section-y-desktop); }
+    header, footer, nav { background: var(--surface); box-shadow: var(--elev-ring); }
+"""
+
+
+def _render_components_html(data: dict, measured) -> str:
+    name = data.get("name") or "brand"
+    root_css = render_tokens_css(measured)
+    root_block = root_css.split("}")[0] + "}"  # just the :root { ... } block
+    body = (
+        f'  <header class="container row-between">\n'
+        f'    <a class="link" href="#">{name}</a>\n'
+        f'    <nav><a class="link" href="#">Home</a></nav>\n'
+        f'  </header>\n'
+        f'  <section class="container stack-4">\n'
+        f'    <h1>Components</h1>\n'
+        f'    <p class="lead">Token-only fixture.</p>\n'
+        f'    <button class="btn" type="submit">Action</button>\n'
+        f'    <label class="field-label">Email\n'
+        f'      <input class="field" type="email" />\n'
+        f'    </label>\n'
+        f'    <div class="card">\n'
+        f'      <h2 class="card-title">Card</h2>\n'
+        f'      <p class="body-muted">Body text.</p>\n'
+        f'      <span class="badge">New</span>\n'
+        f'      <kbd class="kbd">⌘K</kbd>\n'
+        f'      <svg class="icon" aria-hidden="true" viewBox="0 0 16 16"></svg>\n'
+        f'    </div>\n'
+        f'  </section>\n'
+        f'  <footer class="container"><p class="body-muted">{name}</p></footer>\n'
+    )
+    return (
+        "<!doctype html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '  <meta charset="utf-8">\n'
+        f'  <meta name="description" content="Token-only component fixture for {name} (every value is a var() reference).">\n'
+        f"  <title>{name} components</title>\n"
+        "  <style>\n"
+        f"{root_block}\n"
+        f"{_COMPONENT_CSS}\n"
+        "  </style>\n"
+        "</head>\n"
+        "<body>\n"
+        f"{body}"
+        "</body>\n"
+        "</html>\n"
+    )
 
 
 def render_design_md(data: dict, measured) -> str:  # 3.5
