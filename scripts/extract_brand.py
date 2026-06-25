@@ -2014,6 +2014,111 @@ def _browser_fetch_fallback(url: str, dest: str, session: str = "dl", headed: bo
     return False
 
 
+# ── Stylesheet chain resolution (Google Fonts + @import) ──────────────────
+#
+# Pure + injectable: ``fetcher(url) -> content | None`` so the chain resolver
+# is fully unit-testable without a network or browser. The default fetcher
+# (used by the real asset phase) is urllib with the browser fetch fallback for
+# 403s.
+
+_CSS_IMPORT_RE = re.compile(
+    r'@import\s+(?:url\(\s*)?["\']?([^"\')\s;]+)["\']?\s*\)?\s*(?:[^;]*;)?', re.I
+)
+_CSS_URL_RE = re.compile(r'url\(\s*["\']?([^"\')]+)["\']?\s*\)', re.I)
+_FONT_FILE_EXTS = (".woff2", ".woff", ".ttf", ".otf")
+
+
+def _extract_css_imports(css_text: str) -> list[str]:
+    return [m.group(1) for m in _CSS_IMPORT_RE.finditer(css_text)
+            if not m.group(1).startswith("data:")]
+
+
+def _extract_font_urls(css_text: str) -> list[str]:
+    urls: list[str] = []
+    for m in _CSS_URL_RE.finditer(css_text):
+        u = m.group(1)
+        if u and not u.startswith("data:") and u.lower().endswith(_FONT_FILE_EXTS):
+            urls.append(u)
+    return list(dict.fromkeys(urls))
+
+
+def resolve_stylesheet_chain(href, fetcher, max_depth: int = 3, _depth: int = 0, _seen: set | None = None):
+    """Resolve a stylesheet ``href``: fetch its CSS, follow ``@import`` chains
+    (depth-limited), and collect ``@font-face`` font URLs (woff2/woff/ttf/otf).
+
+    ``fetcher(url) -> content | None`` is injectable (returns CSS/font bytes or
+    a str, or None on failure). Returns a manifest::
+
+        {stylesheets: [{href, content}], fonts: [{url, content}],
+         fetched: [every url fetched], imports: [resolved @import urls]}
+
+    Cycles are deduped via ``_seen``; ``data:`` URLs are skipped.
+    """
+    manifest = {"stylesheets": [], "fonts": [], "fetched": [], "imports": []}
+    if not href:
+        return manifest
+    if _seen is None:
+        _seen = set()
+    if _depth > max_depth or href in _seen:
+        return manifest
+    _seen.add(href)
+
+    content = fetcher(href)
+    manifest["fetched"].append(href)
+    if content is None:
+        return manifest
+    text = content.decode("utf-8", errors="replace") if isinstance(content, (bytes, bytearray)) else str(content)
+    manifest["stylesheets"].append({"href": href, "content": text})
+
+    for imp in _extract_css_imports(text):
+        resolved = urljoin(href, imp)
+        manifest["imports"].append(resolved)
+        if resolved in _seen:
+            continue
+        sub = resolve_stylesheet_chain(resolved, fetcher, max_depth, _depth + 1, _seen)
+        manifest["stylesheets"].extend(sub["stylesheets"])
+        manifest["fonts"].extend(sub["fonts"])
+        manifest["fetched"].extend(sub["fetched"])
+        manifest["imports"].extend(sub["imports"])
+
+    for font_url in _extract_font_urls(text):
+        resolved = urljoin(href, font_url)
+        if resolved in _seen:
+            continue
+        _seen.add(resolved)
+        font_content = fetcher(resolved)
+        manifest["fetched"].append(resolved)
+        if font_content is not None:
+            manifest["fonts"].append({"url": resolved, "content": font_content})
+
+    return manifest
+
+
+def _default_stylesheet_fetcher(slug: str, headed: bool):
+    """Build a fetcher closure: urllib first, browser-fetch fallback on 403."""
+    def fetcher(url: str):
+        import tempfile
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".bin") as tf:
+            tmp_path = tf.name
+        try:
+            try:
+                urllib.request.urlretrieve(url, tmp_path)
+                return Path(tmp_path).read_bytes()
+            except urllib.error.HTTPError as http_err:
+                if http_err.code == 403:
+                    if _browser_fetch_fallback(url, tmp_path, session=short_session_name("css", slug), headed=headed):
+                        return Path(tmp_path).read_bytes()
+                return None
+            except Exception:
+                return None
+        finally:
+            try:
+                Path(tmp_path).unlink(missing_ok=True)
+            except OSError:
+                pass
+    return fetcher
+
+
 def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
     """Download images, fonts, SVGs, and CSS background images from DOM extraction data."""
     phase_banner(4, "Downloading assets", "Images, fonts, SVGs, and CSS background images")
@@ -2114,7 +2219,9 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
 
         js_fonts = """JSON.stringify((() => {
             const fonts = [];
+            const stylesheets = [];
             for (const sheet of document.styleSheets) {
+                try { if (sheet.href) stylesheets.push(sheet.href); } catch(e) {}
                 try {
                     for (const rule of sheet.cssRules) {
                         if (rule instanceof CSSFontFaceRule) {
@@ -2131,7 +2238,7 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
                     }
                 } catch(e) {}
             }
-            return fonts;
+            return { fonts: fonts, stylesheets: stylesheets };
         })())"""
 
         result = run_cmd(
@@ -2139,11 +2246,18 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
             timeout=15,
         )
         stdout = (result.stdout or "").strip()
+        font_list: list = []
+        stylesheet_hrefs: list[str] = []
         if stdout:
-            font_list = parse_eval_json(stdout)
+            parsed_fonts = parse_eval_json(stdout)
+            if isinstance(parsed_fonts, dict):
+                font_list = parsed_fonts.get("fonts", []) or []
+                stylesheet_hrefs = parsed_fonts.get("stylesheets", []) or []
+            elif isinstance(parsed_fonts, list):
+                font_list = parsed_fonts  # backward compat
             if isinstance(font_list, list):
                 for font in font_list:
-                    font_url = font.get("url", "")
+                    font_url = font.get("url", "") if isinstance(font, dict) else ""
                     if not font_url:
                         continue
                     parsed = urlparse(font_url)
@@ -2158,6 +2272,43 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
                         urllib.request.urlretrieve(font_url, str(dest))
                         downloaded += 1
                     except Exception:
+                        pass
+
+        # Resolve Google Fonts / @import stylesheet chains (depth ≤3): download
+        # the CSS + referenced woff2 so @font-face is registered locally.
+        if stylesheet_hrefs:
+            chain_fetcher = _default_stylesheet_fetcher(slug, headed)
+            seen_chains: set[str] = set()
+            for sh in stylesheet_hrefs:
+                if not isinstance(sh, str) or not sh or sh in seen_chains:
+                    continue
+                seen_chains.add(sh)
+                try:
+                    chain = resolve_stylesheet_chain(sh, chain_fetcher, max_depth=3)
+                except Exception as e:  # noqa: BLE001 — best-effort chain resolution
+                    warn(f"stylesheet chain {sh[:80]} failed: {e}")
+                    continue
+                for idx, sw in enumerate(chain.get("stylesheets", [])):
+                    css_name = re.sub(r"[^a-zA-Z0-9._-]", "_", urlparse(sw["href"]).path).strip("_") or f"sheet-{idx}"
+                    css_dest = dirs["public_fonts"] / f"{css_name[:60]}-{idx}.css"
+                    try:
+                        if not css_dest.exists():
+                            css_dest.write_text(sw["content"], encoding="utf-8")
+                            downloaded += 1
+                    except OSError:
+                        pass
+                for fo in chain.get("fonts", []):
+                    font_url = fo.get("url", "")
+                    fname = re.sub(r"[^a-zA-Z0-9._-]", "_", Path(urlparse(font_url).path).name)
+                    if not fname:
+                        continue
+                    fdest = dirs["public_fonts"] / fname
+                    if fdest.exists():
+                        continue
+                    try:
+                        fdest.write_bytes(fo["content"])
+                        downloaded += 1
+                    except OSError:
                         pass
     except RuntimeError:
         warn("Font extraction failed (non-fatal)")
