@@ -27,3 +27,19 @@ Thumbs.db
 # Temp
 *.tmp
 *.log
+
+# Local runtime logs
+.logs/
+
+# Generated extraction output (regenerable via the pipeline)
+brands/
+cache/
+
+# Playwright/MCP temp
+.playwright-mcp/
+
+# Runtime learning ledger
+state/learning/*.jsonl
+
+# Stray root captures
+/*.png
