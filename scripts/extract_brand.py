@@ -1469,6 +1469,79 @@ def capture_measured_samples_for_page(page_slug: str, slug: str, dirs: dict, ses
         return {}
 
 
+# Per-viewport section rhythm + container gutters → feed --section-y-*
+# / --container-gutter-* (measured_tokens._apply_viewport_tokens consumes this).
+# Kept as a constant so tests can override it.
+EXTRACTION_VIEWPORTS = [
+    {"name": "desktop", "width": 1280, "height": 720},
+    {"name": "tablet", "width": 1024, "height": 768},
+    {"name": "mobile", "width": 375, "height": 812},
+]
+
+JS_VIEWPORT_COLLECTOR = """JSON.stringify((() => {
+    const secY = [];
+    document.querySelectorAll('main, section, header, footer, article').forEach(el => {
+        const cs = getComputedStyle(el);
+        const pt = parseFloat(cs.paddingTop) || 0;
+        const pb = parseFloat(cs.paddingBottom) || 0;
+        if (pt > 0) secY.push(pt);
+        if (pb > 0) secY.push(pb);
+    });
+    const gutters = [];
+    document.querySelectorAll('.container, [class*="container"], main, [style*="max-width"]').forEach(el => {
+        const r = el.getBoundingClientRect();
+        if (r.width < 200) return;
+        const cs = getComputedStyle(el);
+        const pl = parseFloat(cs.paddingLeft) || 0;
+        const pr = parseFloat(cs.paddingRight) || 0;
+        if (pl > 0) gutters.push(pl);
+        if (pr > 0) gutters.push(pr);
+    });
+    return { sectionPaddingY: secY, containerGutter: gutters };
+})())"""
+
+
+def capture_viewports_for_page(page_slug: str, slug: str, dirs: dict, session: str, viewports: list | None = None) -> dict:
+    """Capture per-viewport section padding + container gutters.
+
+    Loops ``EXTRACTION_VIEWPORTS`` via ``page.setViewportSize`` and records
+    section vertical padding and container side gutters at each size. Writes
+    ``cache/<slug>/dom-extraction/<page>-viewports.json``. Non-fatal.
+    """
+    viewports = viewports if viewports is not None else EXTRACTION_VIEWPORTS
+    out_path = dirs["dom_extraction"] / f"{page_slug}-viewports.json"
+    try:
+        result: dict = {}
+        for vp in viewports:
+            name = str(vp.get("name", "desktop"))
+            width, height = int(vp.get("width", 1280)), int(vp.get("height", 720))
+            run_cmd(
+                agent_browser_cmd(
+                    ["eval", f"page.setViewportSize({{width: {width}, height: {height}}})"],
+                    session=session,
+                ),
+                timeout=10,
+                check=False,
+            )
+            time.sleep(0.5)
+            collected = run_cmd(
+                agent_browser_cmd(["eval", JS_VIEWPORT_COLLECTOR], session=session),
+                timeout=DOM_EXTRACT_TIMEOUT,
+            )
+            payload = parse_eval_json((collected.stdout or "").strip()) or {}
+            if not isinstance(payload, dict):
+                payload = {}
+            payload["width"] = width
+            payload["height"] = height
+            result[name] = payload
+        with open(out_path, "w") as f:
+            json.dump(result, f, indent=2)
+        return result
+    except Exception as e:  # noqa: BLE001 — viewport capture is non-fatal
+        warn(f"{page_slug}: viewport capture failed ({e})")
+        return {}
+
+
 @close_agent_browser_session_after(dom_extract_session_name)
 def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bool, skip_existing: bool) -> None:
     """Extract DOM content and measurements from a single page."""
@@ -1836,6 +1909,11 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
     # Per-element computed-style samples → feed the measured-token analyzer.
     # Non-fatal: failures never abort extraction.
     capture_measured_samples_for_page(page_slug, slug, dirs, session)
+
+    # Multi-viewport section rhythm + container gutters (--section-y-* / gutters).
+    # Run last: it resizes the viewport, so nothing downstream of it should read
+    # layout at the desktop size. Non-fatal.
+    capture_viewports_for_page(page_slug, slug, dirs, session)
 
 
 def extract_all_dom(

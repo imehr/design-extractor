@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from improvement_job import sync_metadata_with_report
+from proc_utils import run_capture
 
 try:
     from PIL import Image
@@ -32,7 +33,29 @@ except ImportError:
     print("Missing dependencies: pip install Pillow pixelmatch")
     sys.exit(1)
 
-VIEWPORT = "1280x720"
+# Viewports captured for both extraction (section rhythm / container gutters)
+# and validation (per-viewport screenshot averages). Kept as a single constant
+# so tests can override it (monkeypatch VIEWPORTS) without touching the runner.
+VIEWPORTS = [
+    {"name": "desktop", "width": 1280, "height": 720},
+    {"name": "tablet", "width": 1024, "height": 768},
+    {"name": "mobile", "width": 375, "height": 812},
+]
+
+
+def close_agent_browser_session(session: str) -> None:
+    """Best-effort cleanup for validation capture sessions.
+
+    Uses run_capture so a wedged ``close`` (e.g. talking to a hung Chrome)
+    cannot itself deadlock the harness.
+    """
+    try:
+        run_capture(
+            ["agent-browser", "close", "--session", session],
+            timeout=10,
+        )
+    except Exception:
+        pass
 
 
 def load_pages(brand_slug: str) -> dict:
@@ -54,29 +77,31 @@ def load_pages(brand_slug: str) -> dict:
     sys.exit(1)
 
 
-def run_agent_browser(url: str, output_path: str, session: str = "harness", wait_secs: int = 3, full_page: bool = False, headed: bool = False) -> bool:
-    """Capture a screenshot using agent-browser (open + wait + screenshot)."""
+def run_agent_browser(url: str, output_path: str, session: str = "harness", wait_secs: int = 3, full_page: bool = False, headed: bool = False, viewport: dict | None = None) -> bool:
+    """Capture a screenshot using agent-browser (open + wait + screenshot).
+
+    ``viewport`` (``{width, height}``) overrides the default 1280×720 capture
+    size so original + replica can be compared at matching dimensions.
+    """
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    vw = viewport.get("width", 1280) if viewport else 1280
+    vh = viewport.get("height", 720) if viewport else 720
     try:
         # Step 1: Navigate to URL
         open_cmd = ["agent-browser", "open", url, "--session", session]
         if headed:
             open_cmd.append("--headed")
-        nav = subprocess.run(
-            open_cmd,
-            capture_output=True,
-            text=True,
-            timeout=30,
-        )
+        nav = run_capture(open_cmd, timeout=30)
         if nav.returncode != 0:
-            print(f"  agent-browser open error: {nav.stderr.strip()}")
+            reason = "timed out" if nav.returncode == -1 else (nav.stderr or "").strip()
+            print(f"  agent-browser open error: {reason}")
             return False
 
         # Step 1b: Set explicit viewport size so scores are deterministic.
-        subprocess.run(
+        run_capture(
             ["agent-browser", "eval", "--session", session,
-             "page.setViewportSize({width: 1280, height: 720})"],
-            capture_output=True, text=True, timeout=10,
+             f"page.setViewportSize({{width: {vw}, height: {vh}}})"],
+            timeout=10,
         )
 
         # Step 2: Wait for page to settle
@@ -86,23 +111,18 @@ def run_agent_browser(url: str, output_path: str, session: str = "harness", wait
         shot_cmd = ["agent-browser", "screenshot", output_path, "--session", session]
         if full_page:
             shot_cmd.append("--full")
-        shot = subprocess.run(
-            shot_cmd,
-            capture_output=True,
-            text=True,
-            timeout=15,
-        )
+        shot = run_capture(shot_cmd, timeout=15)
         if shot.returncode != 0:
-            print(f"  agent-browser screenshot error: {shot.stderr.strip()}")
+            reason = "timed out" if shot.returncode == -1 else (shot.stderr or "").strip()
+            print(f"  agent-browser screenshot error: {reason}")
             return False
 
         return Path(output_path).exists()
-    except subprocess.TimeoutExpired:
-        print(f"  agent-browser timed out for {url}")
-        return False
     except FileNotFoundError:
         print("  agent-browser not found in PATH")
         return False
+    finally:
+        close_agent_browser_session(session)
 
 
 def compare_screenshots(orig_path: str, repl_path: str) -> dict:
@@ -150,17 +170,29 @@ def compare_screenshots(orig_path: str, repl_path: str) -> dict:
         return {"exact": 0.0, "close": 0.0, "error": str(e), "status": "error"}
 
 
-def capture_all_pages(base_url: str, pages: dict, skip_originals: bool = False, headed: bool = False) -> dict:
+def _viewport_suffix(viewport: dict | None) -> str:
+    """Desktop keeps the legacy no-suffix path (manifest/UI consumers rely on it);
+    tablet/mobile get a ``-{name}`` suffix so captures never collide."""
+    if not viewport:
+        return ""
+    name = str(viewport.get("name", "")).strip()
+    if not name or name == "desktop":
+        return ""
+    return f"-{name}"
+
+
+def capture_all_pages(base_url: str, pages: dict, skip_originals: bool = False, headed: bool = False, viewport: dict | None = None) -> dict:
     """Capture original and replica screenshots for all pages.
     Both original and replica are captured as full-page screenshots
     so the UI displays the complete implementation, not just the viewport.
     """
     results = {}
+    suffix = _viewport_suffix(viewport)
 
     for slug, config in pages.items():
-        print(f"\n--- {slug} ---")
-        orig_path = str(SCREENSHOT_DIR / f"orig-{slug}.png")
-        repl_path = str(SCREENSHOT_DIR / f"repl-{slug}.png")
+        print(f"\n--- {slug}{suffix} ---")
+        orig_path = str(SCREENSHOT_DIR / f"orig-{slug}{suffix}.png")
+        repl_path = str(SCREENSHOT_DIR / f"repl-{slug}{suffix}.png")
 
         # Capture original (full page)
         if skip_originals and Path(orig_path).exists():
@@ -168,13 +200,13 @@ def capture_all_pages(base_url: str, pages: dict, skip_originals: bool = False, 
             orig_ok = True
         else:
             print(f"  Capturing original: {config['original_url']}")
-            orig_ok = run_agent_browser(config["original_url"], orig_path, session=f"orig-{slug}-{int(time.time())}", wait_secs=5, full_page=True, headed=headed)
+            orig_ok = run_agent_browser(config["original_url"], orig_path, session=f"orig-{slug}{suffix}-{int(time.time())}", wait_secs=5, full_page=True, headed=headed, viewport=viewport)
             print(f"  Original: {'ok' if orig_ok else 'FAILED'}")
 
         # Capture replica (full page)
         replica_url = f"{base_url}{config['replica_route']}"
         print(f"  Capturing replica: {replica_url}")
-        repl_ok = run_agent_browser(replica_url, repl_path, session=f"repl-{slug}-{int(time.time())}", wait_secs=3, full_page=True)
+        repl_ok = run_agent_browser(replica_url, repl_path, session=f"repl-{slug}{suffix}-{int(time.time())}", wait_secs=3, full_page=True, viewport=viewport)
         print(f"  Replica: {'ok' if repl_ok else 'FAILED'}")
 
         results[slug] = {
@@ -183,6 +215,23 @@ def capture_all_pages(base_url: str, pages: dict, skip_originals: bool = False, 
         }
 
     return results
+
+
+def average_score(scores: dict) -> float:
+    """Mean ``close`` percentage across pages (0.0 when empty)."""
+    if not scores:
+        return 0.0
+    return round(sum(s.get("close", 0.0) for s in scores.values()) / len(scores), 1)
+
+
+def run_viewport_validation(base_url: str, pages: dict, viewport: dict, skip_originals: bool = True, headed: bool = False) -> dict:
+    """Capture + score a single viewport. Returns the per-page scores dict."""
+    captures = capture_all_pages(base_url, pages, skip_originals=skip_originals, headed=headed, viewport=viewport)
+    missing = missing_capture_pages(captures)
+    if missing:
+        print(f"\nViewport {viewport.get('name')}: missing screenshots for {', '.join(missing)}")
+        return {slug: {"exact": 0.0, "close": 0.0, "status": "missing_screenshot"} for slug in pages}
+    return score_all_pages(captures)
 
 
 def score_all_pages(captures: dict) -> dict:
@@ -240,24 +289,31 @@ def build_improvement_manifest(scores: dict, target: float = 80.0) -> dict:
     }
 
 
-def update_validation_report(scores: dict) -> None:
-    """Update the main validation report.json with new scores."""
+def update_validation_report(per_viewport_avgs: dict, desktop_scores: dict | None = None) -> None:
+    """Update report.json with per-viewport averages.
+
+    Writes a ``<name>_avg`` key for every viewport in ``per_viewport_avgs``
+    (e.g. ``desktop_avg``/``tablet_avg``/``mobile_avg``). The screenshot gate
+    and metadata sync still anchor on the desktop average for back-compat.
+    ``desktop_scores`` optionally supplies per-page desktop scores for the
+    legacy ``pixel_comparison_viewport`` block.
+    """
     report = {}
     if REPORT_PATH.exists():
         with open(REPORT_PATH) as f:
             report = json.load(f)
 
-    # Update pixel_comparison_viewport
-    viewport_scores = {}
-    for slug, score in scores.items():
-        viewport_scores[slug] = {"close": score.get("close", 0.0)}
+    for name, avg in (per_viewport_avgs or {}).items():
+        report[f"{name}_avg"] = avg
+    if "desktop_avg" in report:
+        report["viewport_avg"] = report["desktop_avg"]  # back-compat alias
 
-    report["pixel_comparison_viewport"] = viewport_scores
+    if desktop_scores is not None:
+        report["pixel_comparison_viewport"] = {
+            slug: {"close": s.get("close", 0.0)} for slug, s in desktop_scores.items()
+        }
 
-    avg = round(
-        sum(s.get("close", 0.0) for s in scores.values()) / len(scores), 1
-    ) if scores else 0.0
-    report["desktop_avg"] = avg
+    avg = report.get("desktop_avg", 0.0)
 
     # Update the screenshot_comparison gate
     if "gates" not in report:
@@ -265,7 +321,7 @@ def update_validation_report(scores: dict) -> None:
     report["gates"]["screenshot_comparison"] = {
         "pass": avg >= 70.0,
         "value": f"desktop avg {avg}%",
-        "per_page": {slug: f"{s.get('close', 0.0)}%" for slug, s in scores.items()},
+        "per_page": {slug: f"{s.get('close', 0.0)}%" for slug, s in (desktop_scores or {}).items()},
     }
 
     # Recount passing gates
@@ -327,6 +383,7 @@ def main():
 
     if args.score_only:
         print("Re-scoring existing screenshots...")
+        # score-only reuses the existing desktop screenshots (canonical paths).
         captures = {}
         for slug in pages:
             orig = SCREENSHOT_DIR / f"orig-{slug}.png"
@@ -335,36 +392,65 @@ def main():
                 "original": str(orig) if orig.exists() else None,
                 "replica": str(repl) if repl.exists() else None,
             }
+        missing_pages = missing_capture_pages(captures)
+        if missing_pages:
+            print(f"\nValidation aborted: missing screenshots for {', '.join(missing_pages)}")
+            return 2
+        desktop_scores = score_all_pages(captures)
+        avgs = {"desktop": average_score(desktop_scores)}
     else:
         print(f"Capturing screenshots (base: {args.base_url})...")
-        captures = capture_all_pages(args.base_url, pages, skip_originals=args.skip_originals, headed=args.headed)
+        avgs: dict[str, float] = {}
+        desktop_scores: dict = {}
+        for viewport in VIEWPORTS:
+            print(f"\n=== Viewport: {viewport['name']} ({viewport['width']}x{viewport['height']}) ===")
+            vp_scores = run_viewport_validation(
+                args.base_url, pages, viewport,
+                skip_originals=args.skip_originals, headed=args.headed,
+            )
+            avgs[viewport["name"]] = average_score(vp_scores)
+            if viewport["name"] == "desktop":
+                desktop_scores = vp_scores
 
-    missing_pages = missing_capture_pages(captures)
-    if missing_pages:
-        print(f"\nValidation aborted: missing screenshots for {', '.join(missing_pages)}")
-        return 2
+    scores = desktop_scores
 
-    print("\n=== Scoring ===")
-    scores = score_all_pages(captures)
-
+    print("\n=== Scoring (desktop) ===")
     for slug, score in sorted(scores.items(), key=lambda x: x[1].get("close", 0)):
         status = "PASS" if score.get("close", 0) >= args.target else "FAIL"
         print(f"  {slug:20s}  {score.get('close', 0):5.1f}%  [{status}]")
 
-    avg = round(sum(s.get("close", 0) for s in scores.values()) / len(scores), 1)
+    avg = avgs.get("desktop", 0.0)
     print(f"\n  {'AVERAGE':20s}  {avg:5.1f}%")
+    for name in ("desktop", "tablet", "mobile"):
+        if name in avgs:
+            print(f"  {name + '_avg':20s}  {avgs[name]:5.1f}%")
 
-    # Write manifest
+    # Write manifest (desktop scores; manifest references orig-<slug>.png paths)
     manifest = build_improvement_manifest(scores, target=args.target)
     MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(MANIFEST_PATH, "w") as f:
         json.dump(manifest, f, indent=2)
     print(f"\nManifest: {MANIFEST_PATH}")
 
-    # Update report
-    update_validation_report(scores)
+    # Update report with every viewport average.
+    update_validation_report(avgs, desktop_scores)
     if (BRANDS_DIR / "metadata.json").exists():
         sync_metadata_with_report(BRANDS_DIR / "metadata.json", REPORT_PATH)
+
+    # Additive: run the EVAL rubric and write rubric-report.json alongside
+    # the legacy report. Failure here MUST NOT block the legacy pipeline.
+    try:
+        import eval_rubric  # noqa: WPS433  (defer import — keeps legacy path clean)
+        ctx = eval_rubric.load_brand_context(args.brand, base_url=args.base_url)
+        rubric_report = eval_rubric.run_rubric(ctx)
+        rubric_path = BRANDS_DIR / "validation" / "rubric-report.json"
+        rubric_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(rubric_path, "w") as f:
+            json.dump(rubric_report.to_dict(), f, indent=2)
+        print(f"Rubric: {rubric_path}  (overall={rubric_report.overall_status} "
+              f"weighted_total={rubric_report.weighted_total:.3f})")
+    except Exception as exc:  # noqa: BLE001
+        print(f"Rubric run failed (non-fatal): {type(exc).__name__}: {exc}")
 
     # Summary
     if manifest["pages_needing_work"]:
