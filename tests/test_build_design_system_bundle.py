@@ -374,3 +374,80 @@ def test_tailwind_v4_css_skips_undeclared_bindings():
     assert "--color-bg: var(--bg);" in css
     assert "--color-surface" not in css  # --surface not declared → omitted
 
+
+# ── 3.5 DESIGN.md (canonical 9 sections) + USAGE + preview ────────────────────
+
+CANONICAL = [
+    "Visual Theme & Atmosphere", "Color", "Typography", "Spacing",
+    "Layout & Composition", "Components", "Motion & Interaction",
+    "Voice & Brand", "Anti-patterns",
+]
+
+
+def _build_design_md(brand_root, measured=None):
+    bds.build(brand_root, out_dir=brand_root.parent / "out",
+              measured=measured or _measured(**{"--bg": "#ffffff", "--accent": "#FF4400"}))
+    return (brand_root.parent / "out" / "DESIGN.md").read_text()
+
+
+def test_design_md_has_nine_numbered_headings_in_canonical_order(brand_root):
+    md = _build_design_md(brand_root)
+    positions = []
+    for i, title in enumerate(CANONICAL, start=1):
+        heading = f"## {i}. {title}"
+        assert heading in md, f"missing canonical heading {heading!r}"
+        positions.append(md.index(heading))
+    assert positions == sorted(positions), "canonical headings out of order"
+
+
+def test_design_md_has_root_css_block(brand_root):
+    md = _build_design_md(brand_root)
+    assert ":root {" in md or ":root{" in md
+    assert "[data-theme=\"dark\"]" in md
+
+
+def test_design_md_has_font_labels(brand_root):
+    md = _build_design_md(brand_root)
+    assert "Display:" in md
+    assert "Body:" in md
+    assert "Mono:" in md
+
+
+def test_design_md_has_no_frontmatter(brand_root):
+    md = _build_design_md(brand_root)
+    assert not md.startswith("---")
+    assert md.startswith("# ")
+
+
+def test_design_md_has_category_and_h1(brand_root):
+    md = _build_design_md(brand_root)
+    assert md.startswith("# Acme")
+    assert "> Category:" in md
+
+
+def test_design_md_round_trips_through_check_export(brand_root):
+    md = _build_design_md(brand_root)
+    problems = bds._eod.check_export(md, "Acme")
+    assert problems == [], problems
+    parsed = bds._eod.parse_open_design_md(md)
+    assert parsed["title"] == "Acme"
+    assert len(parsed["swatches"]) == 4
+
+
+def test_usage_md_is_agent_router(brand_root):
+    bds.build(brand_root, out_dir=brand_root.parent / "out")
+    usage = (brand_root.parent / "out" / "USAGE.md").read_text()
+    assert usage.startswith("# ")
+    assert "DESIGN.md" in usage
+    assert "tokens.css" in usage
+
+
+def test_preview_pages_reference_tokens(brand_root):
+    bds.build(brand_root, out_dir=brand_root.parent / "out")
+    colors = (brand_root.parent / "out" / "preview" / "colors.html").read_text()
+    typo = (brand_root.parent / "out" / "preview" / "typography.html").read_text()
+    spacing = (brand_root.parent / "out" / "preview" / "spacing.html").read_text()
+    assert "var(--bg)" in colors or "--bg" in colors
+    assert "var(--font-display)" in typo or "--font-display" in typo
+    assert "var(--space-" in spacing or "--space-" in spacing
+

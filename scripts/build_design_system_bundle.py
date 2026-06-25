@@ -961,24 +961,182 @@ def _render_components_html(data: dict, measured) -> str:
     )
 
 
-def render_design_md(data: dict, measured) -> str:  # 3.5
-    return _eod.render_design_md(data)
+def render_design_md(data: dict, measured) -> str:
+    """DESIGN.md with the 9 canonical numbered headings, a ``:root{}`` token
+    block, the ``Display:/Body:/Mono:`` catalog labels, and the dark-mode
+    override pattern. Reuses the WS prose renderers from ``export_open_design``.
+    """
+    palette = _eod.derive_palette(data)
+    category = _eod.derive_category(data)
+    name = data.get("name") or (data.get("slug") or "brand").replace("-", " ").title()
+    summary = _eod.render_summary(data, palette)
+
+    root_block = _root_block_for_md(measured)
+    parts = [f"# {name}", "", f"> Category: {category}", f"> {summary}", ""]
+
+    parts += [f"## 1. {CANONICAL_SECTIONS[0]}", "", _eod._render_theme(data), ""]
+    parts += [f"## 2. {CANONICAL_SECTIONS[1]}", "", _eod._render_palette(palette), "",
+              "Token roots (measured value, else OD A2 fallback):", "", "```css",
+              root_block, "```", ""]
+    parts += [f"## 3. {CANONICAL_SECTIONS[2]}", "", _eod._render_typography(data), "",
+              "Font labels for catalog extraction:", "",
+              f"Display: {_font_label(measured, '--font-display')}",
+              f"Body: {_font_label(measured, '--font-body')}",
+              f"Mono: {_font_label(measured, '--font-mono')}", ""]
+    parts += [f"## 4. {CANONICAL_SECTIONS[3]}", "", _render_spacing_section(measured), ""]
+    parts += [f"## 5. {CANONICAL_SECTIONS[4]}", "", _eod._render_layout(data), ""]
+    parts += [f"## 6. {CANONICAL_SECTIONS[5]}", "", _eod._render_components(data), ""]
+    parts += [f"## 7. {CANONICAL_SECTIONS[6]}", "", _render_motion_section(measured), ""]
+    parts += [f"## 8. {CANONICAL_SECTIONS[7]}", "", _render_voice_section(data, palette), ""]
+    parts += [f"## 9. {CANONICAL_SECTIONS[8]}", "", _render_antipatterns_section(data, palette), ""]
+    return "\n".join(parts).rstrip() + "\n"
 
 
-def render_usage_md(slug: str, data: dict, measured) -> str:  # 3.5
-    return f"# Usage\n\nOpen-Design design-system bundle for `{slug}`.\n"
+CANONICAL_SECTIONS = [
+    "Visual Theme & Atmosphere", "Color", "Typography", "Spacing",
+    "Layout & Composition", "Components", "Motion & Interaction",
+    "Voice & Brand", "Anti-patterns",
+]
 
 
-def render_preview_colors(measured) -> str:  # 3.5
-    return "<!doctype html>\n<title>colors stub</title>\n"
+def _root_block_for_md(measured) -> str:
+    """The full ``tokens.css`` (``:root`` + ``[data-theme="dark"]``) so DESIGN.md
+    carries the required dark-mode override pattern alongside the token roots."""
+    return render_tokens_css(measured).rstrip()
 
 
-def render_preview_typography(measured) -> str:  # 3.5
-    return "<!doctype html>\n<title>typography stub</title>\n"
+def _font_label(measured, name: str) -> str:
+    return token_value(measured, name) or _A1_IDENTITY_DEFAULTS.get(name, "")
 
 
-def render_preview_spacing(measured) -> str:  # 3.5
-    return "<!doctype html>\n<title>spacing stub</title>\n"
+def _render_spacing_section(measured) -> str:
+    rows = ["| Token | Value |", "|-------|-------|"]
+    for n in ("--space-1", "--space-2", "--space-3", "--space-4",
+              "--space-5", "--space-6", "--space-8", "--space-12"):
+        rows.append(f"| `{n}` | `{token_value(measured, n)}` |")
+    rows.append("")
+    rows.append("Section rhythm: "
+                f"desktop `{token_value(measured, '--section-y-desktop')}`, "
+                f"tablet `{token_value(measured, '--section-y-tablet')}`, "
+                f"phone `{token_value(measured, '--section-y-phone')}`.")
+    return "\n".join(rows)
+
+
+def _render_motion_section(measured) -> str:
+    lines = [
+        f"- Fast duration: `{token_value(measured, '--motion-fast')}`",
+        f"- Base duration: `{token_value(measured, '--motion-base')}`",
+        f"- Standard easing: `{token_value(measured, '--ease-standard')}`",
+    ]
+    return "\n".join(lines)
+
+
+def _render_voice_section(data: dict, palette) -> str:
+    phil = _eod._philosophy_line(data)
+    if phil:
+        return phil
+    accent = next((v for n, v, _ in palette if n.lower() in ("primary", "accent")), None)
+    if accent:
+        return f"Brand voice is anchored by the primary accent `{accent}`. " \
+               "Keep copy direct and grounded in the measured visual identity."
+    return "Voice narrative was not captured; rely on the measured palette and typography."
+
+
+def _render_antipatterns_section(data: dict, palette) -> str:
+    _dos, donts = _eod._split_dos_donts(data)
+    if donts:
+        return "\n".join(f"- {d}" for d in donts)
+    return ("- Do not introduce colours outside the documented palette.\n"
+            "- Do not use the display font for body copy or vice versa.\n"
+            "- Do not invent hex values, fonts, or shadows absent from the token roots.")
+
+
+# ── USAGE.md ──────────────────────────────────────────────────────────────────
+
+def render_usage_md(slug: str, data: dict, measured) -> str:
+    name = data.get("name") or slug
+    return (
+        f"# {name} — Open-Design usage router\n\n"
+        f"This folder is an `od-design-system-project/v1` bundle. Read it in this order:\n\n"
+        "1. **`DESIGN.md`** — the prose source for agent prompts (9 canonical sections).\n"
+        "2. **`tokens.css`** — every `TOKEN_SCHEMA` token with a measured value or OD fallback.\n"
+        "3. **`design-tokens.json`** — typed token report (`od-design-tokens/v1`) with confidence.\n"
+        "4. **`components.html`** — token-only component fixture (every value is a `var()` ref).\n"
+        "5. **`components.manifest.json`** — rebuilt component inventory (schemaVersion 1).\n"
+        "6. **`tailwind-v4.css`** — `@theme` bindings derived from `tokens.css`.\n"
+        "7. **`preview/`** — static color/typography/spacing preview pages.\n\n"
+        "## When to use\n\n"
+        f"- Apply this bundle when the user asks for the **{name}** brand look.\n"
+        "- Paste `tokens.css` `:root` into any artifact so `var(--token)` resolves.\n"
+        "- Prefer measured values (HIGH/MED confidence in `design-tokens.json`) over fallbacks.\n\n"
+        "## Quick token reference\n\n"
+        f"- Background: `var(--bg)` = `{token_value(measured, '--bg')}`\n"
+        f"- Surface: `var(--surface)` = `{token_value(measured, '--surface')}`\n"
+        f"- Text: `var(--fg)` = `{token_value(measured, '--fg')}`\n"
+        f"- Accent: `var(--accent)` = `{token_value(measured, '--accent')}`\n"
+        f"- Border: `var(--border)` = `{token_value(measured, '--border')}`\n"
+        f"- Body font: `var(--font-body)` = `{token_value(measured, '--font-body')}`\n"
+        f"- Container: `var(--container-max)` = `{token_value(measured, '--container-max')}`\n"
+    )
+
+
+# ── Preview pages ─────────────────────────────────────────────────────────────
+
+def _preview_shell(title: str, root_block: str, body: str) -> str:
+    return (
+        "<!doctype html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '  <meta charset="utf-8">\n'
+        f"  <title>{title}</title>\n"
+        "  <style>\n"
+        f"{root_block}\n"
+        "    body { margin: 0; padding: var(--space-6); background: var(--bg); "
+        "color: var(--fg); font-family: var(--font-body); }\n"
+        "    h1 { font-family: var(--font-display); }\n"
+        "  </style>\n"
+        "</head>\n"
+        "<body>\n"
+        f"{body}\n"
+        "</body>\n"
+        "</html>\n"
+    )
+
+
+def render_preview_colors(measured) -> str:
+    swatches = []
+    for label, token in [("Background", "--bg"), ("Surface", "--surface"),
+                         ("Foreground", "--fg"), ("Muted", "--muted"),
+                         ("Border", "--border"), ("Accent", "--accent"),
+                         ("Success", "--success"), ("Warn", "--warn"), ("Danger", "--danger")]:
+        swatches.append(
+            f'    <div style="background: var({token}); color: var(--accent-on); '
+            f'padding: var(--space-4); border-radius: var(--radius-md); '
+            f'box-shadow: var(--elev-ring);">{label}<br><code>var({token})</code></div>'
+        )
+    body = "  <h1>Colors</h1>\n  <div style=\"display:grid;gap:var(--space-3);grid-template-columns:repeat(3,1fr);\">\n" + "\n".join(swatches) + "\n  </div>"
+    return _preview_shell("Colors", _root_block_for_md(measured), body)
+
+
+def render_preview_typography(measured) -> str:
+    sizes = ["--text-xs", "--text-sm", "--text-base", "--text-lg", "--text-xl",
+             "--text-2xl", "--text-3xl", "--text-4xl"]
+    rows = [f'    <p style="font-size: var({s}); font-family: var(--font-display);">The quick brown fox — <code>var({s})</code></p>'
+            for s in sizes]
+    body = "  <h1>Typography</h1>\n" + "\n".join(rows)
+    body += '\n  <p style="font-family: var(--font-mono);">Mono: var(--font-mono)</p>'
+    return _preview_shell("Typography", _root_block_for_md(measured), body)
+
+
+def render_preview_spacing(measured) -> str:
+    bars = []
+    for s in ("--space-1", "--space-2", "--space-3", "--space-4", "--space-5", "--space-6", "--space-8", "--space-12"):
+        bars.append(
+            f'    <div><code>var({s})</code> = <code>{token_value(measured, s)}</code></div>'
+            f'    <div style="background: var(--accent); height: var(--space-3); width: var({s}); border-radius: var(--radius-pill);"></div>'
+        )
+    body = "  <h1>Spacing</h1>\n  <div style=\"display:grid;gap:var(--space-2);\">\n" + "\n".join(bars) + "\n  </div>"
+    return _preview_shell("Spacing", _root_block_for_md(measured), body)
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
