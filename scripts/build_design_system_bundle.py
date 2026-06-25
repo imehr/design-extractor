@@ -971,7 +971,11 @@ def render_design_md(data: dict, measured) -> str:
     name = data.get("name") or (data.get("slug") or "brand").replace("-", " ").title()
     summary = _eod.render_summary(data, palette)
 
-    root_block = _root_block_for_md(measured)
+    # The prose :root reflects the real brand: measured identity colors, else
+    # palette-derived values (never the generic A1 placeholder hexes that would
+    # otherwise pollute the daemon's swatch extraction).
+    md_measured = _enrich_measured_from_palette(measured, palette)
+    root_block = _root_block_for_md(md_measured)
     parts = [f"# {name}", "", f"> Category: {category}", f"> {summary}", ""]
 
     parts += [f"## 1. {CANONICAL_SECTIONS[0]}", "", _eod._render_theme(data), ""]
@@ -980,16 +984,41 @@ def render_design_md(data: dict, measured) -> str:
               root_block, "```", ""]
     parts += [f"## 3. {CANONICAL_SECTIONS[2]}", "", _eod._render_typography(data), "",
               "Font labels for catalog extraction:", "",
-              f"Display: {_font_label(measured, '--font-display')}",
-              f"Body: {_font_label(measured, '--font-body')}",
-              f"Mono: {_font_label(measured, '--font-mono')}", ""]
-    parts += [f"## 4. {CANONICAL_SECTIONS[3]}", "", _render_spacing_section(measured), ""]
+              f"Display: {_font_label(md_measured, '--font-display')}",
+              f"Body: {_font_label(md_measured, '--font-body')}",
+              f"Mono: {_font_label(md_measured, '--font-mono')}", ""]
+    parts += [f"## 4. {CANONICAL_SECTIONS[3]}", "", _render_spacing_section(md_measured), ""]
     parts += [f"## 5. {CANONICAL_SECTIONS[4]}", "", _eod._render_layout(data), ""]
     parts += [f"## 6. {CANONICAL_SECTIONS[5]}", "", _eod._render_components(data), ""]
-    parts += [f"## 7. {CANONICAL_SECTIONS[6]}", "", _render_motion_section(measured), ""]
+    parts += [f"## 7. {CANONICAL_SECTIONS[6]}", "", _render_motion_section(md_measured), ""]
     parts += [f"## 8. {CANONICAL_SECTIONS[7]}", "", _render_voice_section(data, palette), ""]
     parts += [f"## 9. {CANONICAL_SECTIONS[8]}", "", _render_antipatterns_section(data, palette), ""]
     return "\n".join(parts).rstrip() + "\n"
+
+
+def _enrich_measured_from_palette(measured, palette):
+    """Return a MeasuredTokens copy where unmeasured A1 identity colors are
+    filled from the derived palette so the DESIGN.md ``:root`` carries the real
+    brand colors instead of generic placeholder hexes."""
+    enriched = dict(measured.to_dict())
+    pal = {n.lower(): v for n, v, _ in palette}
+    palette_map = {
+        "--bg": ["background", "page background", "canvas", "surface"],
+        "--surface": ["muted surface", "surface", "background"],
+        "--fg": ["text", "foreground", "ink"],
+        "--muted": ["muted", "secondary"],
+        "--border": ["border", "divider"],
+        "--accent": ["primary", "accent", "brand"],
+    }
+    for token, names in palette_map.items():
+        if measured.value(token):
+            continue
+        for nm in names:
+            if nm in pal:
+                enriched[token] = {"value": pal[nm], "sources": ["palette"],
+                                   "confidence": "DERIVED", "count": 1}
+                break
+    return MeasuredTokens(enriched)
 
 
 CANONICAL_SECTIONS = [
@@ -1043,12 +1072,9 @@ def _render_voice_section(data: dict, palette) -> str:
 
 
 def _render_antipatterns_section(data: dict, palette) -> str:
-    _dos, donts = _eod._split_dos_donts(data)
-    if donts:
-        return "\n".join(f"- {d}" for d in donts)
-    return ("- Do not introduce colours outside the documented palette.\n"
-            "- Do not use the display font for body copy or vice versa.\n"
-            "- Do not invent hex values, fonts, or shadows absent from the token roots.")
+    # Do/Don't pairs belong with anti-patterns; reuse the full ✅/❌ renderer so
+    # the guidance survives verbatim.
+    return _eod._render_dos_donts(data, palette)
 
 
 # ── USAGE.md ──────────────────────────────────────────────────────────────────
