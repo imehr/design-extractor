@@ -6,30 +6,36 @@ Runs the complete extraction pipeline from a single command:
     python3 scripts/extract_brand.py --url https://example.com
 
 Phases:
-  0. Setup directories
-  1. Verify URL is reachable
-  2. Identify 5+ pages via nav link extraction
-  3. Extract DOM content + measurements from each page
-  4. Download assets (images, fonts, SVGs, CSS backgrounds)
-  5. Build React/shadcn replicas via claude --print
-  6. Validate replicas via screenshot comparison
-  7. Publish design tokens, DESIGN.md, SKILL.md
-  8. Register brand in the library index
-  9. Final verification of all artifacts
+  0.   Setup directories
+  1.   Verify URL is reachable
+  2.   Identify 5+ pages via nav link extraction
+  3.   Extract DOM content + measurements from each page
+  4.   Download assets (images, fonts, SVGs, CSS backgrounds)
+  4.5  Mirror original pages offline (mirror_original_pages.py)
+  5.   Build React/shadcn replicas via claude --print
+  6.   Validate replicas via screenshot comparison
+  6.5  Generate standalone HTML replicas (generate_html_replicas.py)
+  7.   Publish design tokens, DESIGN.md, SKILL.md
+  7.5  Export open-design format (export_open_design.py)
+  8.   Register brand in the library index
+  9.   Final verification of all artifacts
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import time
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -67,10 +73,109 @@ MIN_PAGES = 5
 AGENT_BROWSER = "agent-browser"
 DOM_EXTRACT_TIMEOUT = 45
 SCREENSHOT_TIMEOUT = 20
-CLAUDE_TIMEOUT = 1500  # 25 min per replica-build pass (split into 2 passes)
+DOM_OPEN_RETRIES = 3  # Retry transient agent-browser open failures per page.
+MIN_SUCCESSFUL_PAGES = 1  # Homepage alone is enough to keep going; below this we abort.
+MODEL_SETTINGS_PATH = LIBRARY_ROOT / "settings" / "model-providers.json"
+MODEL_RUNNER_TIMEOUT = 1500  # 25 min per replica-build pass
+VALIDATION_TIMEOUT = 1500  # Full 5-10 page packages, both viewports, can exceed 15 min.
+MIRROR_TIMEOUT = 900  # Offline mirror downloads every CSS/font/image per page.
+HTML_REPLICA_TIMEOUT = 900  # Token-styled HTML replicas + agent-browser verify screenshots.
+OPEN_DESIGN_EXPORT_TIMEOUT = 300  # Pure file emit + parser round-trip check.
+DEFAULT_REPLICA_BATCH_SIZE = 8
+DEFAULT_MODEL_RUNNERS = {
+    "claude-code": {
+        "id": "claude-code",
+        "type": "claude-code",
+        "label": "Claude Code",
+        "enabled": True,
+        "command": "claude",
+        "model": "sonnet",
+        "permission_mode": "bypassPermissions",
+        "allowed_tools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep"],
+    },
+    "codex": {
+        "id": "codex",
+        "type": "codex",
+        "label": "Codex",
+        "enabled": False,
+        "command": "codex",
+        "model": "gpt-5.5",
+        "permission_mode": "never",
+        "allowed_tools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep"],
+    },
+    "cursor": {
+        "id": "cursor",
+        "type": "cursor",
+        "label": "Cursor Agent",
+        "enabled": False,
+        "command": "cursor",
+        "model": "gpt-5",
+        "permission_mode": "force",
+        "allowed_tools": ["read", "edit", "bash"],
+    },
+    "kimi": {
+        "id": "kimi",
+        "type": "kimi",
+        "label": "Kimi Code",
+        "enabled": False,
+        "command": "kimi",
+        "model": "kimi-code/kimi-for-coding",
+        "permission_mode": "yolo",
+        "allowed_tools": ["read", "edit", "bash"],
+    },
+    "minimax": {
+        "id": "minimax",
+        "type": "minimax",
+        "label": "MiniMax",
+        "enabled": False,
+        "command": "codex",
+        "model": "codex-MiniMax-M2.1",
+        "permission_mode": "never",
+        "profile": "m21",
+        "allowed_tools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep"],
+    },
+    "opencode": {
+        "id": "opencode",
+        "type": "opencode",
+        "label": "OpenCode",
+        "enabled": False,
+        "command": "opencode",
+        "model": "opencode/big-pickle",
+        "permission_mode": "dangerously-skip-permissions",
+        "allowed_tools": ["read", "edit", "bash"],
+    },
+    "gemini": {
+        "id": "gemini",
+        "type": "gemini",
+        "label": "Gemini CLI",
+        "enabled": True,
+        "command": "gemini",
+        "model": "default",
+        "permission_mode": "yolo",
+        "allowed_tools": [],
+    },
+    "ollama": {
+        "id": "ollama",
+        "type": "ollama",
+        "label": "Ollama",
+        "enabled": True,
+        "command": "codex",
+        "model": "qwen3.5:35b-a3b",
+        "permission_mode": "never",
+        "local_provider": "ollama",
+        "allowed_tools": ["Read", "Write", "Edit", "Bash", "Glob", "Grep"],
+    },
+}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────
+
+def dev_server_base_url() -> str:
+    return (
+        os.environ.get("DESIGN_EXTRACTOR_BASE_URL")
+        or os.environ.get("PORTLESS_URL")
+        or "http://localhost:5173"
+    ).rstrip("/")
 
 def parse_eval_json(stdout: str):
     """Parse JSON from agent-browser eval output, handling double-quoting."""
@@ -107,24 +212,298 @@ def run_cmd(
     capture: bool = True,
     cwd: str | Path | None = None,
     check: bool = False,
+    timeout_ok: bool = False,
 ) -> subprocess.CompletedProcess:
-    """Run a subprocess with timeout. Returns CompletedProcess."""
+    """Run a subprocess with timeout. Returns CompletedProcess.
+
+    By default a timeout raises RuntimeError (callers must handle it). Pass
+    timeout_ok=True for best-effort steps (e.g. validation that already wrote
+    its report) so a slow run returns the partial output instead of aborting
+    the whole pipeline.
+
+    The child is launched in its own session (process group) so that on timeout
+    we can SIGKILL the *entire* tree — including any headless Chrome that a tool
+    like agent-browser spawned. The standard subprocess.run() only kills the
+    direct child and then drains its pipes with an unbounded wait, which
+    deadlocks forever if a surviving grandchild still holds the pipe write end.
+    The post-kill drain here is bounded, so a timeout can never wedge the run.
+    """
+    pipe = subprocess.PIPE if capture else None
     try:
-        result = subprocess.run(
+        proc = subprocess.Popen(
             cmd,
-            capture_output=capture,
+            stdout=pipe,
+            stderr=pipe,
             text=True,
-            timeout=timeout,
-            cwd=cwd,
+            cwd=str(cwd) if cwd is not None else None,
+            start_new_session=True,
         )
-        if check and result.returncode != 0:
-            stderr = (result.stderr or "").strip()
-            raise RuntimeError(f"Command failed ({result.returncode}): {' '.join(cmd)}\n{stderr}")
-        return result
-    except subprocess.TimeoutExpired:
-        raise RuntimeError(f"Command timed out after {timeout}s: {' '.join(cmd)}")
     except FileNotFoundError:
         raise RuntimeError(f"Command not found: {cmd[0]}")
+
+    try:
+        stdout, stderr = proc.communicate(timeout=timeout)
+        result = subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
+        if check and result.returncode != 0:
+            stderr_txt = (result.stderr or "").strip()
+            raise RuntimeError(f"Command failed ({result.returncode}): {' '.join(cmd)}\n{stderr_txt}")
+        return result
+    except subprocess.TimeoutExpired:
+        _kill_proc_tree(proc)
+        try:
+            stdout, stderr = proc.communicate(timeout=10)
+        except subprocess.TimeoutExpired:
+            for stream in (proc.stdout, proc.stderr):
+                try:
+                    if stream is not None:
+                        stream.close()
+                except OSError:
+                    pass
+            stdout, stderr = "", ""
+        if timeout_ok:
+            return subprocess.CompletedProcess(cmd, returncode=-1, stdout=stdout or "", stderr=stderr or "")
+        raise RuntimeError(f"Command timed out after {timeout}s: {' '.join(cmd)}")
+
+
+def _kill_proc_tree(proc: subprocess.Popen) -> None:
+    """SIGKILL the child's whole process group, falling back to the child."""
+    try:
+        os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        try:
+            proc.kill()
+        except ProcessLookupError:
+            pass
+
+
+def _default_runner_for(provider_id: str) -> dict:
+    default = DEFAULT_MODEL_RUNNERS.get(provider_id, {})
+    return {
+        "id": default.get("id", provider_id),
+        "type": default.get("type", provider_id),
+        "label": default.get("label", provider_id.replace("-", " ").title()),
+        "enabled": default.get("enabled", True),
+        "command": default.get("command"),
+        "model": default.get("model", "default"),
+        "permission_mode": default.get("permission_mode"),
+        "allowed_tools": list(default.get("allowed_tools", [])),
+    }
+
+
+def _merge_runner(provider_id: str, configured: dict | None) -> dict:
+    runner = _default_runner_for(provider_id)
+    configured = configured or {}
+    for key in ("id", "type", "label", "command", "model", "permission_mode", "profile", "local_provider"):
+        value = configured.get(key)
+        if isinstance(value, str) and value.strip():
+            runner[key] = value.strip()
+    if isinstance(configured.get("enabled"), bool):
+        runner["enabled"] = configured["enabled"]
+    if isinstance(configured.get("allowed_tools"), list):
+        runner["allowed_tools"] = [
+            str(item).strip()
+            for item in configured["allowed_tools"]
+            if str(item).strip()
+        ]
+    return runner
+
+
+def load_model_runner() -> dict:
+    """Resolve the active task runner from the same settings file used by the UI."""
+    raw: dict = {}
+    try:
+        if MODEL_SETTINGS_PATH.exists():
+            raw = json.loads(MODEL_SETTINGS_PATH.read_text())
+    except json.JSONDecodeError as exc:
+        fail(f"Model provider settings are invalid JSON: {MODEL_SETTINGS_PATH} ({exc})")
+
+    providers = raw.get("providers") if isinstance(raw.get("providers"), dict) else {}
+    env_provider = os.environ.get("DESIGN_EXTRACTOR_PROVIDER", "").strip()
+    active_provider = env_provider or str(raw.get("active_provider") or "claude-code")
+    runner = _merge_runner(active_provider, providers.get(active_provider))
+    if env_provider:
+        # An explicit env override comes from the orchestrating server (e.g.
+        # BYOK execution mode routing); it outranks the settings-file enabled
+        # flag, which only governs the legacy active_provider picker.
+        runner["enabled"] = True
+
+    env_model = os.environ.get("DESIGN_EXTRACTOR_MODEL", "").strip()
+    if env_model:
+        runner["model"] = env_model
+    if runner.get("type") == "kimi":
+        _normalize_kimi_model_from_cli_config(runner)
+
+    if not runner.get("enabled", False):
+        fail(
+            f"Selected task runner is disabled: {runner['label']} ({runner['id']}). "
+            f"Enable it in {MODEL_SETTINGS_PATH} or choose another provider."
+        )
+    command = runner.get("command")
+    if not command:
+        fail(f"Selected task runner has no command configured: {runner['label']} ({runner['id']})")
+    if shutil.which(command) is None:
+        fail(f"Selected task runner command was not found on PATH: {command}")
+
+    return runner
+
+
+def _normalize_kimi_model_from_cli_config(runner: dict) -> None:
+    """Use a Kimi CLI model key that exists in ~/.kimi/config.toml."""
+    config_path = Path.home() / ".kimi" / "config.toml"
+    try:
+        config_text = config_path.read_text()
+    except OSError:
+        return
+
+    configured_models = set(re.findall(r'^\[models\."([^"]+)"\]', config_text, flags=re.M))
+    if not configured_models:
+        return
+
+    selected_model = str(runner.get("model") or "").strip()
+    if selected_model in configured_models:
+        return
+
+    default_match = re.search(r'^default_model\s*=\s*"([^"]+)"', config_text, flags=re.M)
+    default_model = default_match.group(1) if default_match else next(iter(configured_models))
+    warn(
+        f"Kimi model '{selected_model}' is not registered in {config_path}; "
+        f"using Kimi CLI default '{default_model}' instead."
+    )
+    runner["model"] = default_model
+
+
+def model_runner_label(runner: dict) -> str:
+    model = runner.get("model") or "default"
+    return f"{runner.get('label', runner.get('id'))} · {model}"
+
+
+def build_model_runner_command(prompt: str, runner: dict) -> list[str]:
+    """Build a non-interactive command for the configured model task runner."""
+    command = str(runner["command"])
+    runner_type = str(runner.get("type") or runner.get("id") or "")
+    model = str(runner.get("model") or "").strip()
+
+    if runner_type == "claude-code":
+        args = [command, "--print", "-p", prompt, "--output-format", "text"]
+        if model and model != "default":
+            args[1:1] = ["--model", model]
+        permission_mode = runner.get("permission_mode")
+        if permission_mode:
+            args.extend(["--permission-mode", str(permission_mode)])
+        allowed_tools = runner.get("allowed_tools") or []
+        if allowed_tools:
+            args.extend(["--allowedTools", ",".join(allowed_tools)])
+        return args
+
+    if runner_type == "kimi":
+        args = [
+            command,
+            "--work-dir",
+            str(PLUGIN_DIR),
+            "--print",
+            "--final-message-only",
+            "--output-format",
+            "text",
+        ]
+        if model and model != "default":
+            args.extend(["--model", model])
+        args.extend(["--prompt", prompt])
+        return args
+
+    if runner_type == "codex":
+        args = [command, "exec", "--cd", str(PLUGIN_DIR), "--dangerously-bypass-approvals-and-sandbox"]
+        if model and model != "default":
+            args.extend(["--model", model])
+        args.append(prompt)
+        return args
+
+    if runner_type == "ollama":
+        args = [
+            command,
+            "exec",
+            "--cd",
+            str(PLUGIN_DIR),
+            "--oss",
+            "--local-provider",
+            str(runner.get("local_provider") or "ollama"),
+            "--dangerously-bypass-approvals-and-sandbox",
+        ]
+        if model and model != "default":
+            args.extend(["--model", model])
+        args.append(prompt)
+        return args
+
+    if runner_type == "cursor":
+        args = [
+            command,
+            "agent",
+            "--print",
+            "--output-format",
+            "text",
+            "--force",
+            "--trust",
+            "--workspace",
+            str(PLUGIN_DIR),
+        ]
+        if model and model != "default":
+            args.extend(["--model", model])
+        args.append(prompt)
+        return args
+
+    if runner_type == "minimax":
+        args = [
+            command,
+            "exec",
+            "--cd",
+            str(PLUGIN_DIR),
+            "--profile",
+            str(runner.get("profile") or "m21"),
+            "--dangerously-bypass-approvals-and-sandbox",
+        ]
+        if model and model != "default":
+            args.extend(["--model", model])
+        args.append(prompt)
+        return args
+
+    if runner_type == "opencode":
+        args = [
+            command,
+            "run",
+            "--dir",
+            str(PLUGIN_DIR),
+            "--dangerously-skip-permissions",
+            "--format",
+            "default",
+        ]
+        if model and model != "default":
+            args.extend(["--model", model])
+        args.append(prompt)
+        return args
+
+    if runner_type == "gemini":
+        # Gemini CLI has no --cd flag; run_cmd already sets cwd=PLUGIN_DIR.
+        args = [
+            command,
+            "--approval-mode",
+            str(runner.get("permission_mode") or "yolo"),
+            "-p",
+            prompt,
+        ]
+        if model and model != "default":
+            args.extend(["--model", model])
+        return args
+
+    fail(f"Replica generation is not wired for {runner.get('label')} ({runner_type}).")
+
+
+def short_session_name(prefix: str, *parts: str, max_len: int = 44) -> str:
+    """Create an agent-browser session name that stays under socket path limits."""
+    raw = "-".join(str(part) for part in parts if str(part))
+    clean = re.sub(r"[^a-zA-Z0-9-]+", "-", raw).strip("-").lower()
+    digest = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:8] if raw else "session"
+    room = max(0, max_len - len(prefix) - len(digest) - 2)
+    stem = clean[:room].strip("-")
+    return f"{prefix}-{stem}-{digest}" if stem else f"{prefix}-{digest}"
 
 
 def agent_browser_cmd(args: list[str], session: str, headed: bool = False) -> list[str]:
@@ -135,7 +514,34 @@ def agent_browser_cmd(args: list[str], session: str, headed: bool = False) -> li
     return cmd
 
 
-def phase_banner(phase_num: int, title: str, detail: str = "") -> None:
+def close_agent_browser_session(session: str) -> None:
+    """Close an agent-browser session so repair/extraction does not leak browser daemons."""
+    try:
+        run_cmd(agent_browser_cmd(["close"], session=session), timeout=8, check=False)
+    except Exception as e:
+        warn(f"Could not close browser session {session}: {e}")
+
+
+def close_agent_browser_session_after(session_name):
+    """Decorator for extraction functions that own a named agent-browser session."""
+    def decorator(func):
+        def wrapped(*args, **kwargs):
+            session = session_name(*args, **kwargs)
+            try:
+                return func(*args, **kwargs)
+            finally:
+                close_agent_browser_session(session)
+        return wrapped
+    return decorator
+
+
+def dom_extract_session_name(*args, **kwargs) -> str:
+    page_slug = kwargs.get("page_slug", args[0] if len(args) > 0 else "page")
+    slug = kwargs.get("slug", args[2] if len(args) > 2 else "brand")
+    return short_session_name("dom", slug, page_slug)
+
+
+def phase_banner(phase_num: int | float | str, title: str, detail: str = "") -> None:
     """Print a visually distinct phase banner. Falls back to plain text if rich is missing."""
     if _RICH:
         body = Text()
@@ -193,6 +599,254 @@ def assert_exists(path: Path, description: str) -> None:
         fail(f"{description} not found: {path}")
 
 
+# ── Raw CSS parsing (pure — unit tested without a browser) ───────────────
+
+RAW_CSS_TOP_RULE_CAP = 50 * 1024  # ≤50KB of most-relevant rule text for fidelity evidence.
+
+
+def _strip_css_comments(css: str) -> str:
+    """Remove /* ... */ comments while preserving string literals."""
+    out: list[str] = []
+    i, n = 0, len(css)
+    string_char: str | None = None
+    while i < n:
+        ch = css[i]
+        if string_char:
+            out.append(ch)
+            if ch == "\\" and i + 1 < n:
+                out.append(css[i + 1])
+                i += 2
+                continue
+            if ch == string_char:
+                string_char = None
+            i += 1
+            continue
+        if ch in ('"', "'"):
+            string_char = ch
+            out.append(ch)
+            i += 1
+            continue
+        if ch == "/" and i + 1 < n and css[i + 1] == "*":
+            end = css.find("*/", i + 2)
+            i = end + 2 if end != -1 else n
+            continue
+        out.append(ch)
+        i += 1
+    return "".join(out)
+
+
+def _iter_top_level_blocks(css: str) -> list[tuple[str, str]]:
+    """Split CSS into ``(prelude, body)`` top-level blocks.
+
+    Respects brace nesting and string literals so a ``}`` inside a string or
+    nested at-rule cannot fool the splitter into ending a block early. Safe on
+    malformed/empty input — it returns whatever complete blocks it finds.
+    """
+    blocks: list[tuple[str, str]] = []
+    n = len(css)
+    i = 0
+    prelude_start = 0
+    depth = 0
+    string_char: str | None = None
+    block_start: int | None = None
+    while i < n:
+        ch = css[i]
+        if string_char:
+            if ch == "\\" and i + 1 < n:
+                i += 2
+                continue
+            if ch == string_char:
+                string_char = None
+            i += 1
+            continue
+        if ch in ('"', "'"):
+            string_char = ch
+            i += 1
+            continue
+        if ch == "/" and i + 1 < n and css[i + 1] == "*":
+            end = css.find("*/", i + 2)
+            i = end + 2 if end != -1 else n
+            continue
+        if ch == ";" and depth == 0:
+            # An at-rule STATEMENT (e.g. ``@layer a, b;``, ``@import "...";``,
+            # ``@charset "UTF-8";``) ends here with no block body. Reset the
+            # prelude start so its text cannot leak into the next block's prelude.
+            prelude_start = i + 1
+            i += 1
+            continue
+        if ch == "{":
+            if depth == 0:
+                block_start = i
+            depth += 1
+            i += 1
+            continue
+        if ch == "}":
+            if depth > 0:
+                depth -= 1
+                if depth == 0 and block_start is not None:
+                    prelude = css[prelude_start:block_start].strip()
+                    body = css[block_start + 1:i]
+                    blocks.append((prelude, body))
+                    prelude_start = i + 1
+                    block_start = None
+            i += 1
+            continue
+        i += 1
+    return blocks
+
+
+def _split_declarations(body: str) -> list[tuple[str, str]]:
+    """Split a declaration block into ``(property, value)`` pairs.
+
+    Respects parentheses (so ``rgb(...)`` / ``url(...)`` commas are safe) and
+    string literals. A trailing declaration without a semicolon is still captured.
+    """
+    out: list[tuple[str, str]] = []
+    buf: list[str] = []
+    depth = 0
+    string_char: str | None = None
+    i, n = 0, len(body)
+    while i < n:
+        ch = body[i]
+        if string_char:
+            buf.append(ch)
+            if ch == "\\" and i + 1 < n:
+                buf.append(body[i + 1])
+                i += 2
+                continue
+            if ch == string_char:
+                string_char = None
+            i += 1
+            continue
+        if ch in ('"', "'"):
+            string_char = ch
+            buf.append(ch)
+            i += 1
+            continue
+        if ch == "(":
+            depth += 1
+            buf.append(ch)
+            i += 1
+            continue
+        if ch == ")":
+            depth = max(0, depth - 1)
+            buf.append(ch)
+            i += 1
+            continue
+        if ch == ";" and depth == 0:
+            decl = "".join(buf)
+            buf = []
+            i += 1
+            if ":" in decl:
+                prop, val = decl.split(":", 1)
+                out.append((prop.strip(), val.strip()))
+            continue
+        buf.append(ch)
+        i += 1
+    decl = "".join(buf)
+    if ":" in decl:
+        prop, val = decl.split(":", 1)
+        out.append((prop.strip(), val.strip()))
+    return out
+
+
+def _at_rule_keyword(prelude: str) -> str | None:
+    """Return the at-rule keyword (e.g. ``media``, ``-webkit-keyframes``) or None."""
+    p = prelude.strip()
+    if not p.startswith("@"):
+        return None
+    m = re.match(r"@(-[A-Za-z]+-)?([A-Za-z][A-Za-z\-]*)", p)
+    if not m:
+        return None
+    return (m.group(1) or "") + m.group(2)
+
+
+def _strip_at_keyword(prelude: str, keyword: str) -> str:
+    p = prelude.strip()
+    m = re.match(r"@(-[A-Za-z]+-)?" + re.escape(keyword) + r"\s*", p)
+    return p[m.end():] if m else p
+
+
+def _is_root_selector(selector: str) -> bool:
+    return bool(re.match(r"^(html|:root)([^a-z0-9]|$)", selector.strip().lower()))
+
+
+def parse_raw_css_buckets(css_text: str) -> dict:
+    """Parse serialized CSS text into OD-oriented buckets.
+
+    Pure and browser-free so it is fully unit-testable. Buckets:
+
+    * ``rootVars``      — custom-property declarations scraped from :root/html rules
+    * ``mediaQueries``  — ``{query, ruleCount}``
+    * ``keyframes``     — ``{name, steps:[{stop, declarations}]}``
+    * ``layers``        — ``@layer`` names
+    * ``fontFace``      — ``{family, src}`` from ``@font-face``
+    * ``supportsRules`` — ``@supports`` condition strings
+    * ``topRules``      — ≤ ``RAW_CSS_TOP_RULE_CAP`` bytes of relevant rule text
+    """
+    buckets: dict = {
+        "rootVars": {},
+        "mediaQueries": [],
+        "keyframes": [],
+        "layers": [],
+        "fontFace": [],
+        "supportsRules": [],
+        "topRules": "",
+    }
+    if not css_text:
+        return buckets
+
+    css = _strip_css_comments(css_text)
+
+    # @layer statement form: ``@layer base, components;`` (no block).
+    for m in re.finditer(r"@layer\s+([A-Za-z0-9_,\s\-]+);", css):
+        for name in m.group(1).split(","):
+            name = name.strip()
+            if name and name not in buckets["layers"]:
+                buckets["layers"].append(name)
+
+    top_chunks: list[str] = []
+    top_bytes = 0
+
+    for prelude, body in _iter_top_level_blocks(css):
+        key = _at_rule_keyword(prelude)
+        if key == "media":
+            query = _strip_at_keyword(prelude, "media").strip()
+            buckets["mediaQueries"].append(
+                {"query": query, "ruleCount": len(_iter_top_level_blocks(body))}
+            )
+        elif key and key.endswith("keyframes"):
+            name = _strip_at_keyword(prelude, "keyframes").strip() or prelude.split()[-1]
+            steps = [
+                {"stop": stop.strip(), "declarations": decls.strip()}
+                for stop, decls in _iter_top_level_blocks(body)
+            ]
+            buckets["keyframes"].append({"name": name, "steps": steps})
+        elif key == "font-face":
+            decls = dict(_split_declarations(body))
+            family = decls.get("font-family", "").strip().strip('"').strip("'")
+            buckets["fontFace"].append({"family": family, "src": decls.get("src", "").strip()})
+        elif key == "supports":
+            buckets["supportsRules"].append(_strip_at_keyword(prelude, "supports").strip())
+        elif key == "layer":
+            name = _strip_at_keyword(prelude, "layer").strip()
+            if name and name not in buckets["layers"]:
+                buckets["layers"].append(name)
+        elif key is None:
+            selectors = [s.strip() for s in prelude.split(",")]
+            if any(_is_root_selector(s) for s in selectors):
+                for prop, val in _split_declarations(body):
+                    if prop.startswith("--"):
+                        buckets["rootVars"][prop] = val
+            if top_bytes < RAW_CSS_TOP_RULE_CAP:
+                chunk = f"{prelude}{{{body}}}"
+                top_chunks.append(chunk)
+                top_bytes += len(chunk) + 1  # +1 for the join newline
+
+    buckets["topRules"] = "\n".join(top_chunks)[:RAW_CSS_TOP_RULE_CAP]
+    return buckets
+
+
 # ── Phase 0: Setup ───────────────────────────────────────────────────────
 
 def setup_directories(slug: str) -> dict[str, Path]:
@@ -219,6 +873,7 @@ def setup_directories(slug: str) -> dict[str, Path]:
         "replica": replica_dir,
         "brands_validation": brands_dir / "validation",
         "brands_skill": brands_dir / "skill",
+        "brands_dom_extraction": brands_dir / "dom-extraction",
     }
 
     for name, d in dirs.items():
@@ -261,42 +916,49 @@ def verify_url(url: str, headed: bool) -> str:
     phase_banner(1, "Verifying URL", url)
 
     session = f"verify-{int(time.time())}"
-    cmd_open = agent_browser_cmd(["open", url], session=session, headed=headed)
-    run_cmd(cmd_open, timeout=30, check=True)
+    try:
+        cmd_open = agent_browser_cmd(["open", url], session=session, headed=headed)
+        run_cmd(cmd_open, timeout=30, check=True)
 
-    # Wait for page to settle
-    time.sleep(3)  # Simple wait instead of networkidle (many sites never reach idle)
+        # Wait for page to settle
+        time.sleep(3)  # Simple wait instead of networkidle (many sites never reach idle)
 
-    # Extract title
-    result = run_cmd(
-        agent_browser_cmd(
-            ["eval", "document.title"],
-            session=session,
-        ),
-        timeout=10,
-    )
-    title = (result.stdout or "").strip()
+        # Extract title
+        result = run_cmd(
+            agent_browser_cmd(
+                ["eval", "document.title"],
+                session=session,
+            ),
+            timeout=10,
+        )
+        title = (result.stdout or "").strip()
 
-    if not title or "404" in title.lower() or "not found" in title.lower():
-        fail(f"URL appears invalid. Page title: '{title}'")
+        if not title or "404" in title.lower() or "not found" in title.lower():
+            fail(f"URL appears invalid. Page title: '{title}'")
 
-    ok(f"Page title: {title}")
-    return title
+        ok(f"Page title: {title}")
+        return title
+    finally:
+        close_agent_browser_session(session)
 
 
 # ── Phase 2: Identify Pages ──────────────────────────────────────────────
 
-def identify_pages(url: str, headed: bool) -> dict[str, dict]:
+def identify_pages(url: str, headed: bool, all_pages: bool = False, page_limit: int | None = None) -> dict[str, dict]:
     """Extract nav links and classify into page types. Returns pages dict."""
-    phase_banner(2, "Identifying pages", "Extracting nav links and classifying page types")
+    detail = "Extracting nav links and classifying page types"
+    if all_pages:
+        detail = "Extracting all sitemap/nav pages"
+    phase_banner(2, "Identifying pages", detail)
 
     session = f"recon-{int(time.time())}"
-    cmd_open = agent_browser_cmd(["open", url], session=session, headed=headed)
-    run_cmd(cmd_open, timeout=30, check=True)
-    time.sleep(3)  # Simple wait instead of networkidle (many sites never reach idle)
+    try:
+        cmd_open = agent_browser_cmd(["open", url], session=session, headed=headed)
+        run_cmd(cmd_open, timeout=30, check=True)
+        time.sleep(3)  # Simple wait instead of networkidle (many sites never reach idle)
 
-    # Extract all internal links from nav/header elements
-    js_extract = """JSON.stringify((() => {
+        # Extract all internal links from nav/header elements
+        js_extract = """JSON.stringify((() => {
         const domain = window.location.hostname;
         const base = window.location.origin;
         const links = new Map();
@@ -335,82 +997,79 @@ def identify_pages(url: str, headed: bool) -> dict[str, dict]:
         }));
     })())"""
 
-    result = run_cmd(
-        agent_browser_cmd(["eval", js_extract], session=session),
-        timeout=15,
-    )
+        result = run_cmd(
+            agent_browser_cmd(["eval", js_extract], session=session),
+            timeout=15,
+        )
 
-    raw_links = []
-    stdout = (result.stdout or "").strip()
-    if stdout:
-        parsed_json = parse_eval_json(stdout)
-        if isinstance(parsed_json, list):
-            raw_links = parsed_json
-        else:
-            warn(f"Could not parse nav links. Raw output: {stdout[:200]}")
+        raw_links = []
+        stdout = (result.stdout or "").strip()
+        if stdout:
+            parsed_json = parse_eval_json(stdout)
+            if isinstance(parsed_json, list):
+                raw_links = parsed_json
+            else:
+                warn(f"Could not parse nav links. Raw output: {stdout[:200]}")
 
-    step(f"Found {len(raw_links)} internal links")
+        step(f"Found {len(raw_links)} internal links")
 
-    # Classify links into page types
-    classified = _classify_links(raw_links, url)
+        if all_pages:
+            sitemap_links = discover_sitemap_links(url)
+            if sitemap_links:
+                step(f"Found {len(sitemap_links)} sitemap page URLs")
+                raw_links = _dedupe_links([*raw_links, *sitemap_links])
 
-    # Build the pages dict matching the format run_validation_loop.py expects
-    parsed = urlparse(url)
-    base_origin = f"{parsed.scheme}://{parsed.netloc}"
-    slug = derive_slug(url)
+        # Classify links into page types
+        classified = _classify_links(raw_links, url)
 
-    pages: dict[str, dict] = {
-        "homepage": {
-            "original_url": url.rstrip("/") + "/",
-            "replica_route": f"/brands/{slug}/replica",
+        # Build the pages dict matching the format run_validation_loop.py expects
+        slug = derive_slug(url)
+        selection_limit = page_limit if page_limit and page_limit > 0 else None
+        if not all_pages and selection_limit is None:
+            selection_limit = MIN_PAGES
+
+        pages: dict[str, dict] = {
+            "homepage": {
+                "original_url": url.rstrip("/") + "/",
+                "replica_route": f"/brands/{slug}/replica",
+            }
         }
-    }
+        used_paths = {"/"}
+        used_urls = {_normalize_page_url(url.rstrip("/") + "/")}
 
-    # Pick best pages from each category, aiming for MIN_PAGES total
-    categories_priority = ["about", "product", "contact", "content", "careers", "pricing", "docs", "legal", "other"]
-    used_paths = {"/"}
+        if all_pages:
+            for link in raw_links:
+                if _page_limit_reached(pages, selection_limit):
+                    break
+                _add_page_from_link(pages, used_paths, used_urls, slug, link)
+        else:
+            # Pick best pages from each category, aiming for MIN_PAGES total
+            categories_priority = ["about", "product", "contact", "content", "careers", "pricing", "docs", "legal", "other"]
 
-    for cat in categories_priority:
-        if len(pages) >= MIN_PAGES:
-            break
-        for link in classified.get(cat, []):
-            if link["path"] in used_paths:
-                continue
-            page_slug = _path_to_slug(link["path"])
-            if not page_slug or page_slug == "homepage":
-                continue
-            pages[page_slug] = {
-                "original_url": link["url"],
-                "replica_route": f"/brands/{slug}/replica/{page_slug}",
-            }
-            used_paths.add(link["path"])
-            break
+            for cat in categories_priority:
+                if _page_limit_reached(pages, selection_limit):
+                    break
+                for link in classified.get(cat, []):
+                    if _add_page_from_link(pages, used_paths, used_urls, slug, link):
+                        break
 
-    # If still under MIN_PAGES, grab any remaining links
-    if len(pages) < MIN_PAGES:
-        for link in raw_links:
-            if len(pages) >= MIN_PAGES:
-                break
-            path = link.get("path", "")
-            if path in used_paths or path == "/":
-                continue
-            page_slug = _path_to_slug(path)
-            if not page_slug or page_slug in pages:
-                continue
-            pages[page_slug] = {
-                "original_url": link["url"],
-                "replica_route": f"/brands/{slug}/replica/{page_slug}",
-            }
-            used_paths.add(path)
+            # If still under MIN_PAGES, grab any remaining links
+            if selection_limit is not None and len(pages) < selection_limit:
+                for link in raw_links:
+                    if _page_limit_reached(pages, selection_limit):
+                        break
+                    _add_page_from_link(pages, used_paths, used_urls, slug, link)
 
-    ok(f"Selected {len(pages)} pages:")
-    for name, config in pages.items():
-        info(f"  {name}: {config['original_url']}")
+        ok(f"Selected {len(pages)} pages:")
+        for name, config in pages.items():
+            info(f"  {name}: {config['original_url']}")
 
-    if len(pages) < 2:
-        fail(f"Only found {len(pages)} page(s). Need at least 2 for meaningful extraction.")
+        if len(pages) < 2:
+            fail(f"Only found {len(pages)} page(s). Need at least 2 for meaningful extraction.")
 
-    return pages
+        return pages
+    finally:
+        close_agent_browser_session(session)
 
 
 def _classify_links(links: list[dict], base_url: str) -> dict[str, list]:
@@ -442,6 +1101,151 @@ def _classify_links(links: list[dict], base_url: str) -> dict[str, list]:
     return categories
 
 
+def discover_sitemap_links(url: str) -> list[dict]:
+    """Discover page URLs from sitemap.xml and nested sitemap indexes."""
+    parsed = urlparse(url if url.startswith("http") else f"https://{url}")
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    queue = [
+        urljoin(origin, "/sitemap.xml"),
+        urljoin(origin, "/sitemap_index.xml"),
+    ]
+    seen_sitemaps: set[str] = set()
+    allowed_hosts = {_host_key(parsed.netloc)}
+    page_urls: list[str] = []
+
+    while queue and len(seen_sitemaps) < 25:
+        sitemap_url = queue.pop(0)
+        normalized_sitemap = _normalize_page_url(sitemap_url)
+        if normalized_sitemap in seen_sitemaps:
+            continue
+        seen_sitemaps.add(normalized_sitemap)
+
+        try:
+            request = urllib.request.Request(
+                sitemap_url,
+                headers={"User-Agent": "design-extractor/0.3 (+https://localhost)"},
+            )
+            with urllib.request.urlopen(request, timeout=20) as response:
+                final_url = response.geturl()
+                allowed_hosts.add(_host_key(urlparse(final_url).netloc))
+                xml_text = response.read().decode("utf-8", errors="replace")
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            warn(f"Could not read sitemap {sitemap_url}: {exc}")
+            continue
+
+        try:
+            root = ET.fromstring(xml_text)
+        except ET.ParseError:
+            warn(f"Sitemap was not valid XML: {sitemap_url}")
+            continue
+
+        locs = [
+            (loc.text or "").strip()
+            for loc in root.iter()
+            if _xml_tag_name(loc) == "loc" and (loc.text or "").strip()
+        ]
+
+        if _xml_tag_name(root) == "sitemapindex":
+            for loc in locs:
+                if _same_allowed_host(loc, allowed_hosts):
+                    queue.append(loc)
+            continue
+
+        for loc in locs:
+            clean_url = _normalize_page_url(loc)
+            if _same_allowed_host(clean_url, allowed_hosts) and _is_extractable_page_url(clean_url):
+                page_urls.append(clean_url)
+
+    return _dedupe_links(
+        [
+            {
+                "path": _url_path_key(page_url),
+                "url": page_url,
+                "text": "",
+                "source": "sitemap",
+            }
+            for page_url in page_urls
+        ]
+    )
+
+
+def _xml_tag_name(element: ET.Element) -> str:
+    return element.tag.rsplit("}", 1)[-1]
+
+
+def _host_key(host: str) -> str:
+    return re.sub(r"^www\.", "", (host or "").lower())
+
+
+def _same_allowed_host(candidate_url: str, allowed_hosts: set[str]) -> bool:
+    return _host_key(urlparse(candidate_url).netloc) in allowed_hosts
+
+
+def _normalize_page_url(page_url: str) -> str:
+    parsed = urlparse(page_url)
+    path = parsed.path or "/"
+    return parsed._replace(path=path, params="", query="", fragment="").geturl()
+
+
+def _url_path_key(page_url: str) -> str:
+    path = urlparse(page_url).path or "/"
+    return path.rstrip("/") or "/"
+
+
+def _is_extractable_page_url(page_url: str) -> bool:
+    parsed = urlparse(page_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return False
+    path = parsed.path or "/"
+    if re.search(r"\.(pdf|jpg|jpeg|png|gif|svg|webp|zip|xml|json|css|js|ico|woff2?)$", path, re.I):
+        return False
+    return True
+
+
+def _dedupe_links(links: list[dict]) -> list[dict]:
+    seen: set[str] = set()
+    out: list[dict] = []
+    for link in links:
+        clean_url = _normalize_page_url(str(link.get("url", "")))
+        if not clean_url or clean_url in seen:
+            continue
+        seen.add(clean_url)
+        path = str(link.get("path") or _url_path_key(clean_url))
+        out.append({**link, "url": clean_url, "path": path.rstrip("/") or "/"})
+    return out
+
+
+def _page_limit_reached(pages: dict[str, dict], page_limit: int | None) -> bool:
+    return page_limit is not None and len(pages) >= page_limit
+
+
+def _add_page_from_link(
+    pages: dict[str, dict],
+    used_paths: set[str],
+    used_urls: set[str],
+    brand_slug: str,
+    link: dict,
+) -> bool:
+    page_url = _normalize_page_url(str(link.get("url", "")))
+    if not page_url or not _is_extractable_page_url(page_url):
+        return False
+    path = str(link.get("path") or _url_path_key(page_url)).rstrip("/") or "/"
+    if path in used_paths or path == "/" or page_url in used_urls:
+        return False
+
+    page_slug = _unique_page_slug(path, pages)
+    if not page_slug or page_slug == "homepage":
+        return False
+
+    pages[page_slug] = {
+        "original_url": page_url,
+        "replica_route": f"/brands/{brand_slug}/replica/{page_slug}",
+    }
+    used_paths.add(path)
+    used_urls.add(page_url)
+    return True
+
+
 def _path_to_slug(path: str) -> str:
     """Convert a URL path to a slug for file naming."""
     path = path.strip("/")
@@ -459,6 +1263,35 @@ def _path_to_slug(path: str) -> str:
     return slug[:50]  # Cap length
 
 
+def _unique_page_slug(path: str, pages: dict[str, dict]) -> str:
+    base = _path_to_slug(path)
+    if not base:
+        return ""
+    if base not in pages:
+        return base
+
+    full_slug = _slugify_path(path)
+    if full_slug and full_slug not in pages:
+        return full_slug
+
+    suffix = 2
+    while f"{base}-{suffix}" in pages:
+        suffix += 1
+    return f"{base}-{suffix}"
+
+
+def _slugify_path(path: str) -> str:
+    parts = [
+        re.sub(r"\.(html?|aspx?|php|jsp)$", "", part, flags=re.I)
+        for part in path.strip("/").split("/")
+        if part and not re.match(r"^(au|en|shop)$", part, re.I)
+    ]
+    slug = "-".join(parts)
+    slug = re.sub(r"[^a-zA-Z0-9-]", "-", slug)
+    slug = re.sub(r"-+", "-", slug).strip("-").lower()
+    return slug[:80]
+
+
 def write_pages_json(slug: str, pages: dict) -> Path:
     """Write pages.json to cache/validation/."""
     pages_path = CACHE_ROOT / slug / "validation" / "pages.json"
@@ -471,26 +1304,138 @@ def write_pages_json(slug: str, pages: dict) -> Path:
 
 # ── Phase 3: Extract DOM ─────────────────────────────────────────────────
 
+# JS probe that walks document.styleSheets and returns per-sheet cssText.
+# Cross-origin sheets throw SecurityError on cssRules access → flagged for a
+# same-origin browser fetch fallback (see capture_raw_css_for_page). The Python
+# side aggregates the cssText and runs the pure parse_raw_css_buckets on it.
+JS_CAPTURE_RAW_CSS = """JSON.stringify((() => {
+    const sheets = [];
+    let totalBytes = 0;
+    const MAX = 2 * 1024 * 1024;
+    for (const sheet of document.styleSheets) {
+        const info = { href: sheet.href || '', media: '', crossOrigin: false, cssText: '', error: '' };
+        try { info.media = (sheet.media && sheet.media.mediaText) || ''; } catch(e) {}
+        try {
+            const rules = sheet.cssRules;
+            if (rules && rules.length) {
+                let txt = '';
+                for (let i = 0; i < rules.length; i++) {
+                    txt += rules[i].cssText + '\\n';
+                    if (txt.length > MAX) { txt = txt.slice(0, MAX); break; }
+                }
+                info.cssText = txt;
+            }
+        } catch (e) {
+            info.crossOrigin = true;
+            info.error = String((e && e.name) || e);
+        }
+        totalBytes += info.cssText.length;
+        sheets.push(info);
+        if (totalBytes > MAX) break;
+    }
+    return { sheets: sheets, totalBytes: totalBytes };
+})())"""
+
+
+def capture_raw_css_for_page(
+    page_slug: str, slug: str, dirs: dict, session: str, headed: bool
+) -> dict:
+    """Capture raw CSS (root vars, media, keyframes, @font-face, @layer, @supports).
+
+    Runs the JS probe against the already-open page session, aggregates each
+    sheet's cssText, re-fetches cross-origin sheets via the browser fetch
+    fallback, then runs the pure parse_raw_css_buckets. Writes
+    ``cache/<slug>/dom-extraction/<page>-rawcss.json``. Never raises — a raw-CSS
+    failure must not abort DOM extraction.
+    """
+    rawcss_path = dirs["dom_extraction"] / f"{page_slug}-rawcss.json"
+    try:
+        result = run_cmd(
+            agent_browser_cmd(["eval", JS_CAPTURE_RAW_CSS], session=session),
+            timeout=DOM_EXTRACT_TIMEOUT,
+        )
+        payload = parse_eval_json((result.stdout or "").strip()) or {}
+        sheets = payload.get("sheets", []) if isinstance(payload, dict) else []
+
+        aggregated: list[str] = []
+        cors_hrefs: list[str] = []
+        for s in sheets:
+            if not isinstance(s, dict):
+                continue
+            css_text = s.get("cssText", "") or ""
+            if css_text:
+                aggregated.append(css_text)
+            elif s.get("crossOrigin") and s.get("href"):
+                cors_hrefs.append(s["href"])
+
+        for href in cors_hrefs:
+            digest = hashlib.md5(str(href).encode("utf-8")).hexdigest()[:10]
+            tmp = dirs["cache"] / f"_cors-{page_slug}-{digest}.css"
+            cors_session = short_session_name("rawcss", slug, page_slug)
+            try:
+                if _browser_fetch_fallback(href, str(tmp), session=cors_session, headed=headed):
+                    aggregated.append(tmp.read_text(encoding="utf-8", errors="replace"))
+            except Exception as e:  # noqa: BLE001 — best-effort CORS fetch
+                warn(f"{page_slug}: CORS CSS re-fetch failed for {href[:80]}: {e}")
+            finally:
+                try:
+                    tmp.unlink(missing_ok=True)
+                except OSError:
+                    pass
+
+        buckets = parse_raw_css_buckets("\n".join(aggregated))
+        buckets["_meta"] = {
+            "sheets": len(sheets),
+            "crossOriginSheets": len(cors_hrefs),
+            "aggregatedBytes": sum(len(t) for t in aggregated),
+        }
+        with open(rawcss_path, "w") as f:
+            json.dump(buckets, f, indent=2)
+        return buckets
+    except Exception as e:  # noqa: BLE001 — raw CSS capture is non-fatal
+        warn(f"{page_slug}: raw CSS capture failed ({e})")
+        return {}
+
+
+@close_agent_browser_session_after(dom_extract_session_name)
 def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bool, skip_existing: bool) -> None:
     """Extract DOM content and measurements from a single page."""
     dom_dir = dirs["dom_extraction"]
     dom_json_path = dom_dir / f"{page_slug}.json"
     measurements_path = dom_dir / f"{page_slug}-measurements.json"
     screenshot_path = dom_dir / f"{page_slug}-screenshot.png"
+    html_snapshot_path = dirs["brands_dom_extraction"] / f"{page_slug}-snapshot.html"
+    cache_html_snapshot_path = dom_dir / f"{page_slug}-snapshot.html"
 
-    if skip_existing and dom_json_path.exists() and measurements_path.exists():
+    if skip_existing and dom_json_path.exists() and measurements_path.exists() and html_snapshot_path.exists():
         step(f"{page_slug}: skipped (exists)")
         return
 
-    session = f"dom-{slug}-{page_slug}"
+    session = short_session_name("dom", slug, page_slug)
     step(f"{page_slug}: opening {page_url}")
 
-    # Open page
-    run_cmd(
-        agent_browser_cmd(["open", page_url], session=session, headed=headed),
-        timeout=30,
-        check=True,
-    )
+    # Open page — retry transient failures (cold browser, slow page, momentary
+    # network hiccup) before giving up. A single flaky open must not be able to
+    # abort the whole extraction; the caller (extract_all_dom) isolates the page
+    # if every attempt fails.
+    last_error: Exception | None = None
+    for attempt in range(1, DOM_OPEN_RETRIES + 1):
+        try:
+            run_cmd(
+                agent_browser_cmd(["open", page_url], session=session, headed=headed),
+                timeout=30,
+                check=True,
+            )
+            last_error = None
+            break
+        except RuntimeError as e:
+            last_error = e
+            warn(f"{page_slug}: open attempt {attempt}/{DOM_OPEN_RETRIES} failed ({e})")
+            close_agent_browser_session(session)
+            if attempt < DOM_OPEN_RETRIES:
+                time.sleep(2 * attempt)
+    if last_error is not None:
+        raise last_error
     time.sleep(3)  # Simple wait instead of networkidle (many sites never reach idle)
 
     # Take reference screenshot
@@ -708,6 +1653,23 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
     with open(dom_json_path, "w") as f:
         json.dump(dom_data, f, indent=2)
 
+    # Save the rendered source page as an HTML artifact for review/raw-file workflows.
+    # The review API expects these under brands/<slug>/dom-extraction/.
+    js_html = "JSON.stringify(document.documentElement.outerHTML)"
+    html_result = run_cmd(
+        agent_browser_cmd(["eval", js_html], session=session),
+        timeout=DOM_EXTRACT_TIMEOUT,
+    )
+    html_snapshot = None
+    stdout = (html_result.stdout or "").strip()
+    if stdout:
+        html_snapshot = parse_eval_json(stdout)
+    if isinstance(html_snapshot, str) and "<html" in html_snapshot.lower():
+        html_snapshot_path.write_text(html_snapshot, encoding="utf-8")
+        cache_html_snapshot_path.write_text(html_snapshot, encoding="utf-8")
+    else:
+        warn(f"Could not save HTML snapshot for {page_slug}")
+
     # Extract measurements
     js_measurements = """JSON.stringify((() => {
         const cs = (sel) => { const el = document.querySelector(sel); return el ? getComputedStyle(el) : null; };
@@ -790,8 +1752,78 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
     with open(measurements_path, "w") as f:
         json.dump(measurements, f, indent=2)
 
-    ok(f"{page_slug}: DOM ({len(dom_data.get('sections', []))} sections) + measurements saved")
+    ok(f"{page_slug}: DOM ({len(dom_data.get('sections', []))} sections) + measurements + HTML saved")
     assert_exists(dom_json_path, f"DOM extraction for {page_slug}")
+    assert_exists(measurements_path, f"Measurements for {page_slug}")
+    assert_exists(html_snapshot_path, f"HTML snapshot for {page_slug}")
+
+    # Raw CSS probe (root vars, @media, @keyframes, @font-face, @layer, @supports).
+    # Non-fatal: a CSS capture failure must never abort an otherwise-good extraction.
+    capture_raw_css_for_page(page_slug, slug, dirs, session, headed)
+
+
+def extract_all_dom(
+    pages: dict,
+    slug: str,
+    dirs: dict,
+    headed: bool,
+    skip_existing: bool,
+) -> dict:
+    """Extract DOM for every page with per-page fault isolation.
+
+    A single page that fails to open, times out, or otherwise errors must NOT
+    abort the entire extraction. Each page is attempted independently; failures
+    are logged and the page is pruned from the returned set so downstream phases
+    (replica build, validation, publish) only ever operate on pages that
+    actually produced DOM artifacts.
+
+    Returns a pruned copy of `pages` containing only successfully-extracted
+    pages, preserving original insertion order. Raises (via fail/SystemExit)
+    only when the result is genuinely unrecoverable: the homepage anchor is
+    missing, or fewer than MIN_SUCCESSFUL_PAGES pages succeeded.
+    """
+    dom_dir = dirs["dom_extraction"]
+    successful: dict = {}
+    failed: list[str] = []
+
+    for page_slug, config in pages.items():
+        try:
+            extract_dom(
+                page_slug,
+                config["original_url"],
+                slug,
+                dirs,
+                headed,
+                skip_existing,
+            )
+        except Exception as e:  # noqa: BLE001 — isolate ANY single-page failure
+            warn(f"{page_slug}: DOM extraction failed ({e}); skipping this page")
+            failed.append(page_slug)
+            continue
+
+        if (dom_dir / f"{page_slug}.json").exists():
+            successful[page_slug] = config
+        else:
+            warn(f"{page_slug}: produced no DOM JSON; skipping this page")
+            failed.append(page_slug)
+
+    if failed:
+        warn(f"DOM extraction skipped {len(failed)} page(s): {', '.join(failed)}")
+
+    if "homepage" in pages and "homepage" not in successful:
+        fail(
+            "Homepage DOM extraction failed after retries — cannot build a brand "
+            "without the homepage. Aborting."
+        )
+
+    if len(successful) < MIN_SUCCESSFUL_PAGES:
+        fail(
+            f"Only {len(successful)} page(s) extracted (need >= {MIN_SUCCESSFUL_PAGES}). "
+            "Aborting."
+        )
+
+    ok(f"DOM extraction succeeded for {len(successful)}/{len(pages)} page(s)")
+    return successful
 
 
 # ── Phase 4: Download Assets ─────────────────────────────────────────────
@@ -823,6 +1855,8 @@ def _browser_fetch_fallback(url: str, dest: str, session: str = "dl", headed: bo
             return Path(dest).exists() and Path(dest).stat().st_size > 100
     except Exception:
         pass
+    finally:
+        close_agent_browser_session(session)
     return False
 
 
@@ -893,7 +1927,7 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
             except urllib.error.HTTPError as http_err:
                 if http_err.code == 403:
                     # Fallback: download via browser fetch (bypasses 403)
-                    _browser_fetch_fallback(url_str, str(dest), session=f"dl-{slug}", headed=headed)
+                    _browser_fetch_fallback(url_str, str(dest), session=short_session_name("dl", slug), headed=headed)
                 else:
                     raise
 
@@ -916,7 +1950,7 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
 
     # Extract and download fonts from the first page using agent-browser
     first_page_url = list(pages.values())[0]["original_url"]
-    session = f"assets-{slug}"
+    session = short_session_name("assets", slug)
     try:
         run_cmd(
             agent_browser_cmd(["open", first_page_url], session=session, headed=headed),
@@ -973,6 +2007,8 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
                         pass
     except RuntimeError:
         warn("Font extraction failed (non-fatal)")
+    finally:
+        close_agent_browser_session(session)
 
     ok(f"Downloaded {downloaded} assets to {public_dir}")
 
@@ -1047,6 +2083,81 @@ def run_brand_kit(slug: str, url: str, brand_name: str, dirs: dict) -> dict:
     return {"status": "no_output"}
 
 
+# ── Publish-side artifact steps (mirror / HTML replicas / open-design) ───
+#
+# These produce review/export artifacts on top of an otherwise-complete
+# extraction. They are best-effort by design: a non-zero exit or timeout is
+# recorded as a warning and the pipeline continues — they must never abort
+# an extraction that already produced good DOM/replica data.
+
+def _run_artifact_script(
+    phase_label: str,
+    title: str,
+    detail: str,
+    script_name: str,
+    script_args: list[str],
+    timeout: int,
+) -> None:
+    """Run a publish-side artifact script as a subprocess. Never fatal."""
+    phase_banner(phase_label, title, detail)
+    script = SCRIPTS_DIR / script_name
+    if not script.exists():
+        warn(f"{script_name} not found, skipping")
+        return
+    result = run_cmd(
+        [sys.executable, str(script), *script_args],
+        timeout=timeout,
+        check=False,
+        timeout_ok=True,
+    )
+    print(result.stdout or "")
+    if result.returncode == -1:
+        warn(f"{title} exceeded {timeout}s; continuing with partial output")
+    elif result.returncode != 0:
+        stderr = (result.stderr or "").strip()
+        warn(f"{title} exited with code {result.returncode} (non-fatal); continuing")
+        if stderr:
+            info(f"stderr: {stderr[:500]}")
+    else:
+        ok(f"{title} completed")
+
+
+def mirror_originals(slug: str) -> None:
+    """Phase 4.5: build offline mirrors of the original key pages."""
+    _run_artifact_script(
+        "4.5",
+        "Mirroring original pages",
+        "Building 100% offline copies of key pages (mirror_original_pages.py)",
+        "mirror_original_pages.py",
+        ["--slug", slug],
+        MIRROR_TIMEOUT,
+    )
+
+
+def generate_html_replicas(slug: str) -> None:
+    """Phase 6.5: emit standalone token-styled HTML replicas + compare view."""
+    _run_artifact_script(
+        "6.5",
+        "Generating standalone HTML replicas",
+        "Token-styled HTML pages + compare view (generate_html_replicas.py --verify)",
+        "generate_html_replicas.py",
+        ["--slug", slug, "--verify"],
+        HTML_REPLICA_TIMEOUT,
+    )
+
+
+def export_open_design(slug: str) -> None:
+    """Phase 7.5: export the published brand into open-design's 9-section format."""
+    _run_artifact_script(
+        "7.5",
+        "Exporting open-design format",
+        "9-section DESIGN.md + od skill with parser round-trip (export_open_design.py --check)",
+        "export_open_design.py",
+        ["--slug", slug, "--check"],
+        OPEN_DESIGN_EXPORT_TIMEOUT,
+    )
+
+
 # ── Phase 5: Build Replicas ──────────────────────────────────────────────
 
 def _build_asset_listing(slug: str, public_dir: Path) -> tuple[list[str], str]:
@@ -1063,39 +2174,44 @@ def _build_asset_listing(slug: str, public_dir: Path) -> tuple[list[str], str]:
     return asset_list, asset_str
 
 
-def _run_claude_print(prompt: str, label: str) -> None:
-    """Dispatch a single claude --print call. Non-fatal on failure/timeout."""
-    step(f"Calling claude --print: {label}")
+def _run_model_runner(prompt: str, label: str, runner: dict) -> None:
+    """Dispatch a single configured task-runner call. Non-fatal on failure/timeout."""
+    step(f"Calling {model_runner_label(runner)}: {label}")
     try:
+        cmd = build_model_runner_command(prompt, runner)
         result = run_cmd(
-            [
-                "claude", "--print",
-                "-p", prompt,
-                "--permission-mode", "bypassPermissions",
-                "--allowedTools", "Read,Write,Edit,Bash,Glob,Grep",
-            ],
-            timeout=CLAUDE_TIMEOUT,
+            cmd,
+            timeout=MODEL_RUNNER_TIMEOUT,
+            cwd=PLUGIN_DIR,
             check=False,
         )
         if result.returncode != 0:
             stderr = (result.stderr or "").strip()
-            warn(f"Claude exited with code {result.returncode} ({label})")
+            warn(f"{runner.get('label', runner.get('id'))} exited with code {result.returncode} ({label})")
             if stderr:
                 info(f"stderr: {stderr[:500]}")
     except RuntimeError as err:
-        warn(f"Claude dispatch timed out ({label}): {err}")
+        warn(f"Task runner dispatch failed ({label}): {err}")
 
 
-def build_replicas(slug: str, url: str, pages: dict, dirs: dict) -> None:
-    """Generate React/shadcn replicas in two passes, each with its own claude --print budget.
+def build_replicas(
+    slug: str,
+    url: str,
+    pages: dict,
+    dirs: dict,
+    skip_existing: bool = False,
+    batch_size: int = DEFAULT_REPLICA_BATCH_SIZE,
+) -> None:
+    """Generate React/shadcn replicas using the configured model task runner.
 
     Pass 1: shared components (header, footer, logo) + homepage replica
-    Pass 2: remaining inner pages (about-us, products, contact-us, etc.)
+    Pass 2+: remaining inner pages in batches
 
-    Splitting prevents the 15-minute timeout from cutting off the inner pages when the
-    shared components take most of the budget. Each pass gets the full CLAUDE_TIMEOUT.
+    Splitting prevents the timeout from cutting off large all-page extractions.
+    Each pass gets the full MODEL_RUNNER_TIMEOUT.
     """
-    phase_banner(5, "Building React/shadcn replicas", "Two-pass Claude dispatch for timeout resilience")
+    runner = load_model_runner()
+    phase_banner(5, "Building React/shadcn replicas", f"Task runner: {model_runner_label(runner)}")
 
     asset_list, asset_str = _build_asset_listing(slug, dirs["public"])
     dom_dir = dirs["dom_extraction"]
@@ -1114,8 +2230,16 @@ def build_replicas(slug: str, url: str, pages: dict, dirs: dict) -> None:
     )
 
     # ── Pass 1: shared components + homepage ─────────────────────────────
-    homepage_cfg = pages.get("homepage") or next(iter(pages.values()))
-    pass1_prompt = f"""Build React/shadcn shared components + the homepage replica for {url}.
+    homepage_outputs = [
+        dirs["components"] / f"{slug}-logo.tsx",
+        dirs["components"] / f"{slug}-header.tsx",
+        dirs["components"] / f"{slug}-footer.tsx",
+        dirs["replica"] / "layout.tsx",
+        dirs["replica"] / "page.tsx",
+    ]
+    needs_homepage = not skip_existing or any(not path.exists() for path in homepage_outputs)
+    if needs_homepage:
+        pass1_prompt = f"""Build React/shadcn shared components + the homepage replica for {url}.
 
 Brand slug: {slug}
 
@@ -1131,7 +2255,7 @@ The DOM JSON schema includes:
 DOWNLOADED ASSETS ({len(asset_list)} files available at /brands/{slug}/):
 {asset_str}
 
-Create these files (and ONLY these — the 4 inner pages are built in a separate pass):
+Create these files (and ONLY these — inner pages are built in separate batches):
 1. {dirs['components']}/{slug}-logo.tsx       — Logo component using header.logo.src
 2. {dirs['components']}/{slug}-header.tsx     — Top nav with utility bar + main nav
 3. {dirs['components']}/{slug}-footer.tsx     — Footer with links, social, legal text
@@ -1142,28 +2266,36 @@ Create these files (and ONLY these — the 4 inner pages are built in a separate
 
 The UI project is a Next.js app at {UI_DIR}. Verify TypeScript compiles before finishing.
 """
-    _run_claude_print(pass1_prompt, "pass 1 (shared + homepage)")
+        _run_model_runner(pass1_prompt, "pass 1 (shared + homepage)", runner)
+    else:
+        ok("Shared components + homepage skipped (--skip-existing)")
 
     # ── Pass 2: inner pages ──────────────────────────────────────────────
     inner_pages = [
         {"slug": s, "original_url": c["original_url"], "replica_route": c["replica_route"]}
         for s, c in pages.items()
-        if s != "homepage"
+        if s != "homepage" and (not skip_existing or not (dirs["replica"] / s / "page.tsx").exists())
     ]
     if not inner_pages:
-        ok("Only homepage requested — skipping pass 2")
+        ok("No inner pages need replica generation")
         return
 
-    inner_list = "\n".join(
-        f"  {p['slug']:20s} -> {dirs['replica']}/{p['slug']}/page.tsx  (read {dom_dir}/{p['slug']}.json)"
-        for p in inner_pages
-    )
+    batch_size = max(1, batch_size)
+    batches = [
+        inner_pages[index:index + batch_size]
+        for index in range(0, len(inner_pages), batch_size)
+    ]
+    for batch_index, batch in enumerate(batches, start=1):
+        inner_list = "\n".join(
+            f"  {p['slug']:20s} -> {dirs['replica']}/{p['slug']}/page.tsx  (read {dom_dir}/{p['slug']}.json)"
+            for p in batch
+        )
 
-    pass2_prompt = f"""Build the inner-page replicas for {url}. Shared components (header/footer/logo) already exist at {dirs['components']}/ — import them.
+        pass2_prompt = f"""Build this batch of inner-page replicas for {url}. Shared components (header/footer/logo) already exist at {dirs['components']}/ — import them.
 
 Brand slug: {slug}
 
-Inner pages to build ({len(inner_pages)} total):
+Inner pages to build in this batch ({len(batch)} of {len(inner_pages)} remaining; batch {batch_index} of {len(batches)}):
 {inner_list}
 
 For each page:
@@ -1179,9 +2311,9 @@ DOWNLOADED ASSETS ({len(asset_list)} files at /brands/{slug}/):
 
 {common_rules}
 
-The UI project is a Next.js app at {UI_DIR}. Build ALL {len(inner_pages)} inner pages. Verify TypeScript compiles before finishing.
+The UI project is a Next.js app at {UI_DIR}. Build ALL {len(batch)} inner pages listed in this batch. Verify TypeScript compiles before finishing.
 """
-    _run_claude_print(pass2_prompt, f"pass 2 ({len(inner_pages)} inner pages)")
+        _run_model_runner(pass2_prompt, f"inner pages batch {batch_index}/{len(batches)}", runner)
 
 
 def verify_replicas(slug: str, pages: dict, dirs: dict) -> None:
@@ -1191,11 +2323,14 @@ def verify_replicas(slug: str, pages: dict, dirs: dict) -> None:
     replica_dir = dirs["replica"]
     components_dir = dirs["components"]
 
-    # Check homepage
+    # Check homepage. Missing homepage is bad, but the HTML-snapshot repair step
+    # (phase 5c) can still point the route at the full captured page, so warn and
+    # continue rather than aborting the entire run before validation/publish.
     homepage_tsx = replica_dir / "page.tsx"
     if not homepage_tsx.exists():
-        fail(f"Missing homepage replica: {homepage_tsx}")
-    ok(f"homepage/page.tsx: exists ({homepage_tsx.stat().st_size} bytes)")
+        warn(f"Missing homepage replica: {homepage_tsx} (will rely on HTML-snapshot fallback)")
+    else:
+        ok(f"homepage/page.tsx: exists ({homepage_tsx.stat().st_size} bytes)")
 
     # Check layout
     layout_tsx = replica_dir / "layout.tsx"
@@ -1236,13 +2371,85 @@ def verify_replicas(slug: str, pages: dict, dirs: dict) -> None:
         warn(f"TypeScript: {error_count} errors (non-fatal, replicas may still render)")
 
 
+def _replica_page_path(replica_dir: Path, page_slug: str) -> Path:
+    if page_slug == "homepage":
+        return replica_dir / "page.tsx"
+    return replica_dir / page_slug / "page.tsx"
+
+
+def _tsx_section_marker_count(content: str) -> int:
+    return len(re.findall(r"<h2|<H2|className.*h2", content))
+
+
+def _html_snapshot_redirect_source(slug: str, page_slug: str) -> str:
+    safe_name = "".join(part.capitalize() for part in re.split(r"[^a-zA-Z0-9]+", page_slug) if part) or "Homepage"
+    return f'''import {{ redirect }} from "next/navigation";
+
+export default function {safe_name}HtmlSnapshotReplica() {{
+  // Full-page fallback: the model-built React page was section-incomplete.
+  redirect("/api/brands/{slug}/preview/{page_slug}");
+}}
+'''
+
+
+def repair_incomplete_replicas_with_html_snapshots(slug: str, pages: dict, dirs: dict) -> None:
+    """Replace section-incomplete React pages with full extracted HTML routes.
+
+    Model-built React replicas are preferred when complete, but a partial React
+    page is worse than a full captured page. This keeps validation and review
+    surfaces pointed at the full extracted artifact instead of a truncated build.
+    """
+    phase_banner(5, "Repairing incomplete replicas", "Falling back to full HTML snapshots when section coverage is too low")
+
+    replica_dir = dirs["replica"]
+    dom_dir = dirs["dom_extraction"]
+    repaired = 0
+
+    for page_slug in pages:
+        dom_file = dom_dir / f"{page_slug}.json"
+        if not dom_file.exists():
+            continue
+        try:
+            dom = json.loads(dom_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            warn(f"{page_slug}: could not read DOM JSON for section repair")
+            continue
+
+        sections = dom.get("sections") if isinstance(dom, dict) else []
+        if not isinstance(sections, list) or not sections:
+            continue
+
+        tsx_path = _replica_page_path(replica_dir, page_slug)
+        html_snapshot = dom_dir / f"{page_slug}-snapshot.html"
+        brands_html_snapshot = dirs["brands_dom_extraction"] / f"{page_slug}-snapshot.html"
+        if not html_snapshot.exists() and not brands_html_snapshot.exists():
+            warn(f"{page_slug}: incomplete React page cannot fall back because HTML snapshot is missing")
+            continue
+
+        content = tsx_path.read_text(encoding="utf-8") if tsx_path.exists() else ""
+        marker_count = _tsx_section_marker_count(content)
+        if marker_count >= max(0, len(sections) - 2):
+            ok(f"{page_slug}: React section coverage {marker_count}/{len(sections)}")
+            continue
+
+        tsx_path.parent.mkdir(parents=True, exist_ok=True)
+        tsx_path.write_text(_html_snapshot_redirect_source(slug, page_slug), encoding="utf-8")
+        repaired += 1
+        warn(f"{page_slug}: React section coverage {marker_count}/{len(sections)}; using full HTML snapshot route")
+
+    if repaired:
+        ok(f"HTML snapshot fallback applied to {repaired} page(s)")
+    else:
+        ok("No HTML snapshot fallback needed")
+
+
 # ── Phase 6: Validate ────────────────────────────────────────────────────
 
 def run_validation(slug: str) -> float:
     """Run the validation harness. Returns average score."""
     phase_banner(6, "Running screenshot validation", "Comparing replicas against reference screenshots")
 
-    base_url = "http://localhost:5173"
+    base_url = dev_server_base_url()
     cache_dir = CACHE_ROOT / slug
 
     validation_script = SCRIPTS_DIR / "run_validation_loop.py"
@@ -1250,6 +2457,8 @@ def run_validation(slug: str) -> float:
         warn("run_validation_loop.py not found, skipping validation")
         return 0.0
 
+    # Best-effort: the loop writes report.json incrementally, so a slow run that
+    # exceeds the timeout must not abort the pipeline (publish/register still run).
     result = run_cmd(
         [
             sys.executable, str(validation_script),
@@ -1258,9 +2467,12 @@ def run_validation(slug: str) -> float:
             "--target", "80",
             "--skip-originals",
         ],
-        timeout=300,
+        timeout=VALIDATION_TIMEOUT,
         check=False,
+        timeout_ok=True,
     )
+    if result.returncode == -1:
+        warn(f"Validation exceeded {VALIDATION_TIMEOUT}s; using the report it had already written")
 
     output = (result.stdout or "")
     print(output)
@@ -1274,14 +2486,24 @@ def run_validation(slug: str) -> float:
              "--brand", slug, "--all-pages",
              "--base-url", base_url,
              "--output", str(cache_dir / "validation" / "component-report.json")],
-            timeout=300, check=False,
+            timeout=VALIDATION_TIMEOUT, check=False, timeout_ok=True,
         )
         if comp_result.returncode == 0:
             ok("Component validation report saved")
         else:
             warn(f"Component validation exited with code {comp_result.returncode} (non-fatal)")
 
-    # Parse average score from output
+    # Authoritative score: the report.json the loop wrote (survives a timeout).
+    # Fall back to parsing stdout only if the report is unreadable.
+    report_path = BRANDS_ROOT / slug / "validation" / "report.json"
+    try:
+        report = json.loads(report_path.read_text())
+        avg = report.get("desktop_avg") or report.get("viewport_avg")
+        if isinstance(avg, (int, float)):
+            return float(avg)
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+
     for line in output.split("\n"):
         if "AVERAGE" in line:
             match = re.search(r"(\d+\.\d+)%", line)
@@ -1303,13 +2525,15 @@ def publish(slug: str) -> None:
         return
 
     result = run_cmd(
-        [sys.executable, str(publish_script), "--brand", slug],
+        [sys.executable, str(publish_script), "--brand", slug, "--enforce-readiness"],
         timeout=120,
         check=False,
     )
     print(result.stdout or "")
     if result.returncode != 0:
-        warn(f"publish exited with code {result.returncode}")
+        # Don't sys.exit — registration (phase 8) and final verification (phase 9)
+        # must still run so the brand lands in the library for review/repair.
+        warn(f"publish readiness gate failed with code {result.returncode}; continuing to registration")
 
 
 # ── Phase 8: Register ────────────────────────────────────────────────────
@@ -1482,13 +2706,13 @@ def final_verification(slug: str, pages: dict, asset_count: int, score: float) -
     print(f"  Checks: {passed}/{total_checks} passed")
     if failed_checks:
         print(f"  Missing: {', '.join(failed_checks)}")
-    print(f"  URL: http://localhost:5173/brands/{slug}")
+    print(f"  URL: {dev_server_base_url()}/brands/{slug}")
     print(f"{'='*60}")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────
 
-def main() -> int:
+def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Extract a complete design system from a URL end-to-end.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -1496,10 +2720,21 @@ def main() -> int:
     )
     parser.add_argument("--url", required=True, help="Target URL to extract from")
     parser.add_argument("--headed", action="store_true", help="Use headed browser for bot-detection sites")
+    parser.add_argument("--all-pages", action="store_true", help="Extract every sitemap/nav page instead of stopping at the selected page set")
+    parser.add_argument("--page-limit", type=int, default=None, help="Optional max pages to extract. Omit with --all-pages to extract every discovered page")
+    parser.add_argument("--replica-batch-size", type=int, default=DEFAULT_REPLICA_BATCH_SIZE, help="Inner replica pages per model-runner batch")
     parser.add_argument("--skip-existing", action="store_true", help="Resume partial extraction (skip existing files)")
     parser.add_argument("--skip-validation", action="store_true", help="Skip Phase 6 (screenshot validation)")
-    parser.add_argument("--skip-replicas", action="store_true", help="Skip Phase 5 (Claude replica generation)")
-    args = parser.parse_args()
+    parser.add_argument("--skip-replicas", action="store_true", help="Skip Phase 5 (model-runner replica generation)")
+    parser.add_argument("--skip-publish", action="store_true", help="Skip publish, registration, and final verification")
+    parser.add_argument("--skip-mirror", action="store_true", help="Skip Phase 4.5 (offline mirror of original pages)")
+    parser.add_argument("--skip-html-replicas", action="store_true", help="Skip Phase 6.5 (standalone token-styled HTML replicas)")
+    parser.add_argument("--skip-open-design-export", action="store_true", help="Skip Phase 7.5 (open-design DESIGN.md + skill export)")
+    return parser
+
+
+def main() -> int:
+    args = build_arg_parser().parse_args()
 
     url = args.url.rstrip("/")
     if not url.startswith("http"):
@@ -1573,30 +2808,19 @@ def main() -> int:
     # Phase 2: Identify pages
     _write_phase_event(slug, phase="2", status="started")
     _p2_start = time.time()
-    pages = identify_pages(url, args.headed)
+    pages = identify_pages(url, args.headed, all_pages=args.all_pages, page_limit=args.page_limit)
     write_pages_json(slug, pages)
     _write_phase_event(slug, phase="2", status="completed", duration_s=time.time() - _p2_start)
 
-    # Phase 3: Extract DOM from each page
+    # Phase 3: Extract DOM from each page (per-page fault isolation — a single
+    # flaky page must never abort the whole run; failed pages are pruned).
     _write_phase_event(slug, phase="3", status="started")
     _p3_start = time.time()
     phase_banner(3, "Extracting DOM", f"Extracting content and measurements from {len(pages)} pages")
-    for page_slug, config in pages.items():
-        extract_dom(
-            page_slug,
-            config["original_url"],
-            slug,
-            dirs,
-            args.headed,
-            args.skip_existing,
-        )
-
-    # Verify DOM extractions exist
-    dom_dir = dirs["dom_extraction"]
-    for page_slug in pages:
-        dom_path = dom_dir / f"{page_slug}.json"
-        assert_exists(dom_path, f"DOM extraction for {page_slug}")
-    ok(f"All {len(pages)} DOM extractions verified")
+    pages = extract_all_dom(pages, slug, dirs, args.headed, args.skip_existing)
+    # Persist the pruned page set so every downstream phase (replicas,
+    # validation, publish) operates only on pages that produced DOM artifacts.
+    write_pages_json(slug, pages)
     _write_phase_event(slug, phase="3", status="completed", duration_s=time.time() - _p3_start)
 
     # Phase 4: Download assets
@@ -1620,28 +2844,63 @@ def main() -> int:
         else:
             warn(f"Brand kit: status={bk_status}")
 
+    # Phase 4.5: Mirror original pages offline — best-effort artifact step.
+    if args.skip_mirror:
+        warn("Skipping original-page mirror (--skip-mirror)")
+    else:
+        try:
+            _phase("4.5", mirror_originals, slug)
+        except Exception as e:  # noqa: BLE001 — artifact steps never abort extraction
+            warn(f"Original-page mirror errored ({e}) — continuing")
+
     # Phase 5: Build replicas
     if not args.skip_replicas:
-        _phase("5", build_replicas, slug, url, pages, dirs)
+        _phase("5", build_replicas, slug, url, pages, dirs, args.skip_existing, args.replica_batch_size)
         _phase("5b", verify_replicas, slug, pages, dirs)
+        _phase("5c", repair_incomplete_replicas_with_html_snapshots, slug, pages, dirs)
     else:
         warn("Skipping replica generation (--skip-replicas)")
 
-    # Phase 6: Validate
+    # Phase 6: Validate. Never fatal — a validation failure must not cost us the
+    # publish/register phases (the brand + its score should still land for review).
     score = 0.0
     if not args.skip_validation and not args.skip_replicas:
-        score = _phase("6", run_validation, slug)
+        try:
+            score = _phase("6", run_validation, slug)
+        except Exception as e:  # noqa: BLE001 — validation is best-effort
+            warn(f"Validation phase errored ({e}); continuing to publish/register")
     else:
         warn("Skipping validation (--skip-validation or --skip-replicas)")
 
-    # Phase 7: Publish
-    _phase("7", publish, slug)
+    # Phase 6.5: Standalone HTML replicas — best-effort artifact step.
+    if args.skip_html_replicas:
+        warn("Skipping standalone HTML replicas (--skip-html-replicas)")
+    else:
+        try:
+            _phase("6.5", generate_html_replicas, slug)
+        except Exception as e:  # noqa: BLE001 — artifact steps never abort extraction
+            warn(f"Standalone HTML replicas errored ({e}) — continuing")
 
-    # Phase 8: Register
-    _phase("8", register_in_library, slug, url, title)
+    if args.skip_publish:
+        warn("Skipping publish, registration, and final verification (--skip-publish)")
+    else:
+        # Phase 7: Publish
+        _phase("7", publish, slug)
 
-    # Phase 9: Final verification
-    _phase("9", final_verification, slug, pages, asset_count, score)
+        # Phase 7.5: Open-design export — depends on publish artifacts; best-effort.
+        if args.skip_open_design_export:
+            warn("Skipping open-design export (--skip-open-design-export)")
+        else:
+            try:
+                _phase("7.5", export_open_design, slug)
+            except Exception as e:  # noqa: BLE001 — artifact steps never abort extraction
+                warn(f"Open-design export errored ({e}) — continuing")
+
+        # Phase 8: Register
+        _phase("8", register_in_library, slug, url, title)
+
+        # Phase 9: Final verification
+        _phase("9", final_verification, slug, pages, asset_count, score)
 
     elapsed = time.time() - start_time
     print(f"\nTotal time: {elapsed/60:.1f} minutes")
