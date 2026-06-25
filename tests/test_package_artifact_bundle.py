@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import struct
 import sys
+import urllib.error
 import zipfile
 import zlib
 from pathlib import Path
@@ -191,3 +192,95 @@ class TestPackageInliner:
             names = zf.namelist()
             assert "index.html" in names
             assert "artifact.json" in names
+
+
+# ---------------------------------------------------------------------------
+# Task 1.2 — OD install + fidelity verify
+# ---------------------------------------------------------------------------
+
+class TestInstall:
+    def test_install_success_posts_folder_path(self, tmp_path, monkeypatch):
+        seen: dict = {}
+
+        class FakeResp:
+            status = 200
+
+            def read(self) -> bytes:
+                return b'{"ok":true}'
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *a):
+                return False
+
+        def fake_urlopen(req, *a, **kw):
+            seen["url"] = req.full_url
+            seen["body"] = req.data.decode("utf-8")
+            seen["method"] = req.get_method()
+            return FakeResp()
+
+        monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+        art = tmp_path / "art"
+        art.mkdir()
+        res = pab.install(art)
+        assert res["installed"] is True
+        assert res["status"] == 200
+        assert res["body"] == {"ok": True}
+        assert seen["method"] == "POST"
+        assert seen["url"].endswith("/api/import/folder")
+        assert json.loads(seen["body"])["path"] == str(art.resolve())
+
+    def test_install_daemon_down_does_not_raise(self, tmp_path, monkeypatch):
+        def fake_urlopen(req, *a, **kw):
+            raise urllib.error.URLError("[Errno 61] Connection refused")
+
+        monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+        art = tmp_path / "art"
+        art.mkdir()
+        res = pab.install(art)
+        assert res["installed"] is False
+        assert "reason" in res
+
+    def test_install_non_200_is_not_installed(self, tmp_path, monkeypatch):
+        def fake_urlopen(req, *a, **kw):
+            raise urllib.error.HTTPError(
+                req.full_url, 500, "Server Error", {}, None
+            )
+
+        monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+        art = tmp_path / "art"
+        art.mkdir()
+        res = pab.install(art)
+        assert res["installed"] is False
+        assert res["status"] == 500
+
+
+class TestVerifyFidelity:
+    def test_writes_fidelity_json_for_each_viewport(self, tmp_path):
+        png = _tiny_png()
+        art = tmp_path / "art"
+        art.mkdir()
+        (art / "index.html").write_text("<html></html>", encoding="utf-8")
+        ref = tmp_path / "ref.png"
+        ref.write_bytes(png)
+
+        def runner(url, out_path, viewport):
+            Path(out_path).write_bytes(png)  # identical -> close fraction 1.0
+
+        res = pab.verify_fidelity(art, ref, runner=runner)
+        fid = json.loads((art / "fidelity.json").read_text())
+        assert "desktop_close" in fid and "mobile_close" in fid
+        assert 0.0 <= fid["desktop_close"] <= 1.0
+        assert 0.0 <= fid["mobile_close"] <= 1.0
+        assert fid["desktop_close"] == pytest.approx(1.0)
+        assert res["desktop_close"] == fid["desktop_close"]
+
+    def test_skips_when_browser_unavailable(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(pab.shutil, "which", lambda name: None)
+        art = tmp_path / "art"
+        art.mkdir()
+        (art / "index.html").write_text("<html></html>", encoding="utf-8")
+        res = pab.verify_fidelity(art, tmp_path / "ref.png")
+        assert res.get("skipped")
+        assert not (art / "fidelity.json").exists()

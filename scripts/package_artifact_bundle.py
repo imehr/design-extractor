@@ -23,7 +23,11 @@ Usage::
 
     python3 scripts/package_artifact_bundle.py \\
         --mirror-dir brands/acme/original/homepage \\
-        --out-dir    brands/acme/open-design/artifacts/homepage --zip
+        --out-dir    brands/acme/open-design/artifacts/homepage \\
+        --zip --install --verify --reference-png brands/acme/original/homepage/verify.png
+
+``--install`` and ``--verify`` are best-effort: a missing OD daemon or a missing
+``agent-browser`` CLI never raises (the script exits 0 with a clear message).
 """
 
 from __future__ import annotations
@@ -31,18 +35,28 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import os
 import re
 import shutil
+import subprocess
 import sys
+import urllib.error
+import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from bs4 import BeautifulSoup
 
 import mirror_original_pages as mop  # reuse battle-tested CSS regexes/parsers
 
 DEFAULT_INLINE_THRESHOLD = 200 * 1024
+DEFAULT_DAEMON_URL = "http://localhost:7456"
+DEFAULT_VIEWPORTS: list[dict[str, Any]] = [
+    {"name": "desktop", "width": 1280, "height": 720},
+    {"name": "mobile", "width": 375, "height": 812},
+]
+VERIFY_SESSION = "artifact-verify"
 
 MIME_BY_EXT: dict[str, str] = {
     ".png": "image/png",
@@ -384,6 +398,168 @@ def _write_zip(src_dir: Path, zip_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# install() — best-effort POST to the OD daemon
+# ---------------------------------------------------------------------------
+
+def _install_fallback_message(artifact_dir: Path, reason: str) -> None:
+    print(
+        f"[install] OD daemon unavailable ({reason}).\n"
+        "  Manual fallback: drop this folder into an OD project, or use the\n"
+        f"  `od` CLI folder import, e.g.:\n"
+        f"    od import --folder {artifact_dir.resolve()}\n"
+        f"  (artifact dir: {artifact_dir.resolve()})",
+        file=sys.stderr,
+    )
+
+
+def install(
+    artifact_dir: Path, *, daemon_url: Optional[str] = None
+) -> dict[str, Any]:
+    """POST the artifact folder to the Open-Design daemon's folder import.
+
+    Defensive by design: any failure (daemon down, non-200, network error)
+    prints a manual fallback and returns ``{"installed": False, "reason": ...}``
+    rather than raising. On success returns
+    ``{"installed": True, "status": <int>, "body": <dict|str>}``.
+    """
+    daemon_url = (daemon_url or os.environ.get("OD_DAEMON_URL") or DEFAULT_DAEMON_URL).rstrip("/")
+    artifact_dir = Path(artifact_dir)
+    endpoint = f"{daemon_url}/api/import/folder"
+    body = json.dumps({"path": str(artifact_dir.resolve())}).encode("utf-8")
+    request = urllib.request.Request(
+        endpoint,
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=10) as response:
+            status = getattr(response, "status", 200)
+            raw = response.read().decode("utf-8", errors="replace")
+            try:
+                parsed: Any = json.loads(raw) if raw else {}
+            except json.JSONDecodeError:
+                parsed = raw
+            return {"installed": True, "status": status, "body": parsed}
+    except urllib.error.HTTPError as exc:
+        _install_fallback_message(artifact_dir, f"HTTP {exc.code}")
+        return {"installed": False, "reason": f"HTTP {exc.code}", "status": exc.code}
+    except (urllib.error.URLError, OSError) as exc:
+        reason = getattr(exc, "reason", exc)
+        _install_fallback_message(artifact_dir, str(reason))
+        return {"installed": False, "reason": str(reason)}
+
+
+# ---------------------------------------------------------------------------
+# verify_fidelity() — agent-browser screenshots + per-pixel close ratio
+# ---------------------------------------------------------------------------
+
+def _close_pixel_ratio(reference_png: Path, shot_png: Path) -> Optional[float]:
+    """Fraction of pixels whose max-channel diff is <= ~10% of 255 (0..1).
+
+    Uses numpy/PIL when available (they are repo dependencies); falls back to a
+    pure-PIL per-pixel loop. Returns None if either image cannot be opened.
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return None
+    try:
+        a = Image.open(reference_png).convert("RGB")
+        b = Image.open(shot_png).convert("RGB")
+    except OSError:
+        return None
+    if a.size != b.size:
+        b = b.resize(a.size)
+    try:
+        import numpy as np
+
+        diff = np.abs(np.asarray(a, dtype=np.int16) - np.asarray(b, dtype=np.int16))
+        close = float((diff.max(axis=2) <= 26).mean())
+    except ImportError:
+        pa = a.load()
+        pb = b.load()
+        width, height = a.size
+        total = width * height
+        close_count = 0
+        for y in range(height):
+            for x in range(width):
+                ra, ga, ba = pa[x, y]
+                rb, gb, bb = pb[x, y]
+                if max(abs(ra - rb), abs(ga - gb), abs(ba - bb)) <= 26:
+                    close_count += 1
+        close = close_count / total if total else 0.0
+    return round(close, 4)
+
+
+def _default_browser_runner(url: str, out_path: str, viewport: dict[str, Any]) -> None:
+    """Drive agent-browser to screenshot ``url`` at ``viewport`` into ``out_path``."""
+    common = ["agent-browser", "--session", VERIFY_SESSION]
+
+    def _run(*args: str) -> subprocess.CompletedProcess:
+        return subprocess.run(
+            [*common, *args], capture_output=True, text=True, timeout=60
+        )
+
+    _run("set", "viewport", str(viewport["width"]), str(viewport["height"]))
+    _run("open", url)
+    _run("wait", "1500")
+    _run("screenshot", str(out_path))
+
+
+def verify_fidelity(
+    artifact_dir: Path,
+    reference_png: Path,
+    *,
+    viewports: Optional[list[dict[str, Any]]] = None,
+    runner: Optional[Callable[[str, str, dict[str, Any]], None]] = None,
+) -> dict[str, Any]:
+    """Screenshot the artifact at each viewport and score fidelity vs reference.
+
+    Writes ``fidelity.json`` next to the artifact with ``<name>_close`` keys
+    (0..1). ``runner`` lets tests inject a fake screenshot writer; when omitted
+    the real ``agent-browser`` CLI is used. If agent-browser is not on PATH and
+    no runner is given, returns ``{"skipped": "agent-browser unavailable"}``
+    without raising.
+    """
+    artifact_dir = Path(artifact_dir)
+    viewports = viewports if viewports is not None else DEFAULT_VIEWPORTS
+    if runner is None and shutil.which("agent-browser") is None:
+        print("[verify] agent-browser not on PATH; skipping", file=sys.stderr)
+        return {"skipped": "agent-browser unavailable"}
+
+    runner = runner or _default_browser_runner
+    index_uri = (artifact_dir / "index.html").resolve().as_uri()
+    reference_png = Path(reference_png)
+    result: dict[str, Any] = {}
+
+    for viewport in viewports:
+        name = viewport["name"]
+        shot_path = artifact_dir / f"fidelity-{name}.png"
+        key = f"{name}_close"
+        try:
+            runner(index_uri, str(shot_path), viewport)
+        except Exception as exc:  # noqa: BLE001 — verify never hard-fails
+            result[key] = None
+            result[f"{name}_error"] = str(exc)
+            continue
+        if not shot_path.is_file():
+            result[key] = None
+            result[f"{name}_error"] = "screenshot was not written"
+            continue
+        result[key] = (
+            _close_pixel_ratio(reference_png, shot_path)
+            if reference_png.is_file()
+            else None
+        )
+
+    (artifact_dir / "fidelity.json").write_text(
+        json.dumps(result, indent=2), encoding="utf-8"
+    )
+    return result
+
+
+# ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
 
@@ -396,6 +572,10 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--inline-threshold", type=int, default=DEFAULT_INLINE_THRESHOLD)
     parser.add_argument("--page-title", default=None)
     parser.add_argument("--zip", action="store_true")
+    parser.add_argument("--install", action="store_true", help="POST the artifact to the OD daemon")
+    parser.add_argument("--verify", action="store_true", help="Screenshot-diff against a reference PNG")
+    parser.add_argument("--reference-png", type=Path, default=None, help="Reference PNG for --verify")
+    parser.add_argument("--daemon-url", default=None, help="OD daemon URL (env OD_DAEMON_URL)")
     args = parser.parse_args(argv)
 
     result = package(
@@ -410,6 +590,23 @@ def main(argv: Optional[list[str]] = None) -> int:
     print(f"[artifact] wrote {result['dir']}")
     if result.get("zip"):
         print(f"[artifact] zip {result['zip']}")
+
+    if args.install:
+        install_result = install(result["dir"], daemon_url=args.daemon_url)
+        if install_result.get("installed"):
+            print(f"[install] OK (status {install_result['status']})")
+        else:
+            print(f"[install] not installed: {install_result.get('reason')}")
+
+    if args.verify:
+        if args.reference_png is None:
+            print("[verify] skipped: --reference-png not provided", file=sys.stderr)
+        else:
+            verify_result = verify_fidelity(result["dir"], args.reference_png)
+            if verify_result.get("skipped"):
+                print(f"[verify] skipped: {verify_result['skipped']}")
+            else:
+                print(f"[verify] {json.dumps(verify_result)}")
     return 0
 
 
