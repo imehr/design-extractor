@@ -1363,7 +1363,7 @@ export default function BrandPage({
   const tokens = brand.design_tokens as Record<string, unknown> | null;
   const colors = extractColors(brand.design_tokens);
   const typo = (tokens?.typography ?? {}) as Record<string, unknown>;
-  const fontFamilies = (typo.families ?? []) as { value: string; count: number }[];
+  const fontFamilies = (typo.families ?? []) as { value: string; count: number; role?: string }[];
   const fontSizes = (typo.sizes ?? []) as { value: string; count: number }[];
   const fontWeights = (typo.weights ?? []) as { value: string; count: number }[];
   const lineHeights = (typo.line_heights ?? []) as { value: string; count: number }[];
@@ -1375,6 +1375,22 @@ export default function BrandPage({
   const shadowList = (tokens?.shadows ?? []) as { value: string; count: number }[];
   const breakpointList = (tokens?.breakpoints ?? []) as number[];
   const transitionList = (tokens?.transitions ?? []) as { value: string; count: number }[];
+  const colourPalette = ((tokens?.colours as Record<string, unknown> | undefined)?.palette ?? {}) as Record<string, string>;
+  const semanticColours: Array<[string, string]> = [
+    ["Primary", colourPalette.primary],
+    ["Accent", colourPalette.accent],
+    ["Surface", colourPalette.surface],
+    ["On-surface / Text", colourPalette.text],
+    ["Border", colourPalette.border],
+    ["Muted", colourPalette.muted ?? colourPalette.backgroundLight],
+    ["Dark", colourPalette.dark],
+    ["Footer", colourPalette.footerDark ?? colourPalette.footer],
+  ].filter((pair): pair is [string, string] => Boolean(pair[1]));
+  const typeSamples = (typo.samples ?? {}) as Record<
+    string,
+    { fontFamily?: string; fontSize?: string; fontWeight?: string | number; lineHeight?: string }
+  >;
+  const brandDark = colourPalette.dark || colourPalette.footerDark || "#1d1d1f";
 
   // Combine assets from brand dir AND public dir (localFiles)
   const brandAssets = brand.files.filter((f: string) => f.startsWith("assets/"));
@@ -1403,7 +1419,20 @@ export default function BrandPage({
   const svgAssets = allImageFiles.filter((f) => f.name.endsWith(".svg"));
   const imgAssets = allImageFiles.filter((f) => /\.(png|jpg|jpeg|webp|gif)$/i.test(f.name));
 
-  const logoFile = svgAssets.find((f) => f.name.includes("logo"));
+  // Pick the real brand logo, not a sponsor logo. Prefer the canonical
+  // assets/logo.svg, then any asset whose name starts with the brand word
+  // (e.g. "bulldogs-badge.svg"), then identity nouns (badge/wordmark/...),
+  // only falling back to a name containing "logo" once sponsor marks are
+  // excluded.
+  const brandWord = brand.slug.split("-")[0].toLowerCase();
+  const isSponsorName = (name: string) => /(footer|sponsor|partner|^ad-)/i.test(name);
+  const logoFile =
+    svgAssets.find((f) => f.name.toLowerCase() === "logo.svg") ||
+    svgAssets.find((f) => f.name.toLowerCase().startsWith(brandWord) && !isSponsorName(f.name)) ||
+    imgAssets.find((f) => f.name.toLowerCase().startsWith(brandWord) && !isSponsorName(f.name)) ||
+    svgAssets.find((f) => /^(badge|wordmark|mark|lockup|brand|text)/i.test(f.name) && !isSponsorName(f.name)) ||
+    svgAssets.find((f) => f.name.toLowerCase().includes("logo") && !isSponsorName(f.name)) ||
+    null;
   const validationReport = (brand.validation_report ?? {}) as Record<string, unknown>;
   const componentReport = (brand.component_report ?? {}) as ComponentReport;
   const componentManifest = (brand.component_manifest ?? {}) as ComponentManifest;
@@ -1569,47 +1598,55 @@ export default function BrandPage({
               </div>
             )}
 
-            {/* Brand identity / logo */}
+            {/* Brand identity */}
             <div className="flex flex-wrap items-center gap-6">
-              {brand.has_logo && logoFile && (
-                <div className="flex items-center justify-center rounded-2xl bg-[#f5f5f7] p-5 shadow-sm" style={{ minWidth: 160, minHeight: 96 }}>
-                  <img
-                    src={logoFile.src}
-                    alt={`${brand.name} logo`}
-                    className="h-16 w-auto max-w-[220px] object-contain"
-                  />
+              {logoFile ? (
+                <div className="flex gap-3">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="flex h-24 w-44 items-center justify-center rounded-xl bg-white p-3 ring-1 ring-black/5">
+                      <img src={logoFile.src} alt={`${brand.name} logo on light`} className="max-h-16 max-w-[140px] object-contain" />
+                    </div>
+                    <span className="text-[10px] text-[#86868b]">On light</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="flex h-24 w-44 items-center justify-center rounded-xl p-3" style={{ backgroundColor: brandDark }}>
+                      <img src={logoFile.src} alt={`${brand.name} logo on dark`} className="max-h-16 max-w-[140px] object-contain" />
+                    </div>
+                    <span className="text-[10px] text-[#86868b]">On brand</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex h-24 w-44 items-center justify-center rounded-xl bg-[#f5f5f7] text-center text-[11px] text-[#86868b] ring-1 ring-black/5">
+                  No logo asset detected
                 </div>
               )}
-              <div>
+              <div className="min-w-[220px]">
                 <h2 className="text-2xl font-semibold tracking-tight text-[#1d1d1f]">{brand.name}</h2>
                 <p className="mt-1 text-sm text-[#86868b]">{brand.slug}</p>
-                <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[#86868b]">
+                <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[#424245]">
                   <span className="rounded-full bg-[#f5f5f7] px-2 py-0.5">{((brand.metadata as Record<string, number | undefined> | undefined)?.pages_extracted ?? 0)} pages</span>
                   <span className="rounded-full bg-[#f5f5f7] px-2 py-0.5">confidence {brand.confidence ?? "—"}</span>
+                  {semanticColours.length > 0 && <span className="rounded-full bg-[#f5f5f7] px-2 py-0.5">{semanticColours.length} colour roles</span>}
                   {shadowList.length > 0 && <span className="rounded-full bg-[#f5f5f7] px-2 py-0.5">{shadowList.length} shadows</span>}
-                  {spacingScale.length > 0 && <span className="rounded-full bg-[#f5f5f7] px-2 py-0.5">{spacingScale.length} spacing steps</span>}
                 </div>
               </div>
             </div>
 
-            {/* Color palette - large swatches */}
-            {colors.length > 0 && (
+            {/* Semantic colour roles */}
+            {semanticColours.length > 0 && (
               <div>
-                <h3 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
-                  Colour Palette
+                <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                  Colour Roles
                 </h3>
-                <div className="grid grid-cols-5 gap-3 md:grid-cols-10">
-                  {colors.slice(0, 10).map(({ hex, count }) => {
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {semanticColours.map(([label, hex]) => {
                     const fg = contrastColor(hex);
                     return (
-                      <div key={hex} className="group">
-                        <div
-                          className="flex aspect-square items-end rounded-xl p-2 shadow-sm transition-transform group-hover:scale-105"
-                          style={{ backgroundColor: hex, color: fg }}
-                        >
-                          <span className="font-mono text-[9px] font-medium opacity-80">{hex}</span>
+                      <div key={label} className="overflow-hidden rounded-xl ring-1 ring-black/5">
+                        <div className="flex h-20 items-end justify-end p-2" style={{ backgroundColor: hex, color: fg }}>
+                          <span className="font-mono text-[11px] uppercase">{hex}</span>
                         </div>
-                        <p className="mt-1 text-center text-[10px] text-[#86868b]">{count}x</p>
+                        <div className="bg-white px-2 py-1.5 text-[12px] font-medium text-[#1d1d1f]">{label}</div>
                       </div>
                     );
                   })}
@@ -1617,38 +1654,91 @@ export default function BrandPage({
               </div>
             )}
 
-            {/* Typography */}
-            {fontFamilies.length > 0 && (
+            {/* Full colour palette */}
+            {colors.length > 0 && (
               <div>
-                <h3 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
-                  Typography
+                <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                  Full Palette
                 </h3>
-                <div className="space-y-6">
-                  {fontFamilies.slice(0, 3).map((f, i) => {
-                    const name = primaryFontName(f.value);
+                <div className="grid grid-cols-5 gap-2 md:grid-cols-10">
+                  {colors.slice(0, 20).map(({ hex, count }) => {
+                    const fg = contrastColor(hex);
                     return (
-                      <div key={i} className="flex items-baseline gap-6 border-b border-[#d2d2d7]/40 pb-6">
-                        <span className="text-[40px] font-semibold leading-[1.1] text-[#1d1d1f]" style={{ fontFamily: f.value }}>
-                          Aa
-                        </span>
-                        <div>
-                          <span className="text-[17px] font-semibold text-[#1d1d1f]">{name}</span>
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ×{f.count} usages
-                          </span>
+                      <div key={hex}>
+                        <div
+                          className="flex aspect-square items-end rounded-lg p-1.5 shadow-sm"
+                          style={{ backgroundColor: hex, color: fg }}
+                          title={`${hex} · ${count}×`}
+                        >
+                          <span className="font-mono text-[8px] font-medium opacity-80">{hex.slice(1)}</span>
                         </div>
+                        <p className="mt-1 text-center text-[9px] text-[#86868b]">{count}×</p>
                       </div>
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Typography specimen */}
+            {(fontFamilies.length > 0 || Object.keys(typeSamples).length > 0) && (
+              <div>
+                <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                  Typography
+                </h3>
+                {fontFamilies.slice(0, 1).map((f, i) => {
+                  const name = primaryFontName(f.value);
+                  return (
+                    <div key={i} className="mb-4 flex flex-wrap items-baseline gap-3">
+                      <span className="text-[15px] font-semibold text-[#1d1d1f]">Typeface</span>
+                      <span className="text-[15px] font-mono text-[#1d1d1f]" style={{ fontFamily: f.value }}>{name || f.value}</span>
+                      <span className="text-[11px] text-[#86868b]">×{f.count} usages{f.role ? ` · ${f.role}` : ""}</span>
+                    </div>
+                  );
+                })}
+                <div className="space-y-3">
+                  {([
+                    { key: "h1", label: "H1 · Display", text: brand.name },
+                    { key: "h2", label: "H2 · Heading", text: "Section heading" },
+                    { key: "h3", label: "H3 · Subheading", text: "Subheading example" },
+                    { key: "p", label: "Body", text: "The quick brown fox jumps over the lazy dog — a complete type specimen." },
+                    { key: "a", label: "Link", text: "Read the full design system" },
+                  ] as const)
+                    .filter((row) => typeSamples[row.key])
+                    .map((row) => {
+                      const s = typeSamples[row.key];
+                      return (
+                        <div key={row.key} className="flex flex-wrap items-baseline gap-x-5 gap-y-1 border-b border-[#d2d2d7]/40 pb-3">
+                          <div className="w-28 shrink-0 text-[11px] uppercase tracking-wide text-[#86868b]">{row.label}</div>
+                          <div
+                            className="min-w-0 flex-1 truncate text-[#1d1d1f]"
+                            style={{ fontFamily: s.fontFamily, fontSize: s.fontSize, fontWeight: Number(s.fontWeight) || 400, lineHeight: s.lineHeight }}
+                          >
+                            {row.text}
+                          </div>
+                          <div className="font-mono text-[10px] text-[#86868b]">
+                            {s.fontSize}{s.fontWeight ? ` · ${s.fontWeight}` : ""}{s.lineHeight ? ` · ${s.lineHeight}` : ""}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+                {fontWeights.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-baseline gap-x-5 gap-y-1">
+                    <span className="text-[11px] uppercase tracking-wide text-[#86868b]">Weights</span>
+                    {fontWeights.map((w, i) => (
+                      <span key={i} className="text-[#1d1d1f]" style={{ fontWeight: Number(w.value) || 400 }}>Aa</span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
             {/* Spacing scale */}
             {spacingScale.length > 0 && (
               <div>
-                <h3 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
-                  Spacing Scale
+                <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                  Spacing
                 </h3>
                 <div className="flex flex-wrap items-end gap-4">
                   {spacingScale.slice(0, 12).map((s: string, i: number) => {
@@ -1665,37 +1755,67 @@ export default function BrandPage({
               </div>
             )}
 
-            {/* Shadows */}
+            {/* Corner radii */}
+            {borderRadii.length > 0 && (
+              <div>
+                <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                  Radii
+                </h3>
+                <div className="flex flex-wrap gap-6">
+                  {borderRadii.slice(0, 6).map((r, i) => {
+                    const px = parseInt(r.value, 10);
+                    const visual = Number.isFinite(px) ? Math.min(px, 64) : 48;
+                    return (
+                      <div key={i} className="flex flex-col items-center gap-1">
+                        <div className="h-14 w-14 bg-[#1d1d1f]" style={{ borderRadius: Math.min(visual, 32) }} />
+                        <span className="font-mono text-[10px] text-[#86868b]">{r.value}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Elevation / shadows */}
             {shadowList.length > 0 && (
               <div>
-                <h3 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
-                  Shadows
+                <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                  Elevation
                 </h3>
                 <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
                   {shadowList.slice(0, 4).map((s, i) => (
                     <div key={i} className="flex flex-col items-center gap-2">
-                      <div className="size-20 rounded-xl bg-white ring-1 ring-black/5" style={{ boxShadow: s.value }} />
-                      <span className="text-center font-mono text-[10px] leading-tight text-[#86868b]">{s.value.length > 28 ? `${s.value.slice(0, 26)}…` : s.value}</span>
-                      <span className="text-[10px] text-[#86868b]">×{s.count}</span>
+                      <div className="size-16 rounded-xl bg-white ring-1 ring-black/5" style={{ boxShadow: s.value }} />
+                      <span className="font-mono text-[10px] leading-tight text-[#86868b]">{s.value.length > 24 ? `${s.value.slice(0, 22)}…` : s.value}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Type scale */}
-            {fontSizes.length > 0 && (
-              <div>
-                <h3 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
-                  Type Scale
-                </h3>
-                <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
-                  {fontSizes.slice(0, 8).map((sz, i) => (
-                    <span key={i} className="font-semibold text-[#1d1d1f]" style={{ fontSize: sz.value, lineHeight: 1 }}>
-                      Aa
-                    </span>
-                  ))}
-                </div>
+            {/* Motion + breakpoints */}
+            {(transitionList.length > 0 || breakpointList.length > 0) && (
+              <div className="grid gap-8 md:grid-cols-2">
+                {transitionList.length > 0 && (
+                  <div>
+                    <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">Motion</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {transitionList.slice(0, 4).map((t, i) => (
+                        <span key={i} className="rounded-lg bg-[#f5f5f7] px-2.5 py-1 font-mono text-[11px] text-[#1d1d1f]">{t.value}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {breakpointList.length > 0 && (
+                  <div>
+                    <h3 className="mb-4 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">Breakpoints</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {breakpointList.map((bp, i) => (
+                        <span key={i} className="rounded-lg bg-[#f5f5f7] px-2.5 py-1 font-mono text-[11px] text-[#1d1d1f]">{bp}px</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
