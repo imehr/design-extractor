@@ -34,6 +34,21 @@ export interface BrandPackageQuality {
   checks: BrandPackageQualityCheck[];
 }
 
+export interface TestCaseEvalCheck {
+  id: string;
+  label: string;
+  status: BrandPackageQualityCheckStatus;
+  required: boolean;
+  details: string;
+  weight: number;
+}
+
+export interface TestCaseEval {
+  score: number;
+  blockers: number;
+  checks: TestCaseEvalCheck[];
+}
+
 export interface BrandTestCase {
   id: string;
   title: string;
@@ -50,6 +65,8 @@ export interface BrandTestCase {
   feedback_count: number;
   last_feedback_at: string | null;
   error?: string | null;
+  /** Scored evaluation of the generated HTML against brand-evidence requirements. */
+  eval?: TestCaseEval | null;
 }
 
 export interface BrandTestCaseManifest {
@@ -373,16 +390,23 @@ export async function generateTestCases(
       const filePath = path.join(casesDir, item.file);
       await fs.writeFile(filePath, renderTestCase(context, item.id, briefsByCase.get(item.id)), "utf-8");
       const html = await fs.readFile(filePath, "utf-8");
-      validateGeneratedTestCaseHtml(context, item.id, html);
+      const evaluation = evaluateTestCase(context, item.id, html);
+      const blockerLabels = evaluation.checks
+        .filter((c) => c.required && c.status === "fail")
+        .map((c) => c.label);
+      const blocked = blockerLabels.length > 0;
       cases.push({
         ...item,
-        status: "completed",
-        generated_at: now,
+        status: blocked ? "failed" : "completed",
+        generated_at: blocked ? item.generated_at : now,
         updated_at: now,
         source_hash: context.sourceHash,
         feedback_count: item.feedback_count,
         last_feedback_at: item.last_feedback_at,
-        error: null,
+        error: blocked
+          ? `Missing required brand evidence: ${blockerLabels.join(", ")}.`
+          : null,
+        eval: evaluation,
       });
     } catch (error) {
       cases.push({
@@ -393,6 +417,7 @@ export async function generateTestCases(
         feedback_count: item.feedback_count,
         last_feedback_at: item.last_feedback_at,
         error: error instanceof Error ? error.message : "Generation failed",
+        eval: item.eval ?? null,
       });
     }
   }
@@ -1881,66 +1906,85 @@ function formatClaudeGenerationError(error: unknown): string {
   return truncateForPrompt(message.replace(/\s+/g, " "), 1200);
 }
 
-function validateGeneratedTestCaseHtml(
+function evaluateTestCase(
   context: BrandContext,
   caseId: string,
   html: string
-): void {
-  const missing: string[] = [];
+): TestCaseEval {
   const lower = html.toLowerCase();
-  const requiresPageScaffold = caseId !== "brand-identity-poster";
-  if (!/<html[\s>]/i.test(html) || !/<body[\s>]/i.test(html)) {
-    missing.push("complete HTML document");
+  const requiresChrome = caseId !== "brand-identity-poster";
+  const checks: TestCaseEvalCheck[] = [];
+  const add = (
+    id: string,
+    label: string,
+    status: BrandPackageQualityCheckStatus,
+    required: boolean,
+    details: string,
+    weight = 1
+  ): void => {
+    checks.push({ id, label, status, required, details, weight });
+  };
+
+  const hasDoc = /<html[\s>]/i.test(html) && /<body[\s>]/i.test(html);
+  add("html-doc", "Complete HTML document", hasDoc ? "pass" : "fail", true, hasDoc ? "<html>/<body> present." : "Missing a complete <html>/<body> document.", 2);
+
+  if (context.logoSrc) {
+    const has = html.includes(context.logoSrc);
+    add("logo-asset", "Extracted logo asset", has ? "pass" : "fail", true, has ? `References ${context.logoSrc}.` : "Generated HTML does not reference the extracted logo asset.", 2);
   }
-  if (context.logoSrc && !html.includes(context.logoSrc)) {
-    missing.push("extracted logo asset");
-  }
-  if (!/brand-logo/.test(html)) {
-    missing.push("visible brand-logo class");
-  }
-  if (requiresPageScaffold && !/<header[\s>]/i.test(html)) {
-    missing.push("brand header");
-  }
-  if (requiresPageScaffold && !/<footer[\s>]/i.test(html)) {
-    missing.push("brand footer");
-  }
-  if (requiresPageScaffold && !html.includes("brand-footer-link-grid")) {
-    missing.push("extracted footer anatomy");
-  }
-  const navHits = context.navLabels
-    .slice(0, 5)
-    .filter((label) => lower.includes(label.toLowerCase()));
-  if (requiresPageScaffold && context.navLabels.length >= 3 && navHits.length < 3) {
-    missing.push("extracted navigation labels");
-  }
-  const footerHits = context.footerLinks
-    .slice(0, 5)
-    .filter((label) => lower.includes(label.toLowerCase()));
-  if (requiresPageScaffold && context.footerLinks.length >= 2 && footerHits.length < 1) {
-    missing.push("extracted footer labels");
-  }
-  if (caseId === "six-slide-deck") {
-    const slideLogoCount = (html.match(/class="brand-slide-logo"/g) ?? []).length;
-    if (context.logoSrc && slideLogoCount < 6) {
-      throw new Error("Generated six-slide-deck is missing slide logo treatment.");
+  const hasLogoClass = /brand-logo/.test(html);
+  add("brand-logo-class", "Visible .brand-logo sizing", hasLogoClass ? "pass" : "fail", true, hasLogoClass ? ".brand-logo class applied (logo keeps width/height)." : "Missing .brand-logo class — the logo may collapse to natural size.", 2);
+
+  if (requiresChrome) {
+    const hasHeader = /<header[\s>]/i.test(html);
+    add("header", "Brand header", hasHeader ? "pass" : "fail", true, hasHeader ? "<header> present." : "No <header> element.", 1);
+    const hasFooter = /<footer[\s>]/i.test(html);
+    add("footer", "Brand footer", hasFooter ? "pass" : "fail", true, hasFooter ? "<footer> present." : "No <footer> element.", 1);
+    const hasFooterAnatomy = html.includes("brand-footer-link-grid");
+    add("footer-anatomy", "Extracted footer anatomy", hasFooterAnatomy ? "pass" : "warn", false, hasFooterAnatomy ? "Footer link grid rendered." : "No brand-footer-link-grid — footer columns may be generic.", 1);
+
+    if (context.navLabels.length >= 3) {
+      const navHits = context.navLabels.slice(0, 5).filter((l) => l && lower.includes(l.toLowerCase())).length;
+      add("nav-labels", "Extracted navigation labels", navHits >= 3 ? "pass" : navHits >= 1 ? "warn" : "fail", true, `${navHits}/${Math.min(5, context.navLabels.length)} of the top nav labels found.`);
     }
+    if (context.footerLinks.length >= 2) {
+      const footerHits = context.footerLinks.slice(0, 5).filter((l) => l && lower.includes(l.toLowerCase())).length;
+      add("footer-labels", "Extracted footer labels", footerHits >= 1 ? "pass" : "warn", false, `${footerHits} footer labels matched.`);
+    }
+    const imageHits = context.imageSrcs.filter((src) => src && html.includes(src)).length;
+    add("real-imagery", "Real extracted imagery", imageHits >= 1 ? "pass" : "warn", false, `${imageHits} extracted image(s) reused.`);
+  }
+
+  // Token-system usage: the guarded templates emit brand CSS variables, so a
+  // healthy render references var(--brand-…) many times. Near-zero means the
+  // render bypassed the token system (generic styling).
+  const tokenRefs = (html.match(/var\(--brand-/g) ?? []).length;
+  add("token-usage", "Brand token system", tokenRefs >= 10 ? "pass" : tokenRefs >= 3 ? "warn" : "fail", false, `${tokenRefs} brand token references.`);
+
+  const placeholders = ["lorem ipsum", "placeholder", "replace me", "your text here", "sample text", "todo:"];
+  const foundPlaceholders = placeholders.filter((p) => lower.includes(p));
+  add("no-placeholders", "No placeholder text", foundPlaceholders.length === 0 ? "pass" : "fail", true, foundPlaceholders.length ? `Found: ${foundPlaceholders.join(", ")}.` : "Clean of placeholder text.");
+
+  if (caseId === "six-slide-deck") {
+    const slideLogos = (html.match(/class="brand-slide-logo"/g) ?? []).length;
+    add("slide-logos", "Logo on every slide", slideLogos >= 6 ? "pass" : slideLogos >= 3 ? "warn" : "fail", true, `${slideLogos} slide-logo treatments (need 6).`);
   }
   if (caseId === "design-system-showcase") {
-    const requiredTokenSections = [
-      "token-matrix",
-      "Typography tokens",
-      "Spacing tokens",
-      "Radius tokens",
-      "Shadow tokens",
-      "Breakpoint tokens",
-    ];
-    for (const section of requiredTokenSections) {
-      if (!html.includes(section)) missing.push(section);
-    }
+    const sections = ["token-matrix", "Typography tokens", "Spacing tokens", "Radius tokens", "Shadow tokens", "Breakpoint tokens"];
+    const missing = sections.filter((s) => !html.includes(s));
+    add("token-sections", "All token sections", missing.length === 0 ? "pass" : "warn", true, missing.length ? `Missing: ${missing.join(", ")}.` : "All token sections present.", 2);
   }
-  if (missing.length > 0) {
-    throw new Error(`Generated ${caseId} is missing required brand evidence: ${missing.join(", ")}.`);
-  }
+
+  const totalWeight = checks.reduce((sum, c) => sum + c.weight, 0) || 1;
+  const earned = checks.reduce(
+    (sum, c) => sum + c.weight * (c.status === "pass" ? 1 : c.status === "warn" ? 0.5 : 0),
+    0
+  );
+  return {
+    score: Math.round((earned / totalWeight) * 100),
+    blockers: checks.filter((c) => c.required && c.status === "fail").length,
+    checks,
+  };
 }
 
 function truncateForPrompt(value: string, maxChars: number): string {

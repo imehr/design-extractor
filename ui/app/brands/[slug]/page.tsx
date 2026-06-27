@@ -234,6 +234,19 @@ interface BrandPackageQuality {
   checks: BrandPackageQualityCheck[];
 }
 
+interface TestCaseEvalCheck {
+  id: string;
+  label: string;
+  status: "pass" | "warn" | "fail";
+  required: boolean;
+  details: string;
+  weight: number;
+}
+interface TestCaseEval {
+  score: number;
+  blockers: number;
+  checks: TestCaseEvalCheck[];
+}
 interface BrandTestCase {
   id: string;
   title: string;
@@ -250,6 +263,7 @@ interface BrandTestCase {
   feedback_count: number;
   last_feedback_at: string | null;
   error?: string | null;
+  eval?: TestCaseEval | null;
 }
 
 interface BrandTestCaseManifest {
@@ -3769,6 +3783,14 @@ function TestCasesBoard({
                               <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${testCaseStatusTone(testCase.status)}`}>
                                 {testCase.status}
                               </span>
+                              {testCase.eval && (
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${statusTone(testCase.eval.score, testCase.eval.blockers)}`}
+                                  title={`${testCase.eval.score}/100 — ${testCase.eval.blockers} blocker${testCase.eval.blockers === 1 ? "" : "s"}`}
+                                >
+                                  {testCase.eval.score}{testCase.eval.blockers > 0 ? ` · ${testCase.eval.blockers} fix` : ""}
+                                </span>
+                              )}
                               {testCase.feedback_count > 0 && (
                                 <span className="rounded-full border border-[#d2d2d7] px-2 py-0.5 text-[11px] text-[#6e6e73]">
                                   {testCase.feedback_count} feedback
@@ -3851,6 +3873,31 @@ function TestCasesBoard({
                           </div>
 
                           <div className="space-y-3">
+                            {testCase.eval && (
+                              <div className="rounded-lg border border-[#d2d2d7]/60 bg-white p-4">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[#6e6e73]">Evaluation</p>
+                                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${statusTone(testCase.eval.score, testCase.eval.blockers)}`}>
+                                    {testCase.eval.score}/100{testCase.eval.blockers > 0 ? ` · ${testCase.eval.blockers} blocker${testCase.eval.blockers === 1 ? "" : "s"}` : ""}
+                                  </span>
+                                </div>
+                                <ul className="mt-3 space-y-1.5">
+                                  {testCase.eval.checks.map((c) => (
+                                    <li key={c.id} className="flex items-start gap-2 text-[12px] leading-5">
+                                      <span
+                                        className={`mt-1.5 inline-block size-1.5 shrink-0 rounded-full ${c.status === "pass" ? "bg-emerald-500" : c.status === "warn" ? "bg-amber-500" : "bg-red-500"}`}
+                                        title={c.status}
+                                      />
+                                      <span className="min-w-0 text-[#424245]">
+                                        <span className="font-medium text-[#1d1d1f]">{c.label}</span>
+                                        {c.required ? <span className="ml-1 text-[10px] uppercase tracking-wide text-[#86868b]">required</span> : null}
+                                        <span className="ml-1 text-[#86868b]">{c.details}</span>
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
                             <div className="rounded-lg border border-[#d2d2d7]/60 bg-white p-4">
                               <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[#6e6e73]">Package proof</p>
                               <p className="mt-2 text-sm leading-5 text-[#424245]">

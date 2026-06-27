@@ -104,7 +104,24 @@ def test_test_case_deck_embeds_logo_inside_slides():
 
     assert "renderSlideLogo" in source
     assert "brand-slide-logo" in source
-    assert "Generated six-slide-deck is missing slide logo treatment" in source
+    # The scored eval gates the deck on a slide-logo treatment count of 6.
+    assert '"Logo on every slide"' in source
+    assert "slide-logo treatments (need 6)" in source
+
+
+def test_test_case_eval_scores_generated_html():
+    source = (ROOT / "ui/lib/test-cases.ts").read_text()
+
+    # Generation now produces a scored evaluation per scenario instead of a
+    # binary throw-on-first-miss gate.
+    assert "function evaluateTestCase(" in source
+    assert "interface TestCaseEval" in source
+    assert "blockers" in source
+    assert "eval: evaluation" in source
+    # Required brand-evidence checks the eval scores against.
+    assert '"Visible .brand-logo sizing"' in source
+    assert '"No placeholder text"' in source
+    assert '"Brand token system"' in source
 
 
 def test_test_case_footer_uses_extracted_footer_anatomy():
