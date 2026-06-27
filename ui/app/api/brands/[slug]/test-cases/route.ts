@@ -8,7 +8,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const TEST_CASE_ROUTE_TIMEOUT_MS = 180000;
+const TEST_CASE_ROUTE_TIMEOUT_MS = 900000;
 
 export async function GET(
   _request: Request,

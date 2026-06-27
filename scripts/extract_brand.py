@@ -2119,6 +2119,38 @@ def _default_stylesheet_fetcher(slug: str, headed: bool):
     return fetcher
 
 
+def _write_canonical_logo(public_dir: Path, candidates: list[dict]) -> None:
+    """Promote the brand logo to a canonical ``logo.<ext>`` in the public brand
+    dir so every consumer (library has_logo, test-cases package quality,
+    Overview) finds it without each scanning a different path.
+
+    Inline SVG logos are written directly; <img> logos are copied from the
+    already-downloaded file. Best-effort, never fatal.
+    """
+    # 1. Prefer an inline SVG logo.
+    inline = next((c for c in candidates if c.get("type") == "svg" and c.get("outerHTML")), None)
+    if inline:
+        try:
+            (public_dir / "logo.svg").write_text(str(inline["outerHTML"]), encoding="utf-8")
+            return
+        except Exception:
+            pass
+    # 2. Copy the downloaded <img> logo to logo.<ext> matching its extension.
+    for cand in candidates:
+        src = cand.get("src")
+        if not src:
+            continue
+        fname = re.sub(r"[^a-zA-Z0-9._-]", "_", Path(urlparse(src).path).name)
+        downloaded = public_dir / fname
+        if downloaded.exists() and downloaded.stat().st_size > 100:
+            ext = downloaded.suffix.lower() or ".svg"
+            try:
+                (public_dir / f"logo{ext}").write_bytes(downloaded.read_bytes())
+                return
+            except Exception:
+                continue
+
+
 def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
     """Download images, fonts, SVGs, and CSS background images from DOM extraction data."""
     phase_banner(4, "Downloading assets", "Images, fonts, SVGs, and CSS background images")
@@ -2130,6 +2162,7 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
     # Collect all asset URLs from DOM extractions
     image_urls: set[str] = set()
     bg_image_urls: set[str] = set()
+    logo_candidates: list[dict] = []
 
     for page_slug in pages:
         dom_path = dom_dir / f"{page_slug}.json"
@@ -2157,12 +2190,17 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
             if url and not url.startswith("data:"):
                 bg_image_urls.add(url)
 
-        # Header logo (dedicated capture)
+        # Header logo (dedicated capture). Track candidates so a canonical
+        # logo.<ext> can be promoted after download for consistent discovery.
         header = dom.get("header", {}) or {}
         logo = header.get("logo") or {}
-        logo_src = logo.get("src") if isinstance(logo, dict) else None
-        if logo_src and not logo_src.startswith("data:"):
-            image_urls.add(logo_src)
+        if isinstance(logo, dict):
+            logo_src = logo.get("src")
+            if logo_src and not logo_src.startswith("data:"):
+                image_urls.add(logo_src)
+                logo_candidates.append({"src": logo_src, "type": logo.get("type", "img")})
+            if logo.get("type") == "svg" and logo.get("outerHTML"):
+                logo_candidates.append({"outerHTML": logo["outerHTML"], "type": "svg"})
 
     all_urls = list(image_urls | bg_image_urls)
     step(f"Found {len(image_urls)} images + {len(bg_image_urls)} background images = {len(all_urls)} total")
@@ -2206,6 +2244,14 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
             downloaded += 1
         except Exception as e:
             warn(f"Failed to download {url_str[:80]}: {e}")
+
+    # Promote the brand logo to a canonical logo.<ext> now that downloads have
+    # landed, so has_logo / test-cases / Overview all discover it consistently.
+    if logo_candidates:
+        try:
+            _write_canonical_logo(public_dir, logo_candidates)
+        except Exception as e:
+            warn(f"Could not write canonical logo: {e}")
 
     # Extract and download fonts from the first page using agent-browser
     first_page_url = list(pages.values())[0]["original_url"]

@@ -112,6 +112,7 @@ interface BrandDetail {
   component_report: Record<string, unknown> | null;
   has_replica: boolean;
   has_logo: boolean;
+  logo: string | null;
   has_screenshots: boolean;
   files: string[];
   localFiles: string[];
@@ -884,6 +885,10 @@ const BREAKPOINTS = [
 
 const TEST_CASE_REQUEST_TIMEOUT_MS = 180000;
 const REPAIR_PACKAGE_REQUEST_TIMEOUT_MS = 420000;
+// Generating a scenario via a model CLI can take several minutes (minimax/opencode
+// on a ~15KB brief routinely exceeds the 180s default). Match the server-side
+// generation + route cap so the client does not abandon a healthy in-flight run.
+const GENERATE_TEST_CASE_REQUEST_TIMEOUT_MS = 900000;
 
 async function fetchJsonWithTimeout<T>(
   input: string,
@@ -1252,7 +1257,8 @@ export default function BrandPage({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ action, caseId }),
         },
-        "Timed out while loading test cases. Restart the local dev server and try again."
+        "Generation timed out at the client. The model may still be running — wait a moment and refresh, or switch to a faster provider/model.",
+        GENERATE_TEST_CASE_REQUEST_TIMEOUT_MS
       );
       setTestCases(data);
       setActiveTestCaseId((current) => current ?? data.cases[0]?.id ?? null);
@@ -1433,6 +1439,9 @@ export default function BrandPage({
     svgAssets.find((f) => /^(badge|wordmark|mark|lockup|brand|text)/i.test(f.name) && !isSponsorName(f.name)) ||
     svgAssets.find((f) => f.name.toLowerCase().includes("logo") && !isSponsorName(f.name)) ||
     null;
+  // Prefer the server-resolved logo (from dom-extraction / canonical file),
+  // falling back to the client-side brand-word picker.
+  const logoSrc = brand.logo ?? logoFile?.src ?? null;
   const validationReport = (brand.validation_report ?? {}) as Record<string, unknown>;
   const componentReport = (brand.component_report ?? {}) as ComponentReport;
   const componentManifest = (brand.component_manifest ?? {}) as ComponentManifest;
@@ -1600,17 +1609,17 @@ export default function BrandPage({
 
             {/* Brand identity */}
             <div className="flex flex-wrap items-center gap-6">
-              {logoFile ? (
+              {logoSrc ? (
                 <div className="flex gap-3">
                   <div className="flex flex-col items-center gap-1">
                     <div className="flex h-24 w-44 items-center justify-center rounded-xl bg-white p-3 ring-1 ring-black/5">
-                      <img src={logoFile.src} alt={`${brand.name} logo on light`} className="max-h-16 max-w-[140px] object-contain" />
+                      <img src={logoSrc} alt={`${brand.name} logo on light`} className="max-h-16 max-w-[140px] object-contain" />
                     </div>
                     <span className="text-[10px] text-[#86868b]">On light</span>
                   </div>
                   <div className="flex flex-col items-center gap-1">
                     <div className="flex h-24 w-44 items-center justify-center rounded-xl p-3" style={{ backgroundColor: brandDark }}>
-                      <img src={logoFile.src} alt={`${brand.name} logo on dark`} className="max-h-16 max-w-[140px] object-contain" />
+                      <img src={logoSrc} alt={`${brand.name} logo on dark`} className="max-h-16 max-w-[140px] object-contain" />
                     </div>
                     <span className="text-[10px] text-[#86868b]">On brand</span>
                   </div>
@@ -3300,6 +3309,35 @@ export default function BrandPage({
 
 /* ── test cases ── */
 
+function TestCaseGeneratingStatus({
+  providerLabel,
+  model,
+  scope,
+}: {
+  providerLabel?: string;
+  model?: string;
+  scope?: string;
+}) {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    const start = Date.now();
+    setElapsed(0);
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 1000);
+    return () => clearInterval(id);
+  }, []);
+  const label = providerLabel ? `${providerLabel}${model ? ` · ${model}` : ""}` : "the model";
+  return (
+    <div className="mx-4 mb-3 flex items-start gap-2 rounded-lg bg-[#0071e3]/5 px-3 py-2 text-[12px] leading-5 text-[#1d1d1f] ring-1 ring-[#0071e3]/15">
+      <RefreshCw className="mt-0.5 size-3.5 shrink-0 animate-spin text-[#0071e3]" />
+      <span>
+        Generating with <strong className="font-semibold">{label}</strong>{scope ? ` (${scope})` : ""} —{" "}
+        <span className="font-mono tabular-nums">{elapsed}s</span> elapsed.
+        The model writes a creative brief then renders guarded HTML; this can take several minutes for large brand packages.
+      </span>
+    </div>
+  );
+}
+
 function TestCasesBoard({
   brand,
   manifest,
@@ -3756,12 +3794,20 @@ function TestCasesBoard({
                           disabled={generatingCase || busyAll || repairBusy || blocksGeneration}
                         >
                           {generatingCase ? (
-                            <RefreshCw className="size-3 animate-spin" />
+                            <><RefreshCw className="size-3 animate-spin" /> Generating…</>
                           ) : (
                             "Regenerate"
                           )}
                         </Button>
                       </div>
+
+                      {generatingCase && (
+                        <TestCaseGeneratingStatus
+                          providerLabel={activeGenerator?.provider_label ?? activeGenerator?.provider ?? undefined}
+                          model={activeGenerator?.model ?? undefined}
+                          scope={modelScopeLabel}
+                        />
+                      )}
 
                       {expanded && (
                         <div className="grid gap-4 border-t border-[#d2d2d7]/60 bg-[#fbfbfd] p-4 xl:grid-cols-[minmax(0,1fr)_330px]">

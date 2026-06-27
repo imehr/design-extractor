@@ -70,9 +70,13 @@ def test_test_case_html_prevents_logo_from_collapsing():
 def test_test_case_route_allows_model_generation_time():
     route = (ROOT / "ui/app/api/brands/[slug]/test-cases/route.ts").read_text()
     page = (ROOT / "ui/app/brands/[slug]/page.tsx").read_text()
+    lib = (ROOT / "ui/lib/test-cases.ts").read_text()
 
-    assert "const TEST_CASE_ROUTE_TIMEOUT_MS = 180000" in route
-    assert "const TEST_CASE_REQUEST_TIMEOUT_MS = 180000" in page
+    # Generation via a model CLI can take several minutes; the route, the
+    # client generate request, and the CLI runner must all allow for that.
+    assert "TEST_CASE_ROUTE_TIMEOUT_MS = 900000" in route
+    assert "GENERATE_TEST_CASE_REQUEST_TIMEOUT_MS = 900000" in page
+    assert "TEST_CASE_CLAUDE_TIMEOUT_MS ?? 900000" in lib
 
 
 def test_test_case_generator_consumes_model_brief_in_rendering():

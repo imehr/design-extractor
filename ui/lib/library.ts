@@ -148,6 +148,78 @@ export async function getBrandDetail(
     }
   };
 
+  /**
+   * Resolve the brand logo to a servable URL path. Downloaded assets live in
+   * ui/public/brands/<slug>/ (not the library brand dir), and the dom-extraction
+   * records the logo source, so resolve from either — canonical logo.* first,
+   * then the downloaded file named by header.logo.src, persisting an inline SVG
+   * as logo.svg when the logo is an inline <svg> rather than an <img>.
+   */
+  const findLogo = async (): Promise<string | null> => {
+    const publicDir = path.join(process.cwd(), "public", "brands", slug);
+    const tryFile = async (name: string): Promise<string | null> => {
+      try {
+        await fs.access(path.join(publicDir, name));
+        return `/brands/${slug}/${name}`;
+      } catch {
+        return null;
+      }
+    };
+    for (const name of ["logo.svg", "logo.png", "logo.jpg", "logo.jpeg", "logo.webp"]) {
+      const found = await tryFile(name);
+      if (found) return found;
+    }
+    for (const pageName of ["homepage", "home", "index"]) {
+      try {
+        const raw = await fs.readFile(
+          path.join(cacheDir, "dom-extraction", `${pageName}.json`),
+          "utf-8"
+        );
+        const dom = JSON.parse(raw) as {
+          header?: { logo?: { src?: string; outerHTML?: string; type?: string } };
+          logo?: { src?: string; outerHTML?: string; type?: string };
+        };
+        const logo = dom?.header?.logo ?? dom?.logo;
+        if (logo?.src && !logo.src.startsWith("data:")) {
+          try {
+            const fname = path
+              .basename(new URL(logo.src).pathname)
+              .replace(/[^a-zA-Z0-9._-]/g, "_");
+            if (fname) {
+              const found = await tryFile(fname);
+              if (found) return found;
+            }
+          } catch {
+            /* malformed src — ignore */
+          }
+        }
+        if (logo?.type === "svg" && logo.outerHTML) {
+          try {
+            await fs.writeFile(path.join(publicDir, "logo.svg"), String(logo.outerHTML));
+            return `/brands/${slug}/logo.svg`;
+          } catch {
+            /* non-writable — ignore */
+          }
+        }
+      } catch {
+        /* no dom-extraction file for this page */
+      }
+    }
+    try {
+      const entries = await fs.readdir(publicDir);
+      const brandWord = slug.split("-")[0].toLowerCase();
+      const match = entries.find(
+        (n) =>
+          /^logo\./i.test(n) ||
+          (n.toLowerCase().startsWith(brandWord) && /\.(svg|png)$/i.test(n))
+      );
+      if (match) return `/brands/${slug}/${match}`;
+    } catch {
+      /* no public dir */
+    }
+    return null;
+  };
+
   const [
     design_md,
     design_tokens,
@@ -161,7 +233,6 @@ export async function getBrandDetail(
     cache_component_report,
     has_html_replica,
     has_react_replica,
-    has_logo,
     has_screenshots,
     scene_matrix,
     replica_screenshot,
@@ -178,11 +249,12 @@ export async function getBrandDetail(
     readJsonFrom(cacheDir, "validation/component-report.json"),
     fileExists("replica/index.html"),
     reactReplicaExists(),
-    fileExists("assets/logo.svg"),
     fileExists("screenshots/reference"),
     listSceneMatrix(),
     findReplicaScreenshot(),
   ]);
+
+  const logo_path = await findLogo();
 
   return {
     summary,
@@ -196,7 +268,8 @@ export async function getBrandDetail(
     component_manifest,
     component_report: cache_component_report ?? brand_component_report,
     has_replica: has_html_replica || has_react_replica,
-    has_logo,
+    has_logo: logo_path !== null,
+    logo: logo_path,
     has_screenshots,
     scene_matrix,
     replica_screenshot,

@@ -30,6 +30,12 @@ export interface BrandDetail {
   component_report: Record<string, unknown> | null;
   has_replica: boolean;
   has_logo: boolean;
+  /**
+   * Servable URL path to the resolved brand logo (e.g. "/brands/<slug>/logo.svg"),
+   * resolved from the public brand dir or the dom-extraction header.logo.
+   * Null when no logo could be resolved.
+   */
+  logo: string | null;
   has_screenshots: boolean;
   scene_matrix: string[];
   /**

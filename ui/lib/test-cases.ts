@@ -195,7 +195,7 @@ const TEST_CASE_GENERATOR_BASE = {
   description:
     "Model-backed scenario brief consumed by deterministic HTML guardrail rendering from DESIGN.md, SKILL.md, tokens, assets, validation, and DOM extraction evidence.",
 } as const;
-const CLAUDE_TEST_CASE_TIMEOUT_MS = Number(process.env.TEST_CASE_CLAUDE_TIMEOUT_MS ?? 150000);
+const CLAUDE_TEST_CASE_TIMEOUT_MS = Number(process.env.TEST_CASE_CLAUDE_TIMEOUT_MS ?? 900000);
 const CLI_TASK_RUNNER_PROVIDER_TYPES = new Set(["codex", "cursor", "kimi", "minimax", "opencode"]);
 
 async function resolveTestCaseGeneratorSettings(slug: string): Promise<{
