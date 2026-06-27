@@ -1569,6 +1569,29 @@ export default function BrandPage({
               </div>
             )}
 
+            {/* Brand identity / logo */}
+            <div className="flex flex-wrap items-center gap-6">
+              {brand.has_logo && logoFile && (
+                <div className="flex items-center justify-center rounded-2xl bg-[#f5f5f7] p-5 shadow-sm" style={{ minWidth: 160, minHeight: 96 }}>
+                  <img
+                    src={logoFile.src}
+                    alt={`${brand.name} logo`}
+                    className="h-16 w-auto max-w-[220px] object-contain"
+                  />
+                </div>
+              )}
+              <div>
+                <h2 className="text-2xl font-semibold tracking-tight text-[#1d1d1f]">{brand.name}</h2>
+                <p className="mt-1 text-sm text-[#86868b]">{brand.slug}</p>
+                <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-[#86868b]">
+                  <span className="rounded-full bg-[#f5f5f7] px-2 py-0.5">{((brand.metadata as Record<string, number | undefined> | undefined)?.pages_extracted ?? 0)} pages</span>
+                  <span className="rounded-full bg-[#f5f5f7] px-2 py-0.5">confidence {brand.confidence ?? "—"}</span>
+                  {shadowList.length > 0 && <span className="rounded-full bg-[#f5f5f7] px-2 py-0.5">{shadowList.length} shadows</span>}
+                  {spacingScale.length > 0 && <span className="rounded-full bg-[#f5f5f7] px-2 py-0.5">{spacingScale.length} spacing steps</span>}
+                </div>
+              </div>
+            </div>
+
             {/* Color palette - large swatches */}
             {colors.length > 0 && (
               <div>
@@ -1617,6 +1640,61 @@ export default function BrandPage({
                       </div>
                     );
                   })}
+                </div>
+              </div>
+            )}
+
+            {/* Spacing scale */}
+            {spacingScale.length > 0 && (
+              <div>
+                <h3 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                  Spacing Scale
+                </h3>
+                <div className="flex flex-wrap items-end gap-4">
+                  {spacingScale.slice(0, 12).map((s: string, i: number) => {
+                    const px = parseInt(s, 10) || 0;
+                    const visual = Math.max(4, Math.min(px, 64));
+                    return (
+                      <div key={i} className="flex flex-col items-center gap-1">
+                        <div className="rounded-sm bg-[#1d1d1f]" style={{ width: visual, height: visual }} />
+                        <span className="font-mono text-[10px] text-[#86868b]">{s}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Shadows */}
+            {shadowList.length > 0 && (
+              <div>
+                <h3 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                  Shadows
+                </h3>
+                <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+                  {shadowList.slice(0, 4).map((s, i) => (
+                    <div key={i} className="flex flex-col items-center gap-2">
+                      <div className="size-20 rounded-xl bg-white ring-1 ring-black/5" style={{ boxShadow: s.value }} />
+                      <span className="text-center font-mono text-[10px] leading-tight text-[#86868b]">{s.value.length > 28 ? `${s.value.slice(0, 26)}…` : s.value}</span>
+                      <span className="text-[10px] text-[#86868b]">×{s.count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Type scale */}
+            {fontSizes.length > 0 && (
+              <div>
+                <h3 className="mb-6 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#86868b]">
+                  Type Scale
+                </h3>
+                <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2">
+                  {fontSizes.slice(0, 8).map((sz, i) => (
+                    <span key={i} className="font-semibold text-[#1d1d1f]" style={{ fontSize: sz.value, lineHeight: 1 }}>
+                      Aa
+                    </span>
+                  ))}
                 </div>
               </div>
             )}
