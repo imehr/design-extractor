@@ -49,6 +49,28 @@ export interface TestCaseEval {
   checks: TestCaseEvalCheck[];
 }
 
+export interface TestCaseVisualEvalCheck {
+  id: string;
+  label: string;
+  status: BrandPackageQualityCheckStatus;
+  details: string;
+}
+
+export interface TestCaseVisualDominant {
+  hex: string;
+  frac: number;
+  matched: boolean;
+}
+
+export interface TestCaseVisualEval {
+  score: number;
+  blank: boolean;
+  /** Path (relative to the brand dir) to the screenshot PNG, served via the file API. */
+  screenshot: string | null;
+  checks: TestCaseVisualEvalCheck[];
+  dominant: TestCaseVisualDominant[];
+}
+
 export interface BrandTestCase {
   id: string;
   title: string;
@@ -67,6 +89,8 @@ export interface BrandTestCase {
   error?: string | null;
   /** Scored evaluation of the generated HTML against brand-evidence requirements. */
   eval?: TestCaseEval | null;
+  /** Visual-fidelity evaluation (screenshot + palette alignment). Best-effort. */
+  visual_eval?: TestCaseVisualEval | null;
 }
 
 export interface BrandTestCaseManifest {
@@ -322,6 +346,47 @@ export async function getTestCases(slug: string): Promise<BrandTestCaseManifest>
   return mergeManifest(slug, context.sourceHash, existing, await readFeedback(slug), context.packageQuality, generator, modelControl);
 }
 
+async function runScenarioVisualEval(
+  slug: string,
+  caseId: string
+): Promise<TestCaseVisualEval | null> {
+  // The dev server serves the scenario with working /brands/... asset paths,
+  // which a file:// screenshot would lose. Prefer an explicit eval base URL,
+  // then PORTLESS_URL, then the plain localhost port the server listens on.
+  const base =
+    process.env.SCENARIO_EVAL_BASE_URL ||
+    process.env.PORTLESS_URL ||
+    `http://localhost:${process.env.PORT || 3000}`;
+  const url = `${base}/api/brands/${slug}/test-cases/${caseId}`;
+  const outDir = path.join(LIBRARY_ROOT, "brands", slug, "test-cases");
+  const script = path.join(REPO_ROOT, "scripts", "evaluate_scenario_visual.py");
+  try {
+    const { stdout } = await execFileAsync(
+      "python3",
+      [script, "--url", url, "--brand", slug, "--case-id", caseId, "--out-dir", outDir],
+      { maxBuffer: 4 * 1024 * 1024, timeout: 90000 }
+    );
+    const result = JSON.parse((stdout || "").trim().split("\n").pop() || "{}") as {
+      score?: number | null;
+      status?: string;
+      blank?: boolean;
+      screenshot?: string | null;
+      checks?: TestCaseVisualEvalCheck[];
+      dominant?: TestCaseVisualDominant[];
+    };
+    if (!result || result.status !== "ok" || typeof result.score !== "number") return null;
+    return {
+      score: result.score,
+      blank: Boolean(result.blank),
+      screenshot: result.screenshot ?? null,
+      checks: Array.isArray(result.checks) ? result.checks : [],
+      dominant: Array.isArray(result.dominant) ? result.dominant : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
 export async function generateTestCases(
   slug: string,
   options: { caseId?: string; mode?: "all" | "missing" | "one" } = {}
@@ -395,6 +460,7 @@ export async function generateTestCases(
         .filter((c) => c.required && c.status === "fail")
         .map((c) => c.label);
       const blocked = blockerLabels.length > 0;
+      const visual = await runScenarioVisualEval(slug, item.id).catch(() => null);
       cases.push({
         ...item,
         status: blocked ? "failed" : "completed",
@@ -407,6 +473,7 @@ export async function generateTestCases(
           ? `Missing required brand evidence: ${blockerLabels.join(", ")}.`
           : null,
         eval: evaluation,
+        visual_eval: visual,
       });
     } catch (error) {
       cases.push({
@@ -418,6 +485,7 @@ export async function generateTestCases(
         last_feedback_at: item.last_feedback_at,
         error: error instanceof Error ? error.message : "Generation failed",
         eval: item.eval ?? null,
+        visual_eval: item.visual_eval ?? null,
       });
     }
   }

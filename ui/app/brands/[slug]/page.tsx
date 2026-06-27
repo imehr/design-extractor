@@ -247,6 +247,19 @@ interface TestCaseEval {
   blockers: number;
   checks: TestCaseEvalCheck[];
 }
+interface TestCaseVisualEvalCheck {
+  id: string;
+  label: string;
+  status: "pass" | "warn" | "fail";
+  details: string;
+}
+interface TestCaseVisualEval {
+  score: number;
+  blank: boolean;
+  screenshot: string | null;
+  checks: TestCaseVisualEvalCheck[];
+  dominant: { hex: string; frac: number; matched: boolean }[];
+}
 interface BrandTestCase {
   id: string;
   title: string;
@@ -264,6 +277,7 @@ interface BrandTestCase {
   last_feedback_at: string | null;
   error?: string | null;
   eval?: TestCaseEval | null;
+  visual_eval?: TestCaseVisualEval | null;
 }
 
 interface BrandTestCaseManifest {
@@ -3896,6 +3910,47 @@ function TestCasesBoard({
                                     </li>
                                   ))}
                                 </ul>
+                              </div>
+                            )}
+                            {testCase.visual_eval && (
+                              <div className="rounded-lg border border-[#d2d2d7]/60 bg-white p-4">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs font-semibold uppercase tracking-[0.06em] text-[#6e6e73]">Visual fidelity</p>
+                                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${statusTone(testCase.visual_eval.score, testCase.visual_eval.blank ? 1 : 0)}`}>
+                                    {testCase.visual_eval.score}/100
+                                  </span>
+                                </div>
+                                {testCase.visual_eval.screenshot && (
+                                  <img
+                                    src={`/api/brands/${brand.slug}/file/${testCase.visual_eval.screenshot}`}
+                                    alt={`${testCase.title} render`}
+                                    className="mt-3 w-full rounded-md ring-1 ring-black/5"
+                                  />
+                                )}
+                                <ul className="mt-3 space-y-1.5">
+                                  {testCase.visual_eval.checks.map((c) => (
+                                    <li key={c.id} className="flex items-start gap-2 text-[12px] leading-5">
+                                      <span className={`mt-1.5 inline-block size-1.5 shrink-0 rounded-full ${c.status === "pass" ? "bg-emerald-500" : c.status === "warn" ? "bg-amber-500" : "bg-red-500"}`} title={c.status} />
+                                      <span className="min-w-0 text-[#424245]">
+                                        <span className="font-medium text-[#1d1d1f]">{c.label}</span>
+                                        <span className="ml-1 text-[#86868b]">{c.details}</span>
+                                      </span>
+                                    </li>
+                                  ))}
+                                </ul>
+                                {testCase.visual_eval.dominant.length > 0 && (
+                                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                                    <span className="text-[10px] uppercase tracking-wide text-[#86868b]">Rendered palette</span>
+                                    {testCase.visual_eval.dominant.slice(0, 8).map((d, i) => (
+                                      <span
+                                        key={i}
+                                        className={`size-4 rounded ${d.matched ? "ring-1 ring-emerald-400" : "ring-1 ring-black/10"}`}
+                                        style={{ backgroundColor: d.hex }}
+                                        title={`${d.hex} · ${Math.round(d.frac * 100)}%${d.matched ? " · on-brand" : " · off-brand"}`}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             )}
                             <div className="rounded-lg border border-[#d2d2d7]/60 bg-white p-4">
