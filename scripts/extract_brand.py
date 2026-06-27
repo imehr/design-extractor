@@ -3294,15 +3294,6 @@ def main() -> int:
     else:
         warn("Skipping validation (--skip-validation or --skip-replicas)")
 
-    # Phase 6.5: Standalone HTML replicas — best-effort artifact step.
-    if args.skip_html_replicas:
-        warn("Skipping standalone HTML replicas (--skip-html-replicas)")
-    else:
-        try:
-            _phase("6.5", generate_html_replicas, slug)
-        except Exception as e:  # noqa: BLE001 — artifact steps never abort extraction
-            warn(f"Standalone HTML replicas errored ({e}) — continuing")
-
     if args.skip_publish:
         warn("Skipping publish, registration, and final verification (--skip-publish)")
     else:
@@ -3323,6 +3314,17 @@ def main() -> int:
 
         # Phase 9: Final verification
         _phase("9", final_verification, slug, pages, asset_count, score)
+
+    # Phase 7.4: Standalone HTML replicas — run AFTER publish so they consume
+    # the published design-tokens.json. (Previously Phase 6.5 ran before publish
+    # and load_tokens() fell back to system Canvas/CanvasText — unstyled replicas.)
+    if args.skip_html_replicas:
+        warn("Skipping standalone HTML replicas (--skip-html-replicas)")
+    else:
+        try:
+            _phase("7.4", generate_html_replicas, slug)
+        except Exception as e:  # noqa: BLE001 — artifact steps never abort extraction
+            warn(f"Standalone HTML replicas errored ({e}) — continuing")
 
     # Phase 7.6 + 7.7: OD artifact + design-system bundles — leaf-of-pipeline,
     # best-effort. Run after publish/mirror so their inputs exist, but outside

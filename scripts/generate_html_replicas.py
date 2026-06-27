@@ -459,6 +459,59 @@ def _vars_from_stage(data: dict) -> dict[str, str]:
     return vars_out
 
 
+def _to_rgb(value):
+    """Parse #hex / #fff / rgb()/rgba() into an (r,g,b) tuple, else None."""
+    if not isinstance(value, str):
+        return None
+    v = value.strip()
+    if v.startswith("#"):
+        clean = v.lstrip("#")
+        if len(clean) == 3:
+            clean = "".join(ch * 2 for ch in clean)
+        if len(clean) != 6:
+            return None
+        try:
+            return int(clean[0:2], 16), int(clean[2:4], 16), int(clean[4:6], 16)
+        except ValueError:
+            return None
+    m = re.match(r"rgba?\(\s*([0-9.]+)[, ]+([0-9.]+)[, ]+([0-9.]+)", v)
+    if m:
+        try:
+            return int(float(m.group(1))), int(float(m.group(2))), int(float(m.group(3)))
+        except ValueError:
+            return None
+    return None
+
+
+def _channel_lin(c: float) -> float:
+    c = c / 255.0
+    return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def _color_luminance(value):
+    rgb = _to_rgb(value)
+    if rgb is None:
+        return None
+    r, g, b = rgb
+    return 0.2126 * _channel_lin(r) + 0.7152 * _channel_lin(g) + 0.0722 * _channel_lin(b)
+
+
+def _color_chroma(value) -> int | None:
+    rgb = _to_rgb(value)
+    if rgb is None:
+        return None
+    return max(rgb) - min(rgb)
+
+
+def _contrast_ratio(c1, c2) -> float:
+    l1 = _color_luminance(c1)
+    l2 = _color_luminance(c2)
+    if l1 is None or l2 is None:
+        return 0.0
+    hi, lo = max(l1, l2), min(l1, l2)
+    return (hi + 0.05) / (lo + 0.05)
+
+
 def _ensure_semantic_colours(vars_out: dict[str, str], page_data: dict,
                              warnings: list[str]) -> None:
     """Guarantee --color-bg / --color-text using extracted evidence only."""
@@ -490,6 +543,45 @@ def _ensure_semantic_colours(vars_out: dict[str, str], page_data: dict,
         value = first_matching("primary", "accent", "brand")
         if value:
             vars_out["--color-primary"] = value
+
+    # Contrast guard: a dark-themed site often has its real page background filed
+    # under dark/footerDark while --color-bg picked up backgroundLight and
+    # --color-text is white — yielding invisible white-on-light text. If the
+    # chosen pair is illegible, swap --color-bg for the best contrasting
+    # candidate already present in vars_out. Never invents a colour.
+    bg = vars_out.get("--color-bg")
+    text = vars_out.get("--color-text")
+    if bg and text and bg != "Canvas" and text != "CanvasText":
+        ratio = _contrast_ratio(bg, text)
+        if ratio < 3.0:
+            want_dark_bg = (_color_luminance(text) or 0) > 0.4
+            eligible: list[tuple[str, float, float]] = []
+            for value in vars_out.values():
+                if value in (bg, text):
+                    continue
+                lum = _color_luminance(value)
+                if lum is None:
+                    continue
+                if want_dark_bg and lum > 0.4:
+                    continue
+                if not want_dark_bg and lum < 0.4:
+                    continue
+                r = _contrast_ratio(value, text)
+                if r > ratio:
+                    eligible.append((value, r, lum))
+            # Prefer chromatic brand colours (navy/maroon, which carry hue) over
+            # achromatic greys/blacks/whites, so a dark site keeps its real brand
+            # background instead of collapsing to #000 or #333.
+            chromatic = [e for e in eligible if (_color_chroma(e[0]) or 0) > 20]
+            pool = chromatic or eligible
+            if pool:
+                pool.sort(key=lambda e: e[1], reverse=True)
+                best, best_ratio = pool[0][0], pool[0][1]
+                vars_out["--color-bg"] = best
+                warnings.append(
+                    f"low-contrast body bg/text (ratio {ratio:.1f}); "
+                    f"swapped --color-bg to {best} (ratio {best_ratio:.1f})"
+                )
 
 
 def _derive_from_page(page_data: dict) -> dict[str, str]:
