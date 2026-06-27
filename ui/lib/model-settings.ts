@@ -1,6 +1,7 @@
 import { promises as fs } from "fs";
 import os from "os";
 import path from "path";
+import { detectClis } from "./execution-mode.ts";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -447,6 +448,22 @@ export async function updateModelProviderSettings(input: {
   return readModelProviderSettings();
 }
 
+// A provider is usable when it is enabled OR its CLI binary is on PATH. Several
+// providers (opencode, codex, …) ship disabled by default but work the moment
+// the user installs the CLI, so resolving to one must not leave callers blocked
+// behind a stale "provider is disabled" error. Detection is cached upstream.
+async function providerIsUsable(provider: ModelProvider | undefined): Promise<boolean> {
+  if (!provider) return false;
+  if (provider.enabled) return true;
+  if (!provider.command) return false;
+  try {
+    const detected = await detectClis();
+    return detected.some((d) => d.available && d.bin === provider.command);
+  } catch {
+    return false;
+  }
+}
+
 export async function resolveTaskModelSelection(
   task: "test_cases",
   slug?: string,
@@ -558,7 +575,28 @@ export async function resolveTaskModelSelection(
     }
   }
 
-  const provider = settings.providers[providerId] ?? settings.providers[DEFAULT_PROVIDER_ID] ?? defaultProvider();
+  let provider =
+    settings.providers[providerId] ??
+    settings.providers[DEFAULT_PROVIDER_ID] ??
+    defaultProvider();
+  // Never leave the caller blocked on a provider that cannot actually run.
+  // If the resolved provider is neither enabled nor installed, fall back to the
+  // first usable provider (e.g. opencode disabled by default -> claude-code, or
+  // opencode when its CLI is detected on PATH).
+  if (!(await providerIsUsable(provider))) {
+    for (const candidate of Object.values(settings.providers)) {
+      if (candidate.id === provider.id) continue;
+      if (await providerIsUsable(candidate)) {
+        provider = candidate;
+        providerId = candidate.id;
+        model = null;
+        model_source = "default";
+        project_override = false;
+        break;
+      }
+    }
+  }
+  const usable = await providerIsUsable(provider);
   const selectedModel = model || provider.model || "default";
   return {
     task,
@@ -569,7 +607,7 @@ export async function resolveTaskModelSelection(
     command: provider.command,
     model: selectedModel,
     base_url: provider.base_url,
-    enabled: provider.enabled,
+    enabled: usable,
     timeout_seconds: provider.timeout_seconds,
     temperature: provider.temperature,
     num_ctx: provider.num_ctx,
@@ -580,7 +618,12 @@ export async function resolveTaskModelSelection(
     project_override,
     settings_path: MODEL_SETTINGS_PATH,
     project_settings_path: projectPath,
-    available_providers: Object.values(settings.providers),
+    available_providers: await Promise.all(
+      Object.values(settings.providers).map(async (p) => ({
+        ...p,
+        enabled: await providerIsUsable(p),
+      }))
+    ),
     execution_mode: settings.execution_mode,
     selected_cli: settings.selected_cli,
   };
@@ -594,7 +637,9 @@ export async function setBrandTaskModelOverride(
   const settings = await readModelProviderSettings();
   const provider = settings.providers[input.provider_id];
   if (!provider) throw new Error(`Unknown provider: ${input.provider_id}`);
-  if (!provider.enabled) throw new Error(`Provider is disabled: ${provider.label}`);
+  if (!(await providerIsUsable(provider))) {
+    throw new Error(`Provider is not available: ${provider.label}. Enable it in Settings or install its CLI (${provider.command ?? "unknown"}).`);
+  }
 
   const override: BrandTaskModelOverride = {
     provider_id: provider.id,
