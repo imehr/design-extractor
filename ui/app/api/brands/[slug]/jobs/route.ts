@@ -33,7 +33,10 @@ export async function GET(
   for (const entry of entries) {
     if (!entry.endsWith(".json")) continue;
     const job = await readJobState(slug, entry.replace(/\.json$/, ""));
-    if (job) jobs.push(job as unknown as Record<string, unknown>);
+    // The jobs dir also holds per-iteration event/report files (no job_id).
+    // Only return real job-state objects so monitoring shows coherent jobs.
+    if (!job || !job.job_id) continue;
+    jobs.push(job as unknown as Record<string, unknown>);
   }
 
   jobs.sort((a, b) => {

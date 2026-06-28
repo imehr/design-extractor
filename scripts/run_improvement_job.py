@@ -4,12 +4,48 @@
 from __future__ import annotations
 
 import argparse
+import atexit
 import json
+import re
 import shutil
 import subprocess
 import sys
 import uuid
 from pathlib import Path
+
+
+def _run_model_cli_with_pty(
+    cmd: list[str], cwd: Path, timeout_s: int
+) -> subprocess.CompletedProcess[str]:
+    """Run the model CLI under a real PTY.
+
+    Agentic CLIs (claude/opencode/kimi/codex) block when spawned without a
+    controlling terminal — they spin until the timeout and the improvement step
+    no-ops. Route through scripts/run_cli_with_pty.py (stdlib pty) so the agent
+    converges. cwd stays at the repo so the model can edit the pages it improves.
+    """
+    pty_runner = Path(__file__).resolve().parent / "run_cli_with_pty.py"
+    wrapper = [
+        sys.executable,
+        str(pty_runner),
+        "--cwd",
+        str(cwd),
+        "--timeout",
+        str(int(timeout_s)),
+        "--",
+        *cmd,
+    ]
+    result = subprocess.run(
+        wrapper,
+        capture_output=True,
+        text=True,
+        cwd=str(cwd),
+        timeout=timeout_s + 30,
+    )
+    clean = re.sub(r"\x1b\[[0-9;]*[a-zA-Z]", "", result.stdout or "").replace("\r", "")
+    return subprocess.CompletedProcess(
+        args=cmd, returncode=result.returncode, stdout=clean, stderr=result.stderr or ""
+    )
 
 from improvement_job import (
     append_feedback_entry,
@@ -234,13 +270,7 @@ def run_model_improver(
         }
 
     try:
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            cwd=repo_root,
-            timeout=timeout_s,
-        )
+        result = _run_model_cli_with_pty(cmd, repo_root, timeout_s)
     except FileNotFoundError:
         log_path.parent.mkdir(parents=True, exist_ok=True)
         log_path.write_text(f"{provider_label} command was not found on PATH: {cmd[0]}\n")
@@ -371,6 +401,21 @@ def main() -> int:
         feedback=feedback,
     )
     update_job_state(job_path, state)
+
+    # Guarantee the job reaches a terminal status. Several early-exit paths
+    # (nothing-to-improve, meets-target) set "completed" explicitly, but any
+    # unforeseen return/exception would otherwise leave the job pinned at
+    # "running" forever — which is what made monitoring look stuck.
+    def _finalize_job_status() -> None:
+        try:
+            if job_path.exists():
+                existing = json.loads(job_path.read_text())
+                if existing.get("status") == "running":
+                    update_job_state(job_path, existing, status="completed")
+        except Exception:
+            pass
+
+    atexit.register(_finalize_job_status)
 
     if feedback:
         append_feedback_entry(
