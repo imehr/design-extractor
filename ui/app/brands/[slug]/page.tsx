@@ -138,6 +138,34 @@ interface ImprovementJobState {
   updated_at: string;
 }
 
+// The improvement job endpoint doesn't always populate every field (older jobs,
+// partial responses), so coerce to a well-formed object before storing —
+// otherwise `.length`/`.map` on pages_needing_work / assisted_capture_steps
+// crash the page.
+function normalizeImprovementJob(raw: unknown): ImprovementJobState {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const str = (v: unknown, d = ""): string => (typeof v === "string" ? v : d);
+  const num = (v: unknown, d = 0): number => (typeof v === "number" && Number.isFinite(v) ? v : d);
+  return {
+    job_id: str(r.job_id ?? r.id),
+    brand: str(r.brand),
+    target_score: num(r.target_score, 80),
+    status: str(r.status, "unknown"),
+    current_iteration: num(r.current_iteration),
+    max_iterations: num(r.max_iterations),
+    current_score: typeof r.current_score === "number" ? r.current_score : null,
+    pages_needing_work: Array.isArray(r.pages_needing_work) ? (r.pages_needing_work as ImprovementJobState["pages_needing_work"]) : [],
+    blocked_reason: (r.blocked_reason as ImprovementJobState["blocked_reason"]) ?? null,
+    assisted_capture_steps: Array.isArray(r.assisted_capture_steps) ? (r.assisted_capture_steps as string[]) : [],
+    last_model_summary: (r.last_model_summary as string | null) ?? (r.last_claude_summary as string | null) ?? null,
+    model_log_path: (r.model_log_path as string | null) ?? (r.claude_log_path as string | null) ?? null,
+    model_provider: (r.model_provider as string | null) ?? null,
+    last_claude_summary: (r.last_claude_summary as string | null) ?? null,
+    claude_log_path: (r.claude_log_path as string | null) ?? null,
+    updated_at: str(r.updated_at, new Date().toISOString()),
+  };
+}
+
 interface ComponentManifestEntry {
   type?: string;
   name?: string;
@@ -1199,8 +1227,9 @@ export default function BrandPage({
           return r.json();
         })
         .then((data: ImprovementJobState) => {
-          setImproveJob(data);
-          if (data.status !== "running") {
+          const normalized = normalizeImprovementJob(data);
+          setImproveJob(normalized);
+          if (normalized.status !== "running") {
             refreshBrand();
           }
         })
@@ -1228,7 +1257,7 @@ export default function BrandPage({
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      setImproveJob(data.job as ImprovementJobState);
+      setImproveJob(normalizeImprovementJob(data.job));
     } catch (e) {
       setImproveError(e instanceof Error ? e.message : "Failed to start improvement job");
     } finally {
