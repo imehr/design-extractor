@@ -85,7 +85,11 @@ def test_test_case_generator_consumes_model_brief_in_rendering():
     assert "GeneratedTestCaseBrief" in source
     assert "parseClaudeTestCaseBrief" in source
     assert "briefsByCase" in source
-    assert "renderTestCase(context, item.id, briefsByCase.get(item.id))" in source
+    # The render consumes the per-case brief; when the model fails, the case
+    # still renders with default content (graceful degradation) and a note.
+    assert "const brief = briefsByCase.get(item.id);" in source
+    assert "renderTestCase(context, item.id, brief)" in source
+    assert "briefGenerationError" in source
 
 
 def test_test_case_showcase_renders_full_token_catalog():

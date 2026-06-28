@@ -237,6 +237,10 @@ const TEST_CASE_GENERATOR_BASE = {
     "Model-backed scenario brief consumed by deterministic HTML guardrail rendering from DESIGN.md, SKILL.md, tokens, assets, validation, and DOM extraction evidence.",
 } as const;
 const CLAUDE_TEST_CASE_TIMEOUT_MS = Number(process.env.TEST_CASE_CLAUDE_TIMEOUT_MS ?? 900000);
+// Per-scenario cap for the brief step. Scenarios are generated one at a time so
+// a stuck model is killed here (not after the whole-batch cap) and the run
+// moves on to the next case.
+const PERCASE_GENERATION_TIMEOUT_MS = Number(process.env.TEST_CASE_PERCASE_TIMEOUT_MS ?? 180000);
 const CLI_TASK_RUNNER_PROVIDER_TYPES = new Set(["codex", "cursor", "kimi", "minimax", "opencode"]);
 
 async function resolveTestCaseGeneratorSettings(slug: string): Promise<{
@@ -420,7 +424,8 @@ export async function generateTestCases(
   await fs.mkdir(casesDir, { recursive: true });
   const targetCaseIds = Array.from(targetIds);
 
-  let modelGenerationError: string | null = null;
+  let modelGenerationError: string | null = null; // precondition block (missing evidence / disabled provider)
+  let briefGenerationError: string | null = null; // model run failed — degrade to default render, do not block
   let briefsByCase = new Map<string, GeneratedTestCaseBrief>();
   if (targetCaseIds.length > 0) {
     const criticalFailures = context.packageQuality.checks.filter(
@@ -436,7 +441,10 @@ export async function generateTestCases(
       try {
         briefsByCase = await runModelTestCaseGenerator(context, targetCaseIds, casesDir, generator, selection);
       } catch (error) {
-        modelGenerationError = error instanceof Error ? error.message : "Model test case generation failed";
+        // The model run failed (timeout/non-JSON/etc). Don't abort — render
+        // every scenario with default content so reviewers see something + an
+        // eval, and surface the failure as a per-case note.
+        briefGenerationError = error instanceof Error ? error.message : "Model test case generation failed";
       }
     }
   }
@@ -452,8 +460,9 @@ export async function generateTestCases(
       if (modelGenerationError) {
         throw new Error(modelGenerationError);
       }
+      const brief = briefsByCase.get(item.id);
       const filePath = path.join(casesDir, item.file);
-      await fs.writeFile(filePath, renderTestCase(context, item.id, briefsByCase.get(item.id)), "utf-8");
+      await fs.writeFile(filePath, renderTestCase(context, item.id, brief), "utf-8");
       const html = await fs.readFile(filePath, "utf-8");
       const evaluation = evaluateTestCase(context, item.id, html);
       const blockerLabels = evaluation.checks
@@ -461,6 +470,12 @@ export async function generateTestCases(
         .map((c) => c.label);
       const blocked = blockerLabels.length > 0;
       const visual = await runScenarioVisualEval(slug, item.id).catch(() => null);
+      // If the model brief failed, still render (default content) and surface the
+      // failure as a note so the page is never "all broken" while the model is.
+      const note =
+        !brief && briefGenerationError
+          ? `Rendered with default content — the model brief failed: ${briefGenerationError}`
+          : null;
       cases.push({
         ...item,
         status: blocked ? "failed" : "completed",
@@ -469,9 +484,7 @@ export async function generateTestCases(
         source_hash: context.sourceHash,
         feedback_count: item.feedback_count,
         last_feedback_at: item.last_feedback_at,
-        error: blocked
-          ? `Missing required brand evidence: ${blockerLabels.join(", ")}.`
-          : null,
+        error: blocked ? `Missing required brand evidence: ${blockerLabels.join(", ")}.` : note,
         eval: evaluation,
         visual_eval: visual,
       });
@@ -1742,26 +1755,52 @@ async function runCliTaskRunnerTestCaseGenerator(
   generator: TestCaseGeneratorConfig,
   selection: TaskModelSelection
 ): Promise<Map<string, GeneratedTestCaseBrief>> {
-  const prompt = buildClaudeTestCasePrompt(context, caseIds, casesDir);
-  const { command, args } = buildCliTaskRunnerCommand(generator, prompt);
-  try {
-    const result = await execFileAsync(
-      command,
-      args,
-      {
+  // Generate one brief per case. Each prompt is tiny (a single scenario) so a
+  // slow/agentic model converges quickly, and one stuck case cannot sink the
+  // rest — cases without a brief fall back to the default template render and
+  // are flagged by the eval instead of aborting the whole run.
+  const briefs = new Map<string, GeneratedTestCaseBrief>();
+  const failures: string[] = [];
+  const perCaseTimeout = Math.min(selection.timeout_seconds * 1000, PERCASE_GENERATION_TIMEOUT_MS); // 3 min/case
+  for (const caseId of caseIds) {
+    const prompt = buildClaudeTestCasePrompt(context, [caseId], casesDir);
+    const { command, args } = buildCliTaskRunnerCommand(generator, prompt);
+    try {
+      const result = await execFileAsync(command, args, {
         cwd: REPO_ROOT,
-        timeout: Math.min(selection.timeout_seconds * 1000, CLAUDE_TEST_CASE_TIMEOUT_MS),
+        timeout: perCaseTimeout,
         maxBuffer: 8 * 1024 * 1024,
+      });
+      const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
+      const brief = parseClaudeTestCaseBrief(output).get(caseId);
+      if (brief) {
+        briefs.set(caseId, brief);
+      } else {
+        failures.push(`${caseId} (no JSON brief in output)`);
       }
-    );
-    const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
-    await writeModelGenerationLog(casesDir, generator, output, false);
-    return writeBriefsFromOutput(casesDir, output);
-  } catch (error) {
-    const detail = formatClaudeGenerationError(error);
-    await writeModelGenerationLog(casesDir, generator, detail, true);
-    throw new Error(`${generator.provider_label} could not generate the requested test cases. ${detail}`);
+      await writeModelGenerationLog(
+        casesDir,
+        generator,
+        `[${caseId} ok]\n${output.slice(0, 4000)}`,
+        false
+      );
+    } catch (error) {
+      const detail = formatClaudeGenerationError(error);
+      failures.push(`${caseId} (${detail})`);
+      await writeModelGenerationLog(casesDir, generator, `[${caseId} failed] ${detail}`, true);
+    }
   }
+  await fs.writeFile(
+    path.join(casesDir, "generation-brief.json"),
+    JSON.stringify({ cases: Array.from(briefs.values()) }, null, 2),
+    "utf-8"
+  );
+  if (briefs.size === 0) {
+    throw new Error(
+      `${generator.provider_label} produced no usable briefs — ${failures.length}/${caseIds.length} failed (${failures.join("; ")}). See test-cases/generation.log and switch to a faster model if this recurs.`
+    );
+  }
+  return briefs;
 }
 
 function buildCliTaskRunnerCommand(
@@ -1886,17 +1925,18 @@ function buildClaudeTestCasePrompt(
   casesDir: string
 ): string {
   const definitions = TEST_CASE_DEFINITIONS.filter((definition) => caseIds.includes(definition.id));
+  // Keep the brief lean: the host renders the final HTML from guarded templates,
+  // so the model only needs identity + case intent to write creative direction.
+  // The previous prompt shipped a full rendered draft per case plus 9KB of
+  // DESIGN.md/SKILL.md prose, which made the agent ingest ~15KB and spin.
   const payload = {
-    output_dir: casesDir,
     brand: {
       slug: context.slug,
       name: context.name,
       source_url: context.sourceUrl,
-      extracted_at: context.extractedAt,
       categories: context.categories,
-      score: context.score,
     },
-    required_identity: {
+    identity: {
       logo_src: context.logoSrc,
       light_logo_src: context.lightLogoSrc,
       nav_labels: context.navLabels,
@@ -1904,45 +1944,35 @@ function buildClaudeTestCasePrompt(
       footer_columns: context.footerColumns,
       footer_about_text: context.footerAboutText,
       footer_acknowledgement: context.footerAcknowledgement,
-      image_srcs: context.imageSrcs.slice(0, 16),
+      image_srcs: context.imageSrcs.slice(0, 12),
       palette: context.palette,
       fonts: context.fonts,
-      token_coverage: summarizeTokenCoverage(context),
-      package_quality: context.packageQuality,
     },
     cases: definitions.map((definition) => ({
       id: definition.id,
-      file: `${definition.id}.html`,
       title: definition.title,
       type: definition.type,
-      description: definition.description,
       intent: definition.intent,
-      local_draft_contract: summarizeLocalDraft(renderTestCase(context, definition.id)),
     })),
-    design_md: truncateForPrompt(context.designMd, 6000),
-    skill_md: truncateForPrompt(context.skillMd, 3000),
-    design_signals: context.designSignals,
-    skill_signals: context.skillSignals,
   };
 
   return [
-    "You are generating brand acceptance test pages for the design-extractor library.",
-    "Return a compact JSON creative brief for the requested HTML files. Do not modify files.",
-    "The application will render the final HTML through guarded templates after this model-backed brief step.",
-    "Use the provided extracted brand package as the source of truth. Do not invent a generic design system.",
-    "Critical requirements:",
-    "- Use the exact logo_src when present. The logo must be visibly sized using a .brand-logo class with width and height rules.",
-    "- The slide deck must show the extracted logo inside every slide, not only in the surrounding page chrome.",
-    "- Preserve the brand header/navigation language using the provided nav_labels.",
-    "- Preserve a brand footer using the provided footer_columns, footer_labels, acknowledgement/copyright text, and source URL.",
-    "- Use real extracted image_srcs where the scenario needs imagery.",
-    "- Use the full token coverage directly: palette/computed colors, typography, spacing, radii, shadows, breakpoints, transitions.",
-    "- Make the dashboard/report data-dense, the deck exactly six slides, the showcase a real living design system specimen, the campaign a one-page campaign, and the poster an identity poster.",
-    "- Do not output placeholder text that says the page was generated from evidence unless it is in a small provenance note.",
-    "- Include enough visible brand identity that a reviewer can recognize the brand without reading the page title.",
-    "- Return JSON only: {\"cases\":[{\"id\":\"...\",\"brand_risks\":[...],\"must_include\":[...],\"creative_direction\":\"...\"}]}",
+    "You are a creative director producing brand acceptance test briefs.",
+    "Respond with ONLY a JSON object. Do NOT use any tools. Do NOT read, write, or explore files.",
+    "Do NOT wrap the answer in markdown. Output the JSON and stop immediately.",
+    "The host application renders the final HTML from your brief, so you write creative direction only.",
     "",
-    "Payload JSON:",
+    "For each case produce: brand_risks (ways the rendered page could drift off-brand),",
+    "must_include (concrete elements/copy/sections), creative_direction (a tight paragraph in the brand voice).",
+    "Stay loyal to the provided identity (logo_src, nav_labels, footer, palette, fonts).",
+    "- Slide deck: exactly six slides, logo on every slide.",
+    "- Dashboard/report: data-dense (KPIs, tables, charts).",
+    "- Showcase: a living design-system specimen.",
+    "- Campaign: one persuasive page. Poster: a bold identity poster.",
+    "",
+    'Return ONLY: {"cases":[{"id":"...","brand_risks":["..."],"must_include":["..."],"creative_direction":"..."}]}',
+    "",
+    "Brand package:",
     JSON.stringify(payload, null, 2),
   ].join("\n");
 }
@@ -1960,18 +1990,27 @@ function summarizeLocalDraft(html: string): JsonRecord {
 }
 
 function formatClaudeGenerationError(error: unknown): string {
-  if (!error || typeof error !== "object") return "Unknown Claude CLI error";
+  if (!error || typeof error !== "object") return "Unknown CLI error";
   const record = error as { message?: unknown; stderr?: unknown; stdout?: unknown; signal?: unknown; code?: unknown; killed?: unknown };
   const stderr = typeof record.stderr === "string" ? record.stderr.trim() : "";
   const stdout = typeof record.stdout === "string" ? record.stdout.trim() : "";
-  let message = stderr || stdout || (typeof record.message === "string" ? record.message : "Claude CLI failed");
+  // The bulk of a CLI failure's stderr/stdout is the echoed prompt — drop it so
+  // the surfaced error is the actionable part, not 15KB of prompt text.
+  const stripPrompt = (text: string) =>
+    text
+      .split(/\n(?=Error|Timed out|Exit|✘|⨯|failed|ERR)/)[0]
+      .replace(/Command failed:[\s\S]*$/i, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  let message = stripPrompt(stderr) || stripPrompt(stdout) || (typeof record.message === "string" ? record.message : "CLI failed");
   if (record.killed || record.signal === "SIGTERM") {
-    message = `Timed out after ${Math.round(CLAUDE_TEST_CASE_TIMEOUT_MS / 1000)} seconds. ${message}`;
+    const secs = Math.round(PERCASE_GENERATION_TIMEOUT_MS / 1000);
+    message = `model did not finish within ${secs}s — it likely hung or over-produced. Try a faster/more compliant model. ${message}`;
   }
-  if (typeof record.code !== "undefined") {
+  if (typeof record.code !== "undefined" && record.code !== null) {
     message = `Exit ${String(record.code)}. ${message}`;
   }
-  return truncateForPrompt(message.replace(/\s+/g, " "), 1200);
+  return truncateForPrompt(message, 600);
 }
 
 function evaluateTestCase(
