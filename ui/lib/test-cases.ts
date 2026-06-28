@@ -229,6 +229,51 @@ interface BrandContext {
 const execFileAsync = promisify(execFile);
 const LIBRARY_ROOT = path.join(os.homedir(), ".claude", "design-library");
 const REPO_ROOT = path.resolve(process.cwd(), "..");
+const PTY_RUNNER = path.join(REPO_ROOT, "scripts", "run_cli_with_pty.py");
+
+/**
+ * Run an agentic CLI (opencode/kimi/claude/codex/…) under a real PTY.
+ *
+ * These CLIs block when spawned from Node without a controlling terminal —
+ * they only converge interactively. We route the call through a tiny stdlib
+ * Python wrapper (scripts/run_cli_with_pty.py) that forks the command under a
+ * pseudo-terminal, so the agent sees a terminal and returns its brief instead
+ * of spinning until the timeout. No native Node dependencies.
+ */
+async function runCliWithPty(
+  command: string,
+  args: string[],
+  cwd: string,
+  timeoutMs: number
+): Promise<{ stdout: string; stderr: string; code: number; timedOut?: boolean }> {
+  const runnerArgs = [
+    PTY_RUNNER,
+    "--cwd",
+    cwd,
+    "--timeout",
+    String(Math.max(1, Math.round(timeoutMs / 1000))),
+    "--",
+    command,
+    ...args,
+  ];
+  try {
+    const result = await execFileAsync("python3", runnerArgs, {
+      cwd: REPO_ROOT,
+      maxBuffer: 16 * 1024 * 1024,
+      timeout: timeoutMs + 15000,
+    });
+    return { stdout: (result.stdout || "").replace(/\r/g, ""), stderr: result.stderr || "", code: 0 };
+  } catch (err: unknown) {
+    // Agentic CLIs often exit non-zero (or get killed at the timeout) AFTER
+    // writing a valid answer to stdout. Don't throw the output away — surface
+    // it so the brief parser can decide. Only rethrow when there's truly nothing.
+    const record = err as { stdout?: string; stderr?: string; code?: number; signal?: string; killed?: boolean };
+    const stdout = (record.stdout || "").replace(/\r/g, "");
+    const stderr = record.stderr || "";
+    if (!stdout && !stderr) throw err;
+    return { stdout, stderr, code: record.code ?? (record.killed ? 124 : 1), timedOut: Boolean(record.killed || record.signal) };
+  }
+}
 const GENERATOR_VERSION = 5;
 const TEST_CASE_GENERATOR_BASE = {
   version: GENERATOR_VERSION,
@@ -1764,13 +1809,9 @@ async function runCliTaskRunnerTestCaseGenerator(
   const perCaseTimeout = Math.min(selection.timeout_seconds * 1000, PERCASE_GENERATION_TIMEOUT_MS); // 3 min/case
   for (const caseId of caseIds) {
     const prompt = buildClaudeTestCasePrompt(context, [caseId], casesDir);
-    const { command, args } = buildCliTaskRunnerCommand(generator, prompt);
+    const { command, args, cwd } = await buildCliTaskRunnerCommand(generator, prompt);
     try {
-      const result = await execFileAsync(command, args, {
-        cwd: REPO_ROOT,
-        timeout: perCaseTimeout,
-        maxBuffer: 8 * 1024 * 1024,
-      });
+      const result = await runCliWithPty(command, args, cwd, perCaseTimeout);
       const output = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
       const brief = parseClaudeTestCaseBrief(output).get(caseId);
       if (brief) {
@@ -1803,46 +1844,54 @@ async function runCliTaskRunnerTestCaseGenerator(
   return briefs;
 }
 
-function buildCliTaskRunnerCommand(
+async function buildCliTaskRunnerCommand(
   generator: TestCaseGeneratorConfig,
   prompt: string
-): { command: string; args: string[] } {
+): Promise<{ command: string; args: string[]; cwd: string }> {
   const command = generator.command || generator.provider_type;
   const model = generator.model && generator.model !== "default" ? generator.model : null;
 
+  // These CLIs are agentic (file/bash tools). Two things make them spin instead
+  // of returning the JSON brief: repo access (the agent wanders) and the repo's
+  // own agent config (AGENTS.md / .opencode), which they load from cwd. The
+  // brand package is already in the prompt, so run them in a dedicated EMPTY
+  // workdir used as both --dir/--cd/--workspace AND cwd.
+  const workdir = path.join(os.tmpdir(), "design-extractor-brief-workdir");
+  await fs.mkdir(workdir, { recursive: true });
+
   if (generator.provider_type === "codex") {
-    const args = ["exec", "--cd", REPO_ROOT, "--dangerously-bypass-approvals-and-sandbox"];
+    const args = ["exec", "--cd", workdir, "--dangerously-bypass-approvals-and-sandbox"];
     if (model) args.push("--model", model);
     args.push(prompt);
-    return { command, args };
+    return { command, args, cwd: workdir };
   }
 
   if (generator.provider_type === "minimax") {
-    const args = ["exec", "--cd", REPO_ROOT, "--profile", "m21", "--dangerously-bypass-approvals-and-sandbox"];
+    const args = ["exec", "--cd", workdir, "--profile", "m21", "--dangerously-bypass-approvals-and-sandbox"];
     if (model) args.push("--model", model);
     args.push(prompt);
-    return { command, args };
+    return { command, args, cwd: workdir };
   }
 
   if (generator.provider_type === "cursor") {
-    const args = ["agent", "--print", "--output-format", "text", "--force", "--trust", "--workspace", REPO_ROOT];
+    const args = ["agent", "--print", "--output-format", "text", "--force", "--trust", "--workspace", workdir];
     if (model) args.push("--model", model);
     args.push(prompt);
-    return { command, args };
+    return { command, args, cwd: workdir };
   }
 
   if (generator.provider_type === "kimi") {
-    const args = ["--print", "--final-message-only", "--work-dir", REPO_ROOT, "--output-format", "text"];
+    const args = ["--print", "--final-message-only", "--work-dir", workdir, "--output-format", "text"];
     if (model) args.push("--model", model);
     args.push("--prompt", prompt);
-    return { command, args };
+    return { command, args, cwd: workdir };
   }
 
   if (generator.provider_type === "opencode") {
-    const args = ["run", "--dir", REPO_ROOT, "--dangerously-skip-permissions", "--format", "default"];
+    const args = ["run", "--dir", workdir, "--dangerously-skip-permissions", "--format", "default"];
     if (model) args.push("--model", model);
     args.push(prompt);
-    return { command, args };
+    return { command, args, cwd: workdir };
   }
 
   throw new Error(`Unsupported CLI task runner: ${generator.provider_label} (${generator.provider_type})`);
