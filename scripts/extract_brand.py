@@ -2641,13 +2641,31 @@ def _build_asset_listing(slug: str, public_dir: Path) -> tuple[list[str], str]:
 
 
 def _run_model_runner(prompt: str, label: str, runner: dict) -> None:
-    """Dispatch a single configured task-runner call. Non-fatal on failure/timeout."""
+    """Dispatch a single configured task-runner call. Non-fatal on failure/timeout.
+
+    Routed through scripts/run_cli_with_pty.py because the task runners
+    (claude/opencode/kimi/codex) are agentic TUIs that block without a
+    controlling terminal — without the PTY they spin for the whole timeout
+    and the replica never gets built (this was the 45-minute Phase 5 stall).
+    cwd stays at PLUGIN_DIR so the runner can edit the React replica files.
+    """
     step(f"Calling {model_runner_label(runner)}: {label}")
     try:
         cmd = build_model_runner_command(prompt, runner)
+        pty_runner = Path(__file__).resolve().parent / "run_cli_with_pty.py"
+        wrapper = [
+            sys.executable,
+            str(pty_runner),
+            "--cwd",
+            str(PLUGIN_DIR),
+            "--timeout",
+            str(MODEL_RUNNER_TIMEOUT),
+            "--",
+            *cmd,
+        ]
         result = run_cmd(
-            cmd,
-            timeout=MODEL_RUNNER_TIMEOUT,
+            wrapper,
+            timeout=MODEL_RUNNER_TIMEOUT + 30,
             cwd=PLUGIN_DIR,
             check=False,
         )
