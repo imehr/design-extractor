@@ -723,7 +723,7 @@ class ExtractionJob:
         return max(MIN_PACKAGE_PAGES, min(MAX_PACKAGE_PAGES, requested))
 
     def build_orchestrator_command(self) -> list[str]:
-        return [
+        cmd = [
             sys.executable,
             str(REPO_ROOT / "scripts" / "extract_brand.py"),
             "--url",
@@ -732,8 +732,12 @@ class ExtractionJob:
             str(self.orchestrator_page_limit()),
             "--replica-batch-size",
             "5",
-            "--skip-existing",  # resume: reuse cached DOM/replicas instead of redoing
         ]
+        # Only resume (skip-existing) when the cache dir already exists for this
+        # slug — a fresh extraction should never silently reuse stale artifacts.
+        if self.cache_dir().exists():
+            cmd.append("--skip-existing")
+        return cmd
 
     def library_index_contains_brand(self) -> bool:
         data = read_json_file(library_root() / "index.json")
@@ -1563,8 +1567,8 @@ async def handle_connection(websocket):
                 _active_job.cancelled = True
                 if _active_job.current_proc:
                     try:
-                        _active_job.current_proc.kill()
-                    except ProcessLookupError:
+                        os.killpg(os.getpgid(_active_job.current_proc.pid), signal.SIGKILL)
+                    except (ProcessLookupError, PermissionError):
                         pass
                 await websocket.send(
                     json.dumps({"type": "status", "message": "Cancellation requested"})
