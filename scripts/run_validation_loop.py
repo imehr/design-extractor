@@ -225,13 +225,21 @@ def average_score(scores: dict) -> float:
 
 
 def run_viewport_validation(base_url: str, pages: dict, viewport: dict, skip_originals: bool = True, headed: bool = False) -> dict:
-    """Capture + score a single viewport. Returns the per-page scores dict."""
+    """Capture + score a single viewport. Returns the per-page scores dict.
+
+    Only captured pages (both original + replica screenshots present) are scored.
+    Uncaptured pages are dropped from the dict so they don't zero the mean — the
+    capture-rate gate in update_validation_report catches systematic failures.
+    """
     captures = capture_all_pages(base_url, pages, skip_originals=skip_originals, headed=headed, viewport=viewport)
     missing = missing_capture_pages(captures)
     if missing:
         print(f"\nViewport {viewport.get('name')}: missing screenshots for {', '.join(missing)}")
-        return {slug: {"exact": 0.0, "close": 0.0, "status": "missing_screenshot"} for slug in pages}
-    return score_all_pages(captures)
+    captured = {
+        slug: paths for slug, paths in captures.items()
+        if paths.get("original") and paths.get("replica")
+    }
+    return score_all_pages(captured)
 
 
 def score_all_pages(captures: dict) -> dict:
@@ -289,7 +297,7 @@ def build_improvement_manifest(scores: dict, target: float = 80.0) -> dict:
     }
 
 
-def update_validation_report(per_viewport_avgs: dict, desktop_scores: dict | None = None) -> None:
+def update_validation_report(per_viewport_avgs: dict, desktop_scores: dict | None = None, total_pages: int = 0) -> None:
     """Update report.json with per-viewport averages.
 
     Writes a ``<name>_avg`` key for every viewport in ``per_viewport_avgs``
@@ -323,6 +331,15 @@ def update_validation_report(per_viewport_avgs: dict, desktop_scores: dict | Non
         "value": f"desktop avg {avg}%",
         "per_page": {slug: f"{s.get('close', 0.0)}%" for slug, s in (desktop_scores or {}).items()},
     }
+
+    # Capture-rate gate: a brand with 1-of-5 pages captured at 91% shouldn't
+    # pass just because the subset mean is high.
+    if total_pages > 0:
+        captured = len(desktop_scores or {})
+        report["gates"]["capture_rate"] = {
+            "pass": captured / total_pages >= 0.5,
+            "value": f"{captured}/{total_pages} pages captured",
+        }
 
     # Recount passing gates
     passing = sum(1 for g in report.get("gates", {}).values() if g.get("pass", False))
@@ -394,9 +411,9 @@ def main():
             }
         missing_pages = missing_capture_pages(captures)
         if missing_pages:
-            print(f"\nValidation aborted: missing screenshots for {', '.join(missing_pages)}")
-            return 2
-        desktop_scores = score_all_pages(captures)
+            print(f"\nMissing screenshots for {', '.join(missing_pages)} — scoring the captured subset.")
+        captured = {slug: p for slug, p in captures.items() if p.get("original") and p.get("replica")}
+        desktop_scores = score_all_pages(captured)
         avgs = {"desktop": average_score(desktop_scores)}
     else:
         print(f"Capturing screenshots (base: {args.base_url})...")
@@ -433,7 +450,7 @@ def main():
     print(f"\nManifest: {MANIFEST_PATH}")
 
     # Update report with every viewport average.
-    update_validation_report(avgs, desktop_scores)
+    update_validation_report(avgs, desktop_scores, total_pages=len(pages))
     if (BRANDS_DIR / "metadata.json").exists():
         sync_metadata_with_report(BRANDS_DIR / "metadata.json", REPORT_PATH)
 

@@ -205,6 +205,31 @@ def derive_slug(url: str) -> str:
     return host.replace(".", "-")
 
 
+def _download_with_timeout(url: str, dest: str, timeout: int = 30) -> bool:
+    """Download a URL to a file path with a bounded socket timeout.
+
+    ``urllib.request.urlretrieve`` has no default timeout and can hang
+    indefinitely on a stalled origin — this replaces it with ``urlopen(timeout)``.
+    HTTPError is re-raised so callers can handle 403 fallbacks; other errors
+    (timeout, connection reset) return False.
+    """
+    try:
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "Mozilla/5.0 (compatible; DesignExtractor/1.0)"}
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = resp.read()
+            if not data:
+                return False
+            with open(dest, "wb") as f:
+                f.write(data)
+        return True
+    except urllib.error.HTTPError:
+        raise  # let callers handle 403 etc.
+    except Exception:
+        return False
+
+
 def run_cmd(
     cmd: list[str],
     *,
@@ -2102,7 +2127,7 @@ def _default_stylesheet_fetcher(slug: str, headed: bool):
             tmp_path = tf.name
         try:
             try:
-                urllib.request.urlretrieve(url, tmp_path)
+                _download_with_timeout(url, tmp_path)
                 return Path(tmp_path).read_bytes()
             except urllib.error.HTTPError as http_err:
                 if http_err.code == 403:
@@ -2220,7 +2245,7 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
                 continue
 
             try:
-                urllib.request.urlretrieve(url_str, str(dest))
+                _download_with_timeout(url_str, str(dest))
             except urllib.error.HTTPError as http_err:
                 if http_err.code == 403:
                     # Fallback: download via browser fetch (bypasses 403)
@@ -2315,7 +2340,7 @@ def download_assets(slug: str, pages: dict, dirs: dict, headed: bool) -> int:
                     if dest.exists():
                         continue
                     try:
-                        urllib.request.urlretrieve(font_url, str(dest))
+                        _download_with_timeout(font_url, str(dest))
                         downloaded += 1
                     except Exception:
                         pass
