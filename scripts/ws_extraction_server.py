@@ -6,6 +6,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import signal
 import re
 import shutil
 import subprocess
@@ -731,6 +732,7 @@ class ExtractionJob:
             str(self.orchestrator_page_limit()),
             "--replica-batch-size",
             "5",
+            "--skip-existing",  # resume: reuse cached DOM/replicas instead of redoing
         ]
 
     def library_index_contains_brand(self) -> bool:
@@ -916,13 +918,14 @@ class ExtractionJob:
                 stderr=asyncio.subprocess.STDOUT,
                 cwd=REPO_ROOT,
                 env=env,
+                start_new_session=True,  # own pgid so cancel can killpg grandchildren (Chrome, model CLI)
             )
 
             while True:
                 if self.cancelled:
                     try:
-                        self.current_proc.kill()
-                    except ProcessLookupError:
+                        os.killpg(os.getpgid(self.current_proc.pid), signal.SIGKILL)
+                    except (ProcessLookupError, PermissionError):
                         pass
                     break
 

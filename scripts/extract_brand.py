@@ -1609,6 +1609,7 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
     time.sleep(3)  # Simple wait instead of networkidle (many sites never reach idle)
 
     # Take reference screenshot
+    step(f"{page_slug}: capturing screenshot")
     run_cmd(
         agent_browser_cmd(["screenshot", str(screenshot_path), "--full"], session=session),
         timeout=SCREENSHOT_TIMEOUT,
@@ -1807,6 +1808,7 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
         };
     })())"""
 
+    step(f"{page_slug}: extracting DOM content")
     result = run_cmd(
         agent_browser_cmd(["eval", js_dom], session=session),
         timeout=DOM_EXTRACT_TIMEOUT,
@@ -1826,6 +1828,7 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
     # Save the rendered source page as an HTML artifact for review/raw-file workflows.
     # The review API expects these under brands/<slug>/dom-extraction/.
     js_html = "JSON.stringify(document.documentElement.outerHTML)"
+    step(f"{page_slug}: saving HTML snapshot")
     html_result = run_cmd(
         agent_browser_cmd(["eval", js_html], session=session),
         timeout=DOM_EXTRACT_TIMEOUT,
@@ -1907,6 +1910,7 @@ def extract_dom(page_slug: str, page_url: str, slug: str, dirs: dict, headed: bo
         };
     })())"""
 
+    step(f"{page_slug}: measuring colours + typography + layout")
     result = run_cmd(
         agent_browser_cmd(["eval", js_measurements], session=session),
         timeout=DOM_EXTRACT_TIMEOUT,
@@ -2795,6 +2799,7 @@ The UI project is a Next.js app at {UI_DIR}. Verify TypeScript compiles before f
         for index in range(0, len(inner_pages), batch_size)
     ]
     for batch_index, batch in enumerate(batches, start=1):
+        step(f"Replica batch {batch_index}/{len(batches)}: {', '.join(p['slug'] for p in batch)}")
         inner_list = "\n".join(
             f"  {p['slug']:20s} -> {dirs['replica']}/{p['slug']}/page.tsx  (read {dom_dir}/{p['slug']}.json)"
             for p in batch
