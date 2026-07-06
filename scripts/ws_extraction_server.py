@@ -735,7 +735,7 @@ class ExtractionJob:
         ]
         # Only resume (skip-existing) when the cache dir already exists for this
         # slug — a fresh extraction should never silently reuse stale artifacts.
-        if self.cache_dir().exists():
+        if self._cache_dir().exists():
             cmd.append("--skip-existing")
         return cmd
 
