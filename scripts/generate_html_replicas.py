@@ -1294,6 +1294,19 @@ def generate_for_slug(slug: str, only_pages: list[str] | None = None,
     (out_dir / "manifest.json").write_text(
         json.dumps(manifest, indent=2), encoding="utf-8"
     )
+
+    # Mirror to the library brand dir so the file API (/api/brands/<slug>/file/)
+    # serves the HTML replicas — the repo copy serves the artifacts API.
+    import shutil
+    lib_dir = library_root / "brands" / slug / "replica-html"
+    lib_dir.mkdir(parents=True, exist_ok=True)
+    for item in out_dir.iterdir():
+        target = lib_dir / item.name
+        if item.is_file():
+            shutil.copy2(item, target)
+        elif item.is_dir():
+            shutil.copytree(item, target, dirs_exist_ok=True)
+
     return manifest
 
 

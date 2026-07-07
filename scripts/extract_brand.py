@@ -3263,9 +3263,9 @@ def _retarget_routes_to_html_replicas(slug: str) -> None:
             if not isinstance(config, dict):
                 continue
             if page_slug == "homepage":
-                config["replica_route"] = f"/api/brands/{slug}/artifacts/replica-html/homepage.html"
+                config["replica_route"] = f"/api/brands/{slug}/file/replica-html/homepage.html"
             else:
-                config["replica_route"] = f"/api/brands/{slug}/artifacts/replica-html/{page_slug}.html"
+                config["replica_route"] = f"/api/brands/{slug}/file/replica-html/{page_slug}.html"
         pages_file.write_text(json.dumps(data, indent=2))
         step(f"Retargeted {len(data)} replica routes to HTML replica artifacts")
     except Exception as e:
