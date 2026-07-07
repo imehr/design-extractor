@@ -3250,6 +3250,18 @@ def build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def build_html_replicas_v2(slug: str) -> None:
+    """Phase 7.4: Build exact HTML replicas from the offline mirror + injected tokens."""
+    _run_artifact_script(
+        "7.4",
+        "Building HTML replicas (mirror + tokens)",
+        "Exact reproduction with injected design tokens",
+        "build_html_replicas.py",
+        ["--slug", slug],
+        HTML_REPLICA_TIMEOUT,
+    )
+
+
 def _retarget_routes_to_html_replicas(slug: str) -> None:
     """Update pages.json replica_route to point at the HTML replica artifacts
     route so validation screenshots deterministic token-styled pages instead
@@ -3417,13 +3429,14 @@ def main() -> int:
             except Exception as e:  # noqa: BLE001
                 warn(f"Open-design export errored ({e}) — continuing")
 
-    # Phase 7.4: Standalone HTML replicas — run AFTER publish so they consume
-    # the published design-tokens.json (avoids unstyled Canvas fallback).
+    # Phase 7.4: Standalone HTML replicas — built from the offline mirror +
+    # injected design tokens. Near-exact reproduction (preserves real CSS) that
+    # proves the extracted DESIGN.md/tokens/assets are correct.
     if args.skip_html_replicas:
         warn("Skipping standalone HTML replicas (--skip-html-replicas)")
     else:
         try:
-            _phase("7.4", generate_html_replicas, slug)
+            _phase("7.4", build_html_replicas_v2, slug)
         except Exception as e:  # noqa: BLE001
             warn(f"Standalone HTML replicas errored ({e}) — continuing")
 
