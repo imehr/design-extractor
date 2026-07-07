@@ -3254,7 +3254,7 @@ def _retarget_routes_to_html_replicas(slug: str) -> None:
     """Update pages.json replica_route to point at the HTML replica artifacts
     route so validation screenshots deterministic token-styled pages instead
     of React redirect stubs (which produced 4-7% scores due to redirect timing)."""
-    pages_file = LIBRARY_ROOT / "cache" / slug / "dom-extraction" / "pages.json"
+    pages_file = LIBRARY_ROOT / "cache" / slug / "validation" / "pages.json"
     if not pages_file.exists():
         return
     try:
