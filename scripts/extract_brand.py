@@ -3240,6 +3240,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skip-existing", action="store_true", help="Resume partial extraction (skip existing files)")
     parser.add_argument("--skip-validation", action="store_true", help="Skip Phase 6 (screenshot validation)")
     parser.add_argument("--skip-replicas", action="store_true", help="Skip Phase 5 (model-runner replica generation)")
+    parser.add_argument("--build-react-replicas", action="store_true", help="Build React/shadcn replicas (slow, opt-in — skipped by default)")
     parser.add_argument("--skip-publish", action="store_true", help="Skip publish, registration, and final verification")
     parser.add_argument("--skip-mirror", action="store_true", help="Skip Phase 4.5 (offline mirror of original pages)")
     parser.add_argument("--skip-html-replicas", action="store_true", help="Skip Phase 6.5 (standalone token-styled HTML replicas)")
@@ -3247,6 +3248,28 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skip-artifact-bundle", action="store_true", help="Skip Phase 7.6 (OD artifact bundles from mirrored pages)")
     parser.add_argument("--skip-design-system-bundle", action="store_true", help="Skip Phase 7.7 (OD v1 design-system bundle emission)")
     return parser
+
+
+def _retarget_routes_to_html_replicas(slug: str) -> None:
+    """Update pages.json replica_route to point at the HTML replica artifacts
+    route so validation screenshots deterministic token-styled pages instead
+    of React redirect stubs (which produced 4-7% scores due to redirect timing)."""
+    pages_file = LIBRARY_ROOT / "cache" / slug / "dom-extraction" / "pages.json"
+    if not pages_file.exists():
+        return
+    try:
+        data = json.loads(pages_file.read_text())
+        for page_slug, config in data.items():
+            if not isinstance(config, dict):
+                continue
+            if page_slug == "homepage":
+                config["replica_route"] = f"/api/brands/{slug}/artifacts/replica-html/homepage.html"
+            else:
+                config["replica_route"] = f"/api/brands/{slug}/artifacts/replica-html/{page_slug}.html"
+        pages_file.write_text(json.dumps(data, indent=2))
+        step(f"Retargeted {len(data)} replica routes to HTML replica artifacts")
+    except Exception as e:
+        warn(f"Could not retarget routes to HTML replicas: {e}")
 
 
 def main() -> int:
@@ -3369,56 +3392,61 @@ def main() -> int:
         except Exception as e:  # noqa: BLE001 — artifact steps never abort extraction
             warn(f"Original-page mirror errored ({e}) — continuing")
 
-    # Phase 5: Build replicas
-    if not args.skip_replicas:
+    # Phase 5: Build React replicas — OPT-IN (slow, ~25 min/batch via model CLI).
+    # HTML replicas (Phase 7.4) are the default, fast, deterministic reproduction.
+    build_react = getattr(args, "build_react_replicas", False) and not args.skip_replicas
+    if build_react:
         _phase("5", build_replicas, slug, url, pages, dirs, args.skip_existing, args.replica_batch_size)
         _phase("5b", verify_replicas, slug, pages, dirs)
         _phase("5c", repair_incomplete_replicas_with_html_snapshots, slug, pages, dirs)
     else:
-        warn("Skipping replica generation (--skip-replicas)")
-
-    # Phase 6: Validate. Never fatal — a validation failure must not cost us the
-    # publish/register phases (the brand + its score should still land for review).
-    score = 0.0
-    if not args.skip_validation and not args.skip_replicas:
-        try:
-            score = _phase("6", run_validation, slug)
-        except Exception as e:  # noqa: BLE001 — validation is best-effort
-            warn(f"Validation phase errored ({e}); continuing to publish/register")
-    else:
-        warn("Skipping validation (--skip-validation or --skip-replicas)")
+        ok("Skipping React replicas (opt-in via --build-react-replicas); HTML replicas are the default")
 
     if args.skip_publish:
         warn("Skipping publish, registration, and final verification (--skip-publish)")
     else:
-        # Phase 7: Publish
+        # Phase 7: Publish — moved BEFORE validation so HTML replicas have tokens.
         _phase("7", publish, slug)
 
-        # Phase 7.5: Open-design export — depends on publish artifacts; best-effort.
+        # Phase 7.5: Open-design export
         if args.skip_open_design_export:
             warn("Skipping open-design export (--skip-open-design-export)")
         else:
             try:
                 _phase("7.5", export_open_design, slug)
-            except Exception as e:  # noqa: BLE001 — artifact steps never abort extraction
+            except Exception as e:  # noqa: BLE001
                 warn(f"Open-design export errored ({e}) — continuing")
 
-        # Phase 8: Register
-        _phase("8", register_in_library, slug, url, title)
-
-        # Phase 9: Final verification
-        _phase("9", final_verification, slug, pages, asset_count, score)
-
     # Phase 7.4: Standalone HTML replicas — run AFTER publish so they consume
-    # the published design-tokens.json. (Previously Phase 6.5 ran before publish
-    # and load_tokens() fell back to system Canvas/CanvasText — unstyled replicas.)
+    # the published design-tokens.json (avoids unstyled Canvas fallback).
     if args.skip_html_replicas:
         warn("Skipping standalone HTML replicas (--skip-html-replicas)")
     else:
         try:
             _phase("7.4", generate_html_replicas, slug)
-        except Exception as e:  # noqa: BLE001 — artifact steps never abort extraction
+        except Exception as e:  # noqa: BLE001
             warn(f"Standalone HTML replicas errored ({e}) — continuing")
+
+    # Phase 6: Validate — DECOUPLED from React replicas. When React is skipped
+    # (the default), validation screenshots the HTML replica artifacts (deterministic,
+    # token-styled, no redirect timing issues). This replaces the old approach of
+    # screenshotting React redirect stubs that produced 4-7% scores.
+    score = 0.0
+    if not args.skip_validation:
+        if not build_react:
+            _retarget_routes_to_html_replicas(slug)
+        try:
+            score = _phase("6", run_validation, slug)
+        except Exception as e:  # noqa: BLE001
+            warn(f"Validation phase errored ({e}); continuing to register")
+    else:
+        warn("Skipping validation (--skip-validation)")
+
+    if not args.skip_publish:
+        # Phase 8: Register
+        _phase("8", register_in_library, slug, url, title)
+        # Phase 9: Final verification
+        _phase("9", final_verification, slug, pages, asset_count, score)
 
     # Phase 7.6 + 7.7: OD artifact + design-system bundles — leaf-of-pipeline,
     # best-effort. Run after publish/mirror so their inputs exist, but outside
